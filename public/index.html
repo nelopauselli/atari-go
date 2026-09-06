@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atari-Go Online</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #14120f;
+    --paper: #ede6d6;
+    --wood: #c9a66b;
+    --wood-dark: #a8804a;
+    --line: #3b2f22;
+    --stone-black-hi: #4a4a4a;
+    --stone-white-sh: #cfc7b4;
+    --hanko: #a63a32;
+    --muted: #a89c86;
+    --panel: #201d18;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; min-height:100vh; background: var(--ink); color: var(--paper); font-family:'Zen Kaku Gothic New', sans-serif; }
+  body{ display:flex; flex-direction:column; align-items:center; padding: 40px 20px 60px; }
+  .wrap{ width:100%; max-width: 640px; }
+  h1{ font-family:'Shippori Mincho', serif; font-weight:700; font-size: 2rem; margin:0; letter-spacing:0.02em; }
+  .subtitle{ margin: 4px 0 0; color: var(--muted); font-size: 0.92rem; max-width: 46ch; line-height:1.5; }
+  .divider{ height:1px; background: linear-gradient(to right, transparent, var(--muted) 15%, var(--muted) 85%, transparent); margin: 20px 0 28px; opacity: 0.4; }
+
+  select, button, input{
+    font-family: inherit; font-size: 0.85rem; background: transparent; color: var(--paper);
+    border: 1px solid var(--muted); padding: 9px 12px; cursor: pointer;
+  }
+  input{ cursor:text; }
+  select:hover, button:hover{ border-color: var(--paper); }
+  select:focus-visible, button:focus-visible, input:focus-visible{ outline: 2px solid var(--hanko); outline-offset: 2px; }
+  button:disabled{ opacity: 0.4; cursor:not-allowed; }
+
+  .panel{ background: var(--panel); border: 1px solid #2c281f; padding: 26px; }
+  .panel + .panel{ margin-top: 18px; }
+  .panel h2{ font-family:'Shippori Mincho', serif; font-size:1.1rem; margin: 0 0 14px; }
+  .field-row{ display:flex; gap: 10px; flex-wrap: wrap; align-items:center; margin-bottom: 12px; }
+  .field-row label{ font-size:0.8rem; color: var(--muted); min-width: 110px; }
+  .hint{ font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .error{ color: var(--hanko); font-size: 0.85rem; margin-top: 10px; min-height: 1.2em; }
+
+  .room-code{ font-family:'Shippori Mincho', serif; font-size: 1.6rem; letter-spacing: 0.12em; color: var(--paper); }
+  .share-line{ display:flex; align-items:center; gap: 12px; flex-wrap: wrap; }
+
+  header.game-header{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 6px; flex-wrap: wrap; gap: 12px; }
+  .board-shell{ display:flex; justify-content:center; margin: 26px 0; }
+  .board-frame{ background: linear-gradient(155deg, var(--wood), var(--wood-dark)); padding: 22px; box-shadow: 0 18px 40px rgba(0,0,0,0.45); max-width: 100%; position: relative; }
+  .board-frame.disabled{ filter: saturate(0.7) brightness(0.85); }
+  svg{ display:block; max-width:100%; height:auto; touch-action: manipulation; }
+  .status-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px; font-size: 0.9rem; }
+  .turn-indicator{ display:flex; align-items:center; gap: 10px; }
+  .turn-dot{ width:16px; height:16px; border-radius:50%; box-shadow: inset -2px -2px 3px rgba(0,0,0,0.3), inset 2px 2px 3px rgba(255,255,255,0.15); }
+  .turn-dot.black{ background: radial-gradient(circle at 35% 30%, var(--stone-black-hi), #0a0a0a); }
+  .turn-dot.white{ background: radial-gradient(circle at 35% 30%, #fff, var(--stone-white-sh)); }
+  .captures{ color: var(--muted); letter-spacing: 0.02em; }
+  .message{ margin-top: 18px; min-height: 1.4em; font-family:'Shippori Mincho', serif; font-size: 1.15rem; color: var(--hanko); text-align:center; }
+  .you-are{ font-size: 0.85rem; color: var(--muted); }
+  .intersection{ cursor:pointer; }
+  .hidden{ display:none !important; }
+  footer{ margin-top: 34px; font-size: 0.78rem; color: var(--muted); text-align:center; line-height:1.6; max-width: 50ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Atari-Go Online</h1>
+    <p class="subtitle">Jugá Atari-Go en tiempo real con otra persona. Gana quien alcance primero la cantidad de piedras capturadas que definan.</p>
+  </header>
+  <div class="divider"></div>
+
+  <!-- LOBBY -->
+  <div id="lobby">
+    <div class="panel">
+      <h2>Crear una sala nueva</h2>
+      <div class="field-row">
+        <label for="sizeSelect">Tamaño del tablero</label>
+        <select id="sizeSelect">
+          <option value="5">5×5</option>
+          <option value="7" selected>7×7</option>
+          <option value="9">9×9</option>
+          <option value="13">13×13</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label for="targetSelect">Piedras para ganar</label>
+        <select id="targetSelect">
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="5">5</option>
+          <option value="10">10</option>
+        </select>
+      </div>
+      <button id="createBtn">Crear sala</button>
+    </div>
+
+    <div class="panel">
+      <h2>Unirse a una sala</h2>
+      <div class="field-row">
+        <label for="codeInput">Código de sala</label>
+        <input id="codeInput" maxlength="4" placeholder="Ej: 7K2Q" style="text-transform:uppercase; width: 100px;">
+        <button id="joinBtn">Unirse</button>
+      </div>
+      <p class="error" id="lobbyError"></p>
+    </div>
+  </div>
+
+  <!-- WAITING / GAME -->
+  <div id="game" class="hidden">
+    <div class="panel" id="shareBox">
+      <h2>Compartí este código con tu rival</h2>
+      <div class="share-line">
+        <span class="room-code" id="roomCodeLabel">----</span>
+        <button id="copyBtn">Copiar código</button>
+      </div>
+      <p class="hint" id="waitingHint">Esperando que se una el segundo jugador…</p>
+    </div>
+
+    <header class="game-header">
+      <div>
+        <p class="you-are" id="youAre"></p>
+      </div>
+      <button id="resetBtn">Reiniciar partida</button>
+    </header>
+
+    <div class="board-shell">
+      <div class="board-frame" id="boardFrame">
+        <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+
+    <div class="status-row">
+      <div class="turn-indicator">
+        <span class="turn-dot black" id="turnDot"></span>
+        <span id="turnLabel">Turno: Negro</span>
+      </div>
+      <div class="captures" id="capturesLabel">Capturas — Negro: 0 · Blanco: 0</div>
+    </div>
+
+    <div class="message" id="message"></div>
+  </div>
+
+  <footer>
+    Reglas: se juega igual que el Go — rodeá las piedras del rival para quitarles todas sus libertades. No se permiten jugadas suicidas. La partida termina cuando alguien alcanza la cantidad de capturas configurada al crear la sala.
+  </footer>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function(){
+  const svgNS = "http://www.w3.org/2000/svg";
+  const socket = io();
+
+  // Lobby elements
+  const lobby = document.getElementById('lobby');
+  const sizeSelect = document.getElementById('sizeSelect');
+  const targetSelect = document.getElementById('targetSelect');
+  const createBtn = document.getElementById('createBtn');
+  const codeInput = document.getElementById('codeInput');
+  const joinBtn = document.getElementById('joinBtn');
+  const lobbyError = document.getElementById('lobbyError');
+
+  // Game elements
+  const gameEl = document.getElementById('game');
+  const shareBox = document.getElementById('shareBox');
+  const roomCodeLabel = document.getElementById('roomCodeLabel');
+  const copyBtn = document.getElementById('copyBtn');
+  const waitingHint = document.getElementById('waitingHint');
+  const youAre = document.getElementById('youAre');
+  const resetBtn = document.getElementById('resetBtn');
+  const boardFrame = document.getElementById('boardFrame');
+  const svg = document.getElementById('board');
+  const turnDot = document.getElementById('turnDot');
+  const turnLabel = document.getElementById('turnLabel');
+  const capturesLabel = document.getElementById('capturesLabel');
+  const messageEl = document.getElementById('message');
+
+  let myColor = null; // 'black' | 'white' | 'spectator'
+  let latestState = null;
+  let roomCode = null;
+
+  function metricsFor(size){
+    let cell, margin;
+    if (size <= 5) cell = 56;
+    else if (size <= 7) cell = 50;
+    else if (size <= 9) cell = 42;
+    else cell = 30;
+    margin = cell * 0.72;
+    return { cell, margin };
+  }
+
+  createBtn.addEventListener('click', () => {
+    lobbyError.textContent = '';
+    socket.emit('create_room', {
+      size: parseInt(sizeSelect.value, 10),
+      captureTarget: parseInt(targetSelect.value, 10),
+    });
+  });
+
+  joinBtn.addEventListener('click', () => {
+    const code = codeInput.value.trim().toUpperCase();
+    if (!code) { lobbyError.textContent = 'Ingresá un código de sala.'; return; }
+    lobbyError.textContent = '';
+    socket.emit('join_room', { code });
+  });
+
+  copyBtn.addEventListener('click', () => {
+    if (!roomCode) return;
+    navigator.clipboard?.writeText(roomCode).then(() => {
+      copyBtn.textContent = '¡Copiado!';
+      setTimeout(() => { copyBtn.textContent = 'Copiar código'; }, 1500);
+    });
+  });
+
+  resetBtn.addEventListener('click', () => socket.emit('reset'));
+
+  socket.on('joined', ({ color, state }) => {
+    myColor = color;
+    roomCode = state.code;
+    lobby.classList.add('hidden');
+    gameEl.classList.remove('hidden');
+    roomCodeLabel.textContent = roomCode;
+    youAre.textContent = myColor === 'spectator'
+      ? 'Estás mirando la partida como espectador.'
+      : `Jugás con: ${myColor === 'black' ? 'Negro' : 'Blanco'}`;
+    applyState(state);
+  });
+
+  socket.on('state', (state) => applyState(state));
+
+  socket.on('error_msg', (msg) => { lobbyError.textContent = msg; });
+
+  function applyState(state){
+    latestState = state;
+    roomCode = state.code;
+    const bothPresent = state.hasBlack && state.hasWhite;
+    shareBox.classList.toggle('hidden', bothPresent);
+    waitingHint.textContent = 'Esperando que se una el segundo jugador…';
+
+    boardFrame.classList.toggle('disabled', !bothPresent || state.gameOver);
+
+    turnDot.className = 'turn-dot ' + state.current;
+    turnLabel.textContent = state.gameOver
+      ? 'Partida finalizada'
+      : ('Turno: ' + (state.current === 'black' ? 'Negro' : 'Blanco'));
+    capturesLabel.textContent = `Capturas (meta: ${state.captureTarget}) — Negro: ${state.captures.black} · Blanco: ${state.captures.white}`;
+    messageEl.textContent = state.message || '';
+
+    render(state);
+  }
+
+  function coord(i, margin, cell){ return margin + i * cell; }
+
+  function render(state){
+    const size = state.size;
+    const { cell, margin } = metricsFor(size);
+    const px = margin * 2 + cell * (size - 1);
+    svg.setAttribute('viewBox', `0 0 ${px} ${px}`);
+    svg.setAttribute('width', px);
+    svg.setAttribute('height', px);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    for (let i=0;i<size;i++){
+      const l1 = document.createElementNS(svgNS,'line');
+      l1.setAttribute('x1', coord(i,margin,cell)); l1.setAttribute('y1', coord(0,margin,cell));
+      l1.setAttribute('x2', coord(i,margin,cell)); l1.setAttribute('y2', coord(size-1,margin,cell));
+      l1.setAttribute('stroke','var(--line)'); l1.setAttribute('stroke-width','1.4');
+      svg.appendChild(l1);
+      const l2 = document.createElementNS(svgNS,'line');
+      l2.setAttribute('x1', coord(0,margin,cell)); l2.setAttribute('y1', coord(i,margin,cell));
+      l2.setAttribute('x2', coord(size-1,margin,cell)); l2.setAttribute('y2', coord(i,margin,cell));
+      l2.setAttribute('stroke','var(--line)'); l2.setAttribute('stroke-width','1.4');
+      svg.appendChild(l2);
+    }
+
+    if (size === 9 || size === 13){
+      const pts = size === 9 ? [2,4,6] : [3,6,9];
+      for (const a of pts) for (const b of pts){
+        const dot = document.createElementNS(svgNS,'circle');
+        dot.setAttribute('cx', coord(a,margin,cell)); dot.setAttribute('cy', coord(b,margin,cell));
+        dot.setAttribute('r', 3); dot.setAttribute('fill','var(--line)');
+        svg.appendChild(dot);
+      }
+    }
+
+    const canPlay = !state.gameOver && state.hasBlack && state.hasWhite &&
+      (myColor === 'black' || myColor === 'white') && state.current === myColor;
+
+    for (let x=0;x<size;x++){
+      for (let y=0;y<size;y++){
+        const g = document.createElementNS(svgNS,'g');
+        g.setAttribute('class','intersection');
+        g.setAttribute('transform', `translate(${coord(x,margin,cell)}, ${coord(y,margin,cell)})`);
+
+        const hitArea = document.createElementNS(svgNS,'circle');
+        hitArea.setAttribute('r', cell/2);
+        hitArea.setAttribute('fill','transparent');
+        g.appendChild(hitArea);
+
+        const stoneColor = state.board[x][y];
+        if (stoneColor === null){
+          if (canPlay){
+            const hint = document.createElementNS(svgNS,'circle');
+            hint.setAttribute('r', cell*0.38);
+            hint.setAttribute('fill', myColor === 'black' ? '#1a1a1a' : '#f5f1e8');
+            hint.setAttribute('opacity','0');
+            hint.style.transition = 'opacity 0.1s';
+            hint.setAttribute('class','hover-hint');
+            g.appendChild(hint);
+            g.addEventListener('mouseenter', () => hint.setAttribute('opacity','0.35'));
+            g.addEventListener('mouseleave', () => hint.setAttribute('opacity','0'));
+            g.addEventListener('click', () => socket.emit('move', { x, y }));
+          }
+        } else {
+          const stone = document.createElementNS(svgNS,'circle');
+          stone.setAttribute('r', cell*0.42);
+          const isBlack = stoneColor === 'black';
+          const gradId = 'grad-' + x + '-' + y;
+          const grad = document.createElementNS(svgNS,'radialGradient');
+          grad.setAttribute('id', gradId);
+          grad.setAttribute('cx','35%'); grad.setAttribute('cy','30%');
+          const stop1 = document.createElementNS(svgNS,'stop');
+          stop1.setAttribute('offset','0%');
+          stop1.setAttribute('stop-color', isBlack ? '#5a5a5a' : '#ffffff');
+          const stop2 = document.createElementNS(svgNS,'stop');
+          stop2.setAttribute('offset','100%');
+          stop2.setAttribute('stop-color', isBlack ? '#0a0a0a' : '#cfc7b4');
+          grad.appendChild(stop1); grad.appendChild(stop2);
+          const defs = document.createElementNS(svgNS,'defs');
+          defs.appendChild(grad);
+          g.appendChild(defs);
+          stone.setAttribute('fill', `url(#${gradId})`);
+          stone.setAttribute('stroke', isBlack ? '#000' : '#b5ac96');
+          stone.setAttribute('stroke-width','0.6');
+          g.appendChild(stone);
+        }
+
+        svg.appendChild(g);
+      }
+    }
+  }
+})();
+</script>
+</body>
+</html>

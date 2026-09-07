@@ -98,670 +98,471 @@
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Atari-Go Online</h1>
-    <p class="subtitle">Jugá Atari-Go en tiempo real con otra persona. Gana quien alcance primero la cantidad de piedras capturadas que definan. Cada partida jugada queda guardada.</p>
-  </header>
-  <div class="divider"></div>
-
-  <!-- LOBBY -->
-  <div id="lobby">
-    <div class="panel">
-      <h2>Crear una sala nueva</h2>
-      <div class="field-row">
-        <label for="sizeSelect">Tamaño del tablero</label>
-        <select id="sizeSelect">
-          <option value="5">5×5</option>
-          <option value="7" selected>7×7</option>
-          <option value="9">9×9</option>
-          <option value="13">13×13</option>
-        </select>
-      </div>
-      <div class="field-row">
-        <label for="targetSelect">Piedras para ganar</label>
-        <select id="targetSelect">
-          <option value="1" selected>1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="5">5</option>
-          <option value="10">10</option>
-        </select>
-      </div>
-      <button id="createBtn">Crear sala</button>
-    </div>
-
-    <div class="panel">
-      <h2>Unirse a una sala</h2>
-      <div class="field-row">
-        <label for="codeInput">Código de sala</label>
-        <input id="codeInput" maxlength="4" placeholder="Ej: 7K2Q" style="text-transform:uppercase; width: 100px;">
-        <button id="joinBtn">Unirse a jugar</button>
-        <button id="watchBtn">Solo mirar</button>
-      </div>
-      <p class="error" id="lobbyError"></p>
-    </div>
-  </div>
-
-  <!-- WAITING / GAME -->
-  <div id="game" class="hidden">
-    <div class="panel" id="shareBox">
-      <h2>Compartí esta sala</h2>
-      <div class="share-line">
-        <span class="room-code" id="roomCodeLabel">----</span>
-        <button id="copyBtn">Copiar código</button>
-        <button id="copyWatchLinkBtn">Copiar link para espectadores</button>
-      </div>
-      <p class="hint" id="waitingHint">Esperando que se una el segundo jugador…</p>
-    </div>
-
-    <header class="game-header">
-      <div>
-        <p class="you-are" id="youAre"></p>
-        <p class="hint" id="partidaNumberLabel"></p>
-        <p class="hint" id="spectatorCountLabel"></p>
-      </div>
-      <div class="action-row">
-        <button id="resignBtn">Rendirse</button>
-        <a id="downloadSgfLink" class="button-link disabled" href="#" download>Descargar SGF</a>
-      </div>
+<div id="app">
+  <div class="wrap">
+    <header>
+      <h1>Atari-Go Online</h1>
+      <p class="subtitle">Jugá Atari-Go en tiempo real con otra persona. Gana quien alcance primero la cantidad de piedras capturadas que definan. Cada partida jugada queda guardada.</p>
     </header>
+    <div class="divider"></div>
 
-    <div class="board-shell">
-      <div class="board-frame" id="boardFrame">
-        <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
+    <!-- LOBBY -->
+    <div v-if="!joined">
+      <div class="panel">
+        <h2>Crear una sala nueva</h2>
+        <div class="field-row">
+          <label for="sizeSelect">Tamaño del tablero</label>
+          <select id="sizeSelect" v-model="sizeChoice">
+            <option value="5">5×5</option>
+            <option value="7">7×7</option>
+            <option value="9">9×9</option>
+            <option value="13">13×13</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label for="targetSelect">Piedras para ganar</label>
+          <select id="targetSelect" v-model="targetChoice">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <button @click="createRoom">Crear sala</button>
+      </div>
+
+      <div class="panel">
+        <h2>Unirse a una sala</h2>
+        <div class="field-row">
+          <label for="codeInput">Código de sala</label>
+          <input id="codeInput" v-model="codeInput" maxlength="4" placeholder="Ej: 7K2Q" style="text-transform:uppercase; width: 100px;">
+          <button @click="joinRoom">Unirse a jugar</button>
+          <button @click="watchRoom">Solo mirar</button>
+        </div>
+        <p class="error">{{ lobbyError }}</p>
       </div>
     </div>
 
-    <div class="status-row">
-      <div class="turn-indicator">
-        <span class="turn-dot black" id="turnDot"></span>
-        <span id="turnLabel">Turno: Negro</span>
+    <!-- GAME -->
+    <div v-else>
+      <div class="panel">
+        <h2>Compartí esta sala</h2>
+        <div class="share-line">
+          <span class="room-code">{{ roomCode }}</span>
+          <button @click="copyCode">{{ copyFeedback === 'code' ? '¡Copiado!' : 'Copiar código' }}</button>
+          <button @click="copyWatchLink">{{ copyWatchFeedback ? '¡Copiado!' : 'Copiar link para espectadores' }}</button>
+        </div>
+        <p class="hint">{{ waitingHint }}</p>
       </div>
-      <div class="captures" id="capturesLabel">Capturas — Negro: 0 · Blanco: 0</div>
+
+      <header class="game-header">
+        <div>
+          <p class="you-are">{{ youAreText }}</p>
+          <p class="hint">Partida #{{ state.partidaNumber }} en esta sala</p>
+          <p class="hint">{{ spectatorLabel }}</p>
+        </div>
+        <div class="action-row">
+          <button v-if="isPlayer && !state.gameOver" @click="resign">Rendirse</button>
+          <a class="button-link" :class="{ disabled: !downloadHref }" :href="downloadHref || '#'" download>Descargar SGF</a>
+        </div>
+      </header>
+
+      <div class="board-shell">
+        <div class="board-frame" :class="{ disabled: !bothPresent || state.gameOver }">
+          <atari-board :size="state.size" :board="state.board" :can-play="canPlay" :hint-color="myColor" id-prefix="main" @cell-click="playCell"></atari-board>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div class="turn-indicator">
+          <span class="turn-dot" :class="state.current"></span>
+          <span>{{ turnLabel }}</span>
+        </div>
+        <div class="captures">{{ capturesLabel }}</div>
+      </div>
+
+      <div class="message">{{ state.message }}</div>
+
+      <div v-if="isPlayer && state.gameOver" class="revancha-box">
+        <button @click="revancha">Jugar revancha en esta sala</button>
+      </div>
+
+      <div v-if="historial.length" class="panel">
+        <h2>Historial de partidas en esta sala</h2>
+        <ul class="historial-list">
+          <li v-for="item in historial" :key="item.id" class="historial-item">
+            <div class="historial-main">
+              <span class="historial-result">Partida #{{ item.partidaNumber }} — {{ resultLabel(item) }}</span>
+              <span class="historial-meta">{{ item.size }}×{{ item.size }} · meta {{ item.captureTarget }} · {{ formatDate(item.createdAt) }}</span>
+            </div>
+            <div class="action-row">
+              <button @click="openReplay(item.id)">Ver partida</button>
+              <a class="button-link" :href="`/api/partidas/id/${item.id}/sgf`" download>Descargar SGF</a>
+            </div>
+          </li>
+        </ul>
+      </div>
     </div>
 
-    <div class="message" id="message"></div>
-
-    <div class="revancha-box hidden" id="revanchaBox">
-      <button id="revanchaBtn">Jugar revancha en esta sala</button>
-    </div>
-
-    <div class="panel hidden" id="historialPanel">
-      <h2>Historial de partidas en esta sala</h2>
-      <ul class="historial-list" id="historialList"></ul>
-      <p class="hint" id="historialEmptyHint">Todavía no hay partidas guardadas en esta sala.</p>
-    </div>
+    <footer>
+      Reglas: se juega igual que el Go — rodeá las piedras del rival para quitarles todas sus libertades. No se permiten jugadas suicidas. La partida termina cuando alguien alcanza la cantidad de capturas configurada, o cuando un jugador se rinde.
+    </footer>
   </div>
 
-  <footer>
-    Reglas: se juega igual que el Go — rodeá las piedras del rival para quitarles todas sus libertades. No se permiten jugadas suicidas. La partida termina cuando alguien alcanza la cantidad de capturas configurada, o cuando un jugador se rinde.
-  </footer>
-</div>
-
-<!-- REPLAY OVERLAY -->
-<div id="replayOverlay" class="replay-overlay hidden">
-  <div class="replay-panel">
-    <div class="replay-header">
-      <h2 id="replayTitle">Partida</h2>
-      <button id="replayCloseBtn">Cerrar</button>
-    </div>
-    <p class="hint" id="replayMeta"></p>
-    <div class="board-shell">
-      <div class="board-frame">
-        <svg id="replaySvg" xmlns="http://www.w3.org/2000/svg"></svg>
+  <!-- REPLAY OVERLAY -->
+  <div v-if="replay.visible" class="replay-overlay" @click.self="closeReplay">
+    <div class="replay-panel">
+      <div class="replay-header">
+        <h2>Partida #{{ replay.data.partidaNumber }} — sala {{ replay.data.salaCode }}</h2>
+        <button @click="closeReplay">Cerrar</button>
       </div>
+      <p class="hint">{{ replay.data.size }}×{{ replay.data.size }} · meta {{ replay.data.captureTarget }} · {{ formatDate(replay.data.createdAt) }}</p>
+      <div class="board-shell">
+        <div class="board-frame">
+          <atari-board :size="replay.data.size" :board="replayBoard" :can-play="false" id-prefix="replay"></atari-board>
+        </div>
+      </div>
+      <div class="replay-controls">
+        <button :disabled="replay.step === 0" @click="replayFirst">|◀</button>
+        <button :disabled="replay.step === 0" @click="replayPrev">◀</button>
+        <button @click="replayToggle">{{ replay.timer ? '❚❚ Pausar' : '▶ Reproducir' }}</button>
+        <button :disabled="replay.step === replay.data.moveHistory.length" @click="replayNext">▶</button>
+        <button :disabled="replay.step === replay.data.moveHistory.length" @click="replayLast">▶|</button>
+      </div>
+      <p class="hint">Jugada {{ replay.step }} / {{ replay.data.moveHistory.length }}</p>
+      <p class="message">{{ resultLabel(replay.data) }}</p>
+      <a class="button-link" :href="`/api/partidas/id/${replay.data.id}/sgf`" download>Descargar SGF de esta partida</a>
     </div>
-    <div class="replay-controls">
-      <button id="replayFirstBtn">|◀</button>
-      <button id="replayPrevBtn">◀</button>
-      <button id="replayPlayBtn">▶ Reproducir</button>
-      <button id="replayNextBtn">▶</button>
-      <button id="replayLastBtn">▶|</button>
-    </div>
-    <p class="hint" id="replayStepLabel"></p>
-    <p class="message" id="replayResult"></p>
-    <a id="replaySgfLink" class="button-link" href="#" download>Descargar SGF de esta partida</a>
   </div>
 </div>
 
+<script src="https://unpkg.com/vue@3.4.31/dist/vue.global.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
-(function(){
-  const svgNS = "http://www.w3.org/2000/svg";
-  const socket = io();
+const { createApp, ref, reactive, computed, onMounted } = Vue;
 
-  // Lobby elements
-  const lobby = document.getElementById('lobby');
-  const sizeSelect = document.getElementById('sizeSelect');
-  const targetSelect = document.getElementById('targetSelect');
-  const createBtn = document.getElementById('createBtn');
-  const codeInput = document.getElementById('codeInput');
-  const joinBtn = document.getElementById('joinBtn');
-  const watchBtn = document.getElementById('watchBtn');
-  const lobbyError = document.getElementById('lobbyError');
+// ---------- componente reutilizable: tablero SVG ----------
+const AtariBoard = {
+  props: {
+    size: { type: Number, required: true },
+    board: { type: Array, required: true },
+    canPlay: { type: Boolean, default: false },
+    hintColor: { type: String, default: 'black' },
+    idPrefix: { type: String, default: 'b' },
+  },
+  emits: ['cell-click'],
+  setup(props, { emit }) {
+    const hoverKey = ref(null);
 
-  // Game elements
-  const gameEl = document.getElementById('game');
-  const shareBox = document.getElementById('shareBox');
-  const roomCodeLabel = document.getElementById('roomCodeLabel');
-  const copyBtn = document.getElementById('copyBtn');
-  const copyWatchLinkBtn = document.getElementById('copyWatchLinkBtn');
-  const waitingHint = document.getElementById('waitingHint');
-  const youAre = document.getElementById('youAre');
-  const partidaNumberLabel = document.getElementById('partidaNumberLabel');
-  const spectatorCountLabel = document.getElementById('spectatorCountLabel');
-  const resignBtn = document.getElementById('resignBtn');
-  const downloadSgfLink = document.getElementById('downloadSgfLink');
-  const boardFrame = document.getElementById('boardFrame');
-  const svg = document.getElementById('board');
-  const turnDot = document.getElementById('turnDot');
-  const turnLabel = document.getElementById('turnLabel');
-  const capturesLabel = document.getElementById('capturesLabel');
-  const messageEl = document.getElementById('message');
-  const revanchaBox = document.getElementById('revanchaBox');
-  const revanchaBtn = document.getElementById('revanchaBtn');
-  const historialPanel = document.getElementById('historialPanel');
-  const historialList = document.getElementById('historialList');
-  const historialEmptyHint = document.getElementById('historialEmptyHint');
-
-  // Replay overlay elements
-  const replayOverlay = document.getElementById('replayOverlay');
-  const replayTitle = document.getElementById('replayTitle');
-  const replayMeta = document.getElementById('replayMeta');
-  const replaySvg = document.getElementById('replaySvg');
-  const replayCloseBtn = document.getElementById('replayCloseBtn');
-  const replayFirstBtn = document.getElementById('replayFirstBtn');
-  const replayPrevBtn = document.getElementById('replayPrevBtn');
-  const replayPlayBtn = document.getElementById('replayPlayBtn');
-  const replayNextBtn = document.getElementById('replayNextBtn');
-  const replayLastBtn = document.getElementById('replayLastBtn');
-  const replayStepLabel = document.getElementById('replayStepLabel');
-  const replayResult = document.getElementById('replayResult');
-  const replaySgfLink = document.getElementById('replaySgfLink');
-
-  let myColor = null; // 'black' | 'white' | 'spectator'
-  let latestState = null;
-  let roomCode = null;
-  let wasGameOver = false;
-
-  function metricsFor(size){
-    let cell, margin;
-    if (size <= 5) cell = 56;
-    else if (size <= 7) cell = 50;
-    else if (size <= 9) cell = 42;
-    else cell = 30;
-    margin = cell * 0.72;
-    return { cell, margin };
-  }
-
-  createBtn.addEventListener('click', () => {
-    lobbyError.textContent = '';
-    socket.emit('create_room', {
-      size: parseInt(sizeSelect.value, 10),
-      captureTarget: parseInt(targetSelect.value, 10),
+    const metrics = computed(() => {
+      let cell, margin;
+      if (props.size <= 5) cell = 56;
+      else if (props.size <= 7) cell = 50;
+      else if (props.size <= 9) cell = 42;
+      else cell = 30;
+      margin = cell * 0.72;
+      return { cell, margin };
     });
-  });
 
-  joinBtn.addEventListener('click', () => {
-    const code = codeInput.value.trim().toUpperCase();
-    if (!code) { lobbyError.textContent = 'Ingresá un código de sala.'; return; }
-    lobbyError.textContent = '';
-    socket.emit('join_room', { code });
-  });
+    const px = computed(() => metrics.value.margin * 2 + metrics.value.cell * (props.size - 1));
+    const viewBox = computed(() => `0 0 ${px.value} ${px.value}`);
+    function coord(i) { return metrics.value.margin + i * metrics.value.cell; }
 
-  watchBtn.addEventListener('click', () => {
-    const code = codeInput.value.trim().toUpperCase();
-    if (!code) { lobbyError.textContent = 'Ingresá un código de sala.'; return; }
-    lobbyError.textContent = '';
-    socket.emit('watch_room', { code });
-  });
-
-  copyBtn.addEventListener('click', () => {
-    if (!roomCode) return;
-    navigator.clipboard?.writeText(roomCode).then(() => {
-      copyBtn.textContent = '¡Copiado!';
-      setTimeout(() => { copyBtn.textContent = 'Copiar código'; }, 1500);
+    const gridLines = computed(() => {
+      const lines = [];
+      for (let i = 0; i < props.size; i++) {
+        lines.push({ x1: coord(i), y1: coord(0), x2: coord(i), y2: coord(props.size - 1) });
+        lines.push({ x1: coord(0), y1: coord(i), x2: coord(props.size - 1), y2: coord(i) });
+      }
+      return lines;
     });
-  });
 
-  copyWatchLinkBtn.addEventListener('click', () => {
-    if (!roomCode) return;
-    const link = `${location.origin}${location.pathname}?watch=${roomCode}`;
-    navigator.clipboard?.writeText(link).then(() => {
-      copyWatchLinkBtn.textContent = '¡Copiado!';
-      setTimeout(() => { copyWatchLinkBtn.textContent = 'Copiar link para espectadores'; }, 1500);
+    const starPoints = computed(() => {
+      if (props.size !== 9 && props.size !== 13) return [];
+      const pts = props.size === 9 ? [2, 4, 6] : [3, 6, 9];
+      const out = [];
+      for (const a of pts) for (const b of pts) out.push({ x: coord(a), y: coord(b) });
+      return out;
     });
-  });
 
-  resignBtn.addEventListener('click', () => {
-    if (confirm('¿Seguro que querés rendirte? Le da la victoria a tu rival.')) {
-      socket.emit('resign');
+    const cells = computed(() => {
+      const out = [];
+      for (let x = 0; x < props.size; x++) {
+        for (let y = 0; y < props.size; y++) {
+          out.push({
+            x, y,
+            key: x + '-' + y,
+            transform: `translate(${coord(x)},${coord(y)})`,
+            stone: props.board[x] ? props.board[x][y] : null,
+            gradId: props.idPrefix + '-g-' + x + '-' + y,
+          });
+        }
+      }
+      return out;
+    });
+
+    const halfCell = computed(() => metrics.value.cell / 2);
+    const stoneR = computed(() => metrics.value.cell * 0.42);
+    const hintR = computed(() => metrics.value.cell * 0.38);
+    const hintFill = computed(() => (props.hintColor === 'black' ? '#1a1a1a' : '#f5f1e8'));
+
+    function handleClick(cell) {
+      if (!props.canPlay || cell.stone) return;
+      emit('cell-click', { x: cell.x, y: cell.y });
     }
-  });
 
-  revanchaBtn.addEventListener('click', () => socket.emit('revancha'));
+    return { px, viewBox, gridLines, starPoints, cells, hoverKey, halfCell, stoneR, hintR, hintFill, handleClick };
+  },
+  template: `
+    <svg :viewBox="viewBox" :width="px" :height="px">
+      <line v-for="(l,i) in gridLines" :key="'l'+i" :x1="l.x1" :y1="l.y1" :x2="l.x2" :y2="l.y2" stroke="var(--line)" stroke-width="1.4" />
+      <circle v-for="(p,i) in starPoints" :key="'s'+i" :cx="p.x" :cy="p.y" r="3" fill="var(--line)" />
+      <g v-for="cell in cells" :key="cell.key" class="intersection" :transform="cell.transform"
+         @click="handleClick(cell)"
+         @mouseenter="hoverKey = cell.key" @mouseleave="hoverKey = null">
+        <circle :r="halfCell" fill="transparent" />
+        <template v-if="cell.stone">
+          <defs>
+            <radialGradient :id="cell.gradId" cx="35%" cy="30%">
+              <stop offset="0%" :stop-color="cell.stone === 'black' ? '#5a5a5a' : '#ffffff'" />
+              <stop offset="100%" :stop-color="cell.stone === 'black' ? '#0a0a0a' : '#cfc7b4'" />
+            </radialGradient>
+          </defs>
+          <circle :r="stoneR" :fill="'url(#' + cell.gradId + ')'" :stroke="cell.stone === 'black' ? '#000' : '#b5ac96'" stroke-width="0.6" />
+        </template>
+        <circle v-else-if="canPlay" :r="hintR" :fill="hintFill" :opacity="hoverKey === cell.key ? 0.35 : 0" style="transition: opacity 0.1s" />
+      </g>
+    </svg>
+  `,
+};
 
-  // Si la URL trae ?watch=CODIGO, entramos directo como espectador.
-  const params = new URLSearchParams(location.search);
-  const watchParam = params.get('watch');
-  if (watchParam) {
-    socket.emit('watch_room', { code: watchParam.toUpperCase() });
-  }
+// ---------- utilidades de replay (recalculan capturas en el cliente) ----------
+function neighborsC(size, x, y) {
+  const list = [];
+  if (x > 0) list.push([x - 1, y]);
+  if (x < size - 1) list.push([x + 1, y]);
+  if (y > 0) list.push([x, y - 1]);
+  if (y < size - 1) list.push([x, y + 1]);
+  return list;
+}
 
-  socket.on('joined', ({ color, state }) => {
-    myColor = color;
-    roomCode = state.code;
-    lobby.classList.add('hidden');
-    gameEl.classList.remove('hidden');
-    roomCodeLabel.textContent = roomCode;
-    youAre.textContent = myColor === 'spectator'
-      ? 'Estás mirando la partida como espectador.'
-      : `Jugás con: ${myColor === 'black' ? 'Negro' : 'Blanco'}`;
-    wasGameOver = state.gameOver;
-    applyState(state);
-    fetchHistorial();
-  });
-
-  socket.on('state', (state) => applyState(state));
-
-  socket.on('history_updated', () => fetchHistorial());
-
-  socket.on('error_msg', (msg) => { lobbyError.textContent = msg; });
-
-  async function fetchHistorial(){
-    if (!roomCode) return;
-    try {
-      const res = await fetch(`/api/partidas/${roomCode}`);
-      if (!res.ok) { historialPanel.classList.add('hidden'); return; }
-      const list = await res.json();
-      renderHistorial(list);
-    } catch (err) {
-      historialPanel.classList.add('hidden');
+function groupLibsC(board, size, x, y) {
+  const color = board[x][y];
+  const visited = new Set();
+  const stack = [[x, y]];
+  const group = [];
+  const libSeen = new Set();
+  let liberties = 0;
+  while (stack.length) {
+    const [cx, cy] = stack.pop();
+    const key = cx + ',' + cy;
+    if (visited.has(key)) continue;
+    visited.add(key);
+    group.push([cx, cy]);
+    for (const [nx, ny] of neighborsC(size, cx, cy)) {
+      const nkey = nx + ',' + ny;
+      if (board[nx][ny] === null) {
+        if (!libSeen.has(nkey)) { libSeen.add(nkey); liberties++; }
+      } else if (board[nx][ny] === color && !visited.has(nkey)) {
+        stack.push([nx, ny]);
+      }
     }
   }
+  return { group, liberties };
+}
 
-  function resultLabel(item){
-    if (!item.gameOver) return 'En curso';
-    if (item.winner === null) return 'Empate';
-    const winnerLabel = item.winner === 'black' ? 'Negro' : 'Blanco';
-    if (item.winReason === 'resign') return `${winnerLabel} gana (rendición)`;
-    return `${winnerLabel} gana (${item.captures[item.winner]}/${item.captureTarget} capturas)`;
+function boardAtStep(moveHistory, size, uptoCount) {
+  const board = Array.from({ length: size }, () => Array(size).fill(null));
+  for (let i = 0; i < uptoCount; i++) {
+    const { color, x, y } = moveHistory[i];
+    board[x][y] = color;
+    const opp = color === 'black' ? 'white' : 'black';
+    for (const [nx, ny] of neighborsC(size, x, y)) {
+      if (board[nx][ny] === opp) {
+        const { group, liberties } = groupLibsC(board, size, nx, ny);
+        if (liberties === 0) for (const [gx, gy] of group) board[gx][gy] = null;
+      }
+    }
   }
+  return board;
+}
 
-  function formatDate(iso){
-    try {
-      return new Date(iso).toLocaleString();
-    } catch (err) {
+// ---------- app raíz ----------
+const App = {
+  components: { AtariBoard },
+  setup() {
+    const socket = io();
+
+    const joined = ref(false);
+    const myColor = ref(null);
+    const roomCode = ref(null);
+    const lobbyError = ref('');
+    let wasGameOver = false;
+
+    const sizeChoice = ref('7');
+    const targetChoice = ref('1');
+    const codeInput = ref('');
+    const copyFeedback = ref('');
+    const copyWatchFeedback = ref(false);
+
+    const state = reactive({
+      code: null, size: 7, captureTarget: 1, board: [], current: 'black',
+      captures: { black: 0, white: 0 }, gameOver: false, winner: null, winReason: null,
+      message: '', hasBlack: false, hasWhite: false, spectatorCount: 0, moveCount: 0,
+      partidaId: null, partidaNumber: 1,
+    });
+
+    const historial = ref([]);
+
+    const replay = reactive({ visible: false, data: null, step: 0, timer: null });
+
+    const bothPresent = computed(() => state.hasBlack && state.hasWhite);
+    const isPlayer = computed(() => myColor.value === 'black' || myColor.value === 'white');
+    const canPlay = computed(() => !state.gameOver && bothPresent.value && isPlayer.value && state.current === myColor.value);
+    const youAreText = computed(() => {
+      if (myColor.value === 'spectator') return 'Estás mirando la partida como espectador.';
+      if (isPlayer.value) return `Jugás con: ${myColor.value === 'black' ? 'Negro' : 'Blanco'}`;
       return '';
-    }
-  }
-
-  function renderHistorial(list){
-    if (!list.length) {
-      historialPanel.classList.add('hidden');
-      return;
-    }
-    historialPanel.classList.remove('hidden');
-    historialEmptyHint.classList.add('hidden');
-    historialList.innerHTML = '';
-
-    for (const item of list) {
-      const li = document.createElement('li');
-      li.className = 'historial-item';
-
-      const main = document.createElement('div');
-      main.className = 'historial-main';
-
-      const result = document.createElement('span');
-      result.className = 'historial-result';
-      result.textContent = `Partida #${item.partidaNumber} — ${resultLabel(item)}`;
-      main.appendChild(result);
-
-      const meta = document.createElement('span');
-      meta.className = 'historial-meta';
-      meta.textContent = `${item.size}×${item.size} · meta ${item.captureTarget} · ${formatDate(item.createdAt)}`;
-      main.appendChild(meta);
-
-      li.appendChild(main);
-
-      const actions = document.createElement('div');
-      actions.className = 'action-row';
-
-      const watchBtn = document.createElement('button');
-      watchBtn.textContent = 'Ver partida';
-      watchBtn.addEventListener('click', () => openReplay(item.id));
-      actions.appendChild(watchBtn);
-
-      const link = document.createElement('a');
-      link.className = 'button-link';
-      link.href = `/api/partidas/id/${item.id}/sgf`;
-      link.textContent = 'Descargar SGF';
-      link.setAttribute('download', '');
-      actions.appendChild(link);
-
-      li.appendChild(actions);
-
-      historialList.appendChild(li);
-    }
-  }
-
-  function applyState(state){
-    latestState = state;
-    roomCode = state.code;
-    const bothPresent = state.hasBlack && state.hasWhite;
-    waitingHint.textContent = bothPresent
+    });
+    const waitingHint = computed(() => bothPresent.value
       ? 'La sala ya tiene dos jugadores — podés seguir compartiendo el link de espectador.'
-      : 'Esperando que se una el segundo jugador…';
+      : 'Esperando que se una el segundo jugador…');
+    const turnLabel = computed(() => state.gameOver ? 'Partida finalizada' : ('Turno: ' + (state.current === 'black' ? 'Negro' : 'Blanco')));
+    const capturesLabel = computed(() => `Capturas (meta: ${state.captureTarget}) — Negro: ${state.captures.black} · Blanco: ${state.captures.white}`);
+    const spectatorLabel = computed(() => state.spectatorCount > 0 ? `${state.spectatorCount} persona${state.spectatorCount === 1 ? '' : 's'} mirando` : '');
+    const downloadHref = computed(() => (state.partidaId && state.moveCount > 0) ? `/api/partidas/id/${state.partidaId}/sgf` : null);
 
-    boardFrame.classList.toggle('disabled', !bothPresent || state.gameOver);
-
-    const isPlayer = myColor === 'black' || myColor === 'white';
-    resignBtn.classList.toggle('hidden', !isPlayer || state.gameOver);
-    revanchaBox.classList.toggle('hidden', !isPlayer || !state.gameOver);
-
-    if (state.partidaId && state.moveCount > 0) {
-      downloadSgfLink.href = `/api/partidas/id/${state.partidaId}/sgf`;
-      downloadSgfLink.classList.remove('disabled');
-    } else {
-      downloadSgfLink.href = '#';
-      downloadSgfLink.classList.add('disabled');
+    function resultLabel(item) {
+      if (!item.gameOver) return 'En curso';
+      if (item.winner === null) return 'Empate';
+      const winnerLabel = item.winner === 'black' ? 'Negro' : 'Blanco';
+      if (item.winReason === 'resign') return `${winnerLabel} gana (rendición)`;
+      return `${winnerLabel} gana (${item.captures[item.winner]}/${item.captureTarget} capturas)`;
+    }
+    function formatDate(iso) {
+      try { return new Date(iso).toLocaleString(); } catch (e) { return ''; }
     }
 
-    partidaNumberLabel.textContent = `Partida #${state.partidaNumber} en esta sala`;
-
-    spectatorCountLabel.textContent = state.spectatorCount > 0
-      ? `${state.spectatorCount} persona${state.spectatorCount === 1 ? '' : 's'} mirando`
-      : '';
-
-    turnDot.className = 'turn-dot ' + state.current;
-    turnLabel.textContent = state.gameOver
-      ? 'Partida finalizada'
-      : ('Turno: ' + (state.current === 'black' ? 'Negro' : 'Blanco'));
-    capturesLabel.textContent = `Capturas (meta: ${state.captureTarget}) — Negro: ${state.captures.black} · Blanco: ${state.captures.white}`;
-    messageEl.textContent = state.message || '';
-
-    if (state.gameOver && !wasGameOver) fetchHistorial();
-    wasGameOver = state.gameOver;
-
-    render(state);
-  }
-
-  function coord(i, margin, cell){ return margin + i * cell; }
-
-  function render(state){
-    const size = state.size;
-    const { cell, margin } = metricsFor(size);
-    const px = margin * 2 + cell * (size - 1);
-    svg.setAttribute('viewBox', `0 0 ${px} ${px}`);
-    svg.setAttribute('width', px);
-    svg.setAttribute('height', px);
-    while (svg.firstChild) svg.removeChild(svg.firstChild);
-
-    for (let i=0;i<size;i++){
-      const l1 = document.createElementNS(svgNS,'line');
-      l1.setAttribute('x1', coord(i,margin,cell)); l1.setAttribute('y1', coord(0,margin,cell));
-      l1.setAttribute('x2', coord(i,margin,cell)); l1.setAttribute('y2', coord(size-1,margin,cell));
-      l1.setAttribute('stroke','var(--line)'); l1.setAttribute('stroke-width','1.4');
-      svg.appendChild(l1);
-      const l2 = document.createElementNS(svgNS,'line');
-      l2.setAttribute('x1', coord(0,margin,cell)); l2.setAttribute('y1', coord(i,margin,cell));
-      l2.setAttribute('x2', coord(size-1,margin,cell)); l2.setAttribute('y2', coord(i,margin,cell));
-      l2.setAttribute('stroke','var(--line)'); l2.setAttribute('stroke-width','1.4');
-      svg.appendChild(l2);
-    }
-
-    if (size === 9 || size === 13){
-      const pts = size === 9 ? [2,4,6] : [3,6,9];
-      for (const a of pts) for (const b of pts){
-        const dot = document.createElementNS(svgNS,'circle');
-        dot.setAttribute('cx', coord(a,margin,cell)); dot.setAttribute('cy', coord(b,margin,cell));
-        dot.setAttribute('r', 3); dot.setAttribute('fill','var(--line)');
-        svg.appendChild(dot);
+    async function fetchHistorial() {
+      if (!roomCode.value) return;
+      try {
+        const res = await fetch(`/api/partidas/${roomCode.value}`);
+        historial.value = res.ok ? await res.json() : [];
+      } catch (e) {
+        historial.value = [];
       }
     }
 
-    const canPlay = !state.gameOver && state.hasBlack && state.hasWhite &&
-      (myColor === 'black' || myColor === 'white') && state.current === myColor;
-
-    for (let x=0;x<size;x++){
-      for (let y=0;y<size;y++){
-        const g = document.createElementNS(svgNS,'g');
-        g.setAttribute('class','intersection');
-        g.setAttribute('transform', `translate(${coord(x,margin,cell)}, ${coord(y,margin,cell)})`);
-
-        const hitArea = document.createElementNS(svgNS,'circle');
-        hitArea.setAttribute('r', cell/2);
-        hitArea.setAttribute('fill','transparent');
-        g.appendChild(hitArea);
-
-        const stoneColor = state.board[x][y];
-        if (stoneColor === null){
-          if (canPlay){
-            const hint = document.createElementNS(svgNS,'circle');
-            hint.setAttribute('r', cell*0.38);
-            hint.setAttribute('fill', myColor === 'black' ? '#1a1a1a' : '#f5f1e8');
-            hint.setAttribute('opacity','0');
-            hint.style.transition = 'opacity 0.1s';
-            hint.setAttribute('class','hover-hint');
-            g.appendChild(hint);
-            g.addEventListener('mouseenter', () => hint.setAttribute('opacity','0.35'));
-            g.addEventListener('mouseleave', () => hint.setAttribute('opacity','0'));
-            g.addEventListener('click', () => socket.emit('move', { x, y }));
-          }
-        } else {
-          const stone = document.createElementNS(svgNS,'circle');
-          stone.setAttribute('r', cell*0.42);
-          const isBlack = stoneColor === 'black';
-          const gradId = 'grad-' + x + '-' + y;
-          const grad = document.createElementNS(svgNS,'radialGradient');
-          grad.setAttribute('id', gradId);
-          grad.setAttribute('cx','35%'); grad.setAttribute('cy','30%');
-          const stop1 = document.createElementNS(svgNS,'stop');
-          stop1.setAttribute('offset','0%');
-          stop1.setAttribute('stop-color', isBlack ? '#5a5a5a' : '#ffffff');
-          const stop2 = document.createElementNS(svgNS,'stop');
-          stop2.setAttribute('offset','100%');
-          stop2.setAttribute('stop-color', isBlack ? '#0a0a0a' : '#cfc7b4');
-          grad.appendChild(stop1); grad.appendChild(stop2);
-          const defs = document.createElementNS(svgNS,'defs');
-          defs.appendChild(grad);
-          g.appendChild(defs);
-          stone.setAttribute('fill', `url(#${gradId})`);
-          stone.setAttribute('stroke', isBlack ? '#000' : '#b5ac96');
-          stone.setAttribute('stroke-width','0.6');
-          g.appendChild(stone);
-        }
-
-        svg.appendChild(g);
-      }
+    function createRoom() {
+      lobbyError.value = '';
+      socket.emit('create_room', { size: parseInt(sizeChoice.value, 10), captureTarget: parseInt(targetChoice.value, 10) });
     }
-  }
-
-  // ---------- visor de reproducción (historial) ----------
-
-  let replayData = null; // { size, moveHistory, captureTarget, ... }
-  let replayStep = 0;
-  let replayTimer = null;
-
-  function neighborsC(size, x, y){
-    const list = [];
-    if (x > 0) list.push([x-1, y]);
-    if (x < size-1) list.push([x+1, y]);
-    if (y > 0) list.push([x, y-1]);
-    if (y < size-1) list.push([x, y+1]);
-    return list;
-  }
-
-  function groupLibsC(board, size, x, y){
-    const color = board[x][y];
-    const visited = new Set();
-    const stack = [[x,y]];
-    const group = [];
-    const libSeen = new Set();
-    let liberties = 0;
-    while (stack.length){
-      const [cx, cy] = stack.pop();
-      const key = cx+','+cy;
-      if (visited.has(key)) continue;
-      visited.add(key);
-      group.push([cx,cy]);
-      for (const [nx, ny] of neighborsC(size, cx, cy)){
-        const nkey = nx+','+ny;
-        if (board[nx][ny] === null){
-          if (!libSeen.has(nkey)){ libSeen.add(nkey); liberties++; }
-        } else if (board[nx][ny] === color && !visited.has(nkey)){
-          stack.push([nx, ny]);
-        }
-      }
+    function joinRoom() {
+      const code = codeInput.value.trim().toUpperCase();
+      if (!code) { lobbyError.value = 'Ingresá un código de sala.'; return; }
+      lobbyError.value = '';
+      socket.emit('join_room', { code });
     }
-    return { group, liberties };
-  }
-
-  function boardAtStep(moveHistory, size, uptoCount){
-    const board = Array.from({length: size}, () => Array(size).fill(null));
-    for (let i=0; i<uptoCount; i++){
-      const { color, x, y } = moveHistory[i];
-      board[x][y] = color;
-      const opp = color === 'black' ? 'white' : 'black';
-      for (const [nx, ny] of neighborsC(size, x, y)){
-        if (board[nx][ny] === opp){
-          const { group, liberties } = groupLibsC(board, size, nx, ny);
-          if (liberties === 0){
-            for (const [gx, gy] of group) board[gx][gy] = null;
-          }
-        }
-      }
+    function watchRoom() {
+      const code = codeInput.value.trim().toUpperCase();
+      if (!code) { lobbyError.value = 'Ingresá un código de sala.'; return; }
+      lobbyError.value = '';
+      socket.emit('watch_room', { code });
     }
-    return board;
-  }
+    function playCell({ x, y }) { socket.emit('move', { x, y }); }
+    function resign() {
+      if (confirm('¿Seguro que querés rendirte? Le da la victoria a tu rival.')) socket.emit('resign');
+    }
+    function revancha() { socket.emit('revancha'); }
 
-  function renderStaticBoard(svgEl, size, board){
-    const { cell, margin } = metricsFor(size);
-    const px = margin * 2 + cell * (size - 1);
-    svgEl.setAttribute('viewBox', `0 0 ${px} ${px}`);
-    svgEl.setAttribute('width', px);
-    svgEl.setAttribute('height', px);
-    while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
-
-    for (let i=0;i<size;i++){
-      const l1 = document.createElementNS(svgNS,'line');
-      l1.setAttribute('x1', coord(i,margin,cell)); l1.setAttribute('y1', coord(0,margin,cell));
-      l1.setAttribute('x2', coord(i,margin,cell)); l1.setAttribute('y2', coord(size-1,margin,cell));
-      l1.setAttribute('stroke','var(--line)'); l1.setAttribute('stroke-width','1.4');
-      svgEl.appendChild(l1);
-      const l2 = document.createElementNS(svgNS,'line');
-      l2.setAttribute('x1', coord(0,margin,cell)); l2.setAttribute('y1', coord(i,margin,cell));
-      l2.setAttribute('x2', coord(size-1,margin,cell)); l2.setAttribute('y2', coord(i,margin,cell));
-      l2.setAttribute('stroke','var(--line)'); l2.setAttribute('stroke-width','1.4');
-      svgEl.appendChild(l2);
+    function copyCode() {
+      if (!roomCode.value) return;
+      navigator.clipboard?.writeText(roomCode.value).then(() => {
+        copyFeedback.value = 'code';
+        setTimeout(() => { copyFeedback.value = ''; }, 1500);
+      });
+    }
+    function copyWatchLink() {
+      if (!roomCode.value) return;
+      const link = `${location.origin}${location.pathname}?watch=${roomCode.value}`;
+      navigator.clipboard?.writeText(link).then(() => {
+        copyWatchFeedback.value = true;
+        setTimeout(() => { copyWatchFeedback.value = false; }, 1500);
+      });
     }
 
-    if (size === 9 || size === 13){
-      const pts = size === 9 ? [2,4,6] : [3,6,9];
-      for (const a of pts) for (const b of pts){
-        const dot = document.createElementNS(svgNS,'circle');
-        dot.setAttribute('cx', coord(a,margin,cell)); dot.setAttribute('cy', coord(b,margin,cell));
-        dot.setAttribute('r', 3); dot.setAttribute('fill','var(--line)');
-        svgEl.appendChild(dot);
-      }
+    function applyState(s) {
+      Object.assign(state, s);
+      roomCode.value = s.code;
+      if (s.gameOver && !wasGameOver) fetchHistorial();
+      wasGameOver = s.gameOver;
     }
 
-    for (let x=0;x<size;x++){
-      for (let y=0;y<size;y++){
-        const stoneColor = board[x][y];
-        if (stoneColor === null) continue;
-        const g = document.createElementNS(svgNS,'g');
-        g.setAttribute('transform', `translate(${coord(x,margin,cell)}, ${coord(y,margin,cell)})`);
-        const stone = document.createElementNS(svgNS,'circle');
-        stone.setAttribute('r', cell*0.42);
-        const isBlack = stoneColor === 'black';
-        const gradId = 'replay-grad-' + x + '-' + y;
-        const grad = document.createElementNS(svgNS,'radialGradient');
-        grad.setAttribute('id', gradId);
-        grad.setAttribute('cx','35%'); grad.setAttribute('cy','30%');
-        const stop1 = document.createElementNS(svgNS,'stop');
-        stop1.setAttribute('offset','0%');
-        stop1.setAttribute('stop-color', isBlack ? '#5a5a5a' : '#ffffff');
-        const stop2 = document.createElementNS(svgNS,'stop');
-        stop2.setAttribute('offset','100%');
-        stop2.setAttribute('stop-color', isBlack ? '#0a0a0a' : '#cfc7b4');
-        grad.appendChild(stop1); grad.appendChild(stop2);
-        const defs = document.createElementNS(svgNS,'defs');
-        defs.appendChild(grad);
-        g.appendChild(defs);
-        stone.setAttribute('fill', `url(#${gradId})`);
-        stone.setAttribute('stroke', isBlack ? '#000' : '#b5ac96');
-        stone.setAttribute('stroke-width','0.6');
-        g.appendChild(stone);
-        svgEl.appendChild(g);
-      }
+    socket.on('joined', ({ color, state: s }) => {
+      myColor.value = color;
+      joined.value = true;
+      wasGameOver = s.gameOver;
+      applyState(s);
+      fetchHistorial();
+    });
+    socket.on('state', (s) => applyState(s));
+    socket.on('history_updated', fetchHistorial);
+    socket.on('error_msg', (msg) => { lobbyError.value = msg; });
+
+    // ---------- replay ----------
+    const replayBoard = computed(() => {
+      if (!replay.data) return [];
+      return boardAtStep(replay.data.moveHistory, replay.data.size, replay.step);
+    });
+
+    function stopReplayTimer() {
+      if (replay.timer) { clearInterval(replay.timer); replay.timer = null; }
     }
-  }
-
-  function renderReplayStep(){
-    if (!replayData) return;
-    const board = boardAtStep(replayData.moveHistory, replayData.size, replayStep);
-    renderStaticBoard(replaySvg, replayData.size, board);
-    replayStepLabel.textContent = `Jugada ${replayStep} / ${replayData.moveHistory.length}`;
-    replayFirstBtn.disabled = replayStep === 0;
-    replayPrevBtn.disabled = replayStep === 0;
-    replayNextBtn.disabled = replayStep === replayData.moveHistory.length;
-    replayLastBtn.disabled = replayStep === replayData.moveHistory.length;
-  }
-
-  function stopReplayTimer(){
-    if (replayTimer){ clearInterval(replayTimer); replayTimer = null; }
-    replayPlayBtn.textContent = '▶ Reproducir';
-  }
-
-  async function openReplay(id){
-    try {
-      const res = await fetch(`/api/partidas/id/${id}`);
-      if (!res.ok) return;
-      const doc = await res.json();
-      replayData = doc;
-      replayStep = doc.moveHistory.length; // arranca mostrando la posición final
-      stopReplayTimer();
-
-      replayTitle.textContent = `Partida #${doc.partidaNumber} — sala ${doc.salaCode}`;
-      replayMeta.textContent = `${doc.size}×${doc.size} · meta ${doc.captureTarget} · ${formatDate(doc.createdAt)}`;
-      replayResult.textContent = resultLabel(doc);
-      replaySgfLink.href = `/api/partidas/id/${doc.id}/sgf`;
-
-      renderReplayStep();
-      replayOverlay.classList.remove('hidden');
-    } catch (err) {
-      // si falla, no hacemos nada disruptivo
+    async function openReplay(id) {
+      try {
+        const res = await fetch(`/api/partidas/id/${id}`);
+        if (!res.ok) return;
+        const doc = await res.json();
+        stopReplayTimer();
+        replay.data = doc;
+        replay.step = doc.moveHistory.length;
+        replay.visible = true;
+      } catch (e) { /* no interrumpe la app */ }
     }
-  }
+    function closeReplay() { stopReplayTimer(); replay.visible = false; replay.data = null; }
+    function replayFirst() { stopReplayTimer(); replay.step = 0; }
+    function replayPrev() { stopReplayTimer(); replay.step = Math.max(0, replay.step - 1); }
+    function replayNext() { stopReplayTimer(); replay.step = Math.min(replay.data.moveHistory.length, replay.step + 1); }
+    function replayLast() { stopReplayTimer(); replay.step = replay.data.moveHistory.length; }
+    function replayToggle() {
+      if (!replay.data) return;
+      if (replay.timer) { stopReplayTimer(); return; }
+      if (replay.step >= replay.data.moveHistory.length) replay.step = 0;
+      replay.timer = setInterval(() => {
+        if (replay.step >= replay.data.moveHistory.length) { stopReplayTimer(); return; }
+        replay.step++;
+      }, 650);
+    }
 
-  function closeReplay(){
-    stopReplayTimer();
-    replayOverlay.classList.add('hidden');
-    replayData = null;
-  }
+    onMounted(() => {
+      const params = new URLSearchParams(location.search);
+      const watchParam = params.get('watch');
+      if (watchParam) socket.emit('watch_room', { code: watchParam.toUpperCase() });
+    });
 
-  replayCloseBtn.addEventListener('click', closeReplay);
-  replayOverlay.addEventListener('click', (e) => { if (e.target === replayOverlay) closeReplay(); });
+    return {
+      joined, myColor, roomCode, lobbyError, sizeChoice, targetChoice, codeInput,
+      copyFeedback, copyWatchFeedback, state, historial, replay,
+      bothPresent, isPlayer, canPlay, youAreText, waitingHint, turnLabel, capturesLabel,
+      spectatorLabel, downloadHref, resultLabel, formatDate,
+      createRoom, joinRoom, watchRoom, playCell, resign, revancha, copyCode, copyWatchLink,
+      replayBoard, openReplay, closeReplay, replayFirst, replayPrev, replayNext, replayLast, replayToggle,
+    };
+  },
+};
 
-  replayFirstBtn.addEventListener('click', () => { stopReplayTimer(); replayStep = 0; renderReplayStep(); });
-  replayPrevBtn.addEventListener('click', () => { stopReplayTimer(); replayStep = Math.max(0, replayStep - 1); renderReplayStep(); });
-  replayNextBtn.addEventListener('click', () => { stopReplayTimer(); replayStep = Math.min(replayData.moveHistory.length, replayStep + 1); renderReplayStep(); });
-  replayLastBtn.addEventListener('click', () => { stopReplayTimer(); replayStep = replayData.moveHistory.length; renderReplayStep(); });
-
-  replayPlayBtn.addEventListener('click', () => {
-    if (!replayData) return;
-    if (replayTimer){ stopReplayTimer(); return; }
-    if (replayStep >= replayData.moveHistory.length) replayStep = 0;
-    replayPlayBtn.textContent = '❚❚ Pausar';
-    replayTimer = setInterval(() => {
-      if (replayStep >= replayData.moveHistory.length){ stopReplayTimer(); return; }
-      replayStep++;
-      renderReplayStep();
-    }, 650);
-  });
-})();
+createApp(App).mount('#app');
 </script>
 </body>
 </html>

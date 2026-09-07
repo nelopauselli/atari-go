@@ -1,8 +1,8 @@
 # Atari-Go Online
 
 Backend en Node.js (Express + Socket.io) que arbitra la partida, un cliente
-web que se conecta por WebSocket, y MongoDB para guardar cada partida
-jugada.
+web hecho con **Vue 3** (sin build step, cargado por CDN) que se conecta
+por WebSocket, y MongoDB para guardar cada partida jugada.
 
 ## Conceptos
 
@@ -61,6 +61,13 @@ misma red usando tu IP local) para probarlo con dos jugadores.
 
 ## Notas técnicas
 
+- El frontend está hecho en **Vue 3** (Composition API), cargado desde
+  `unpkg.com` directo en el HTML — no hay paso de build, ni npm para el
+  cliente, ni bundler. Todo el estado del juego vive en un objeto
+  reactivo (`state`) que se actualiza cada vez que llega un evento
+  `state` del servidor, y la UI se re-renderiza sola. El tablero está en
+  un componente reutilizable (`AtariBoard`) que usan tanto el juego en
+  vivo como el visor de reproducción del historial.
 - El tablero "en vivo" de cada sala vive en memoria del servidor para que
   las jugadas sean instantáneas; la persistencia en MongoDB es best-effort
   (se actualiza en cada jugada, pero si Mongo está caído el juego no se

@@ -53,9 +53,11 @@ misma red usando tu IP local) para probarlo con dos jugadores.
    partida nueva (#2, #3, ...) en la misma sala, sin perder el registro de
    las anteriores.
 7. Debajo del tablero hay un panel "Historial de partidas en esta sala"
-   con todas las partidas jugadas (en curso o terminadas), su resultado y
-   un link de descarga en formato SGF para cada una — el estándar
-   universal de archivos de Go, abrible con Sabaki, CGoban, OGS, etc.
+   con todas las partidas jugadas (en curso o terminadas) y su resultado.
+   Cada una tiene dos acciones: "Ver partida" abre un visor que reproduce
+   la partida jugada por jugada (con controles de avanzar/retroceder y
+   reproducción automática), y "Descargar SGF" baja el archivo estándar
+   de Go, abrible con Sabaki, CGoban, OGS, etc.
 
 ## Notas técnicas
 

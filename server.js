@@ -316,6 +316,30 @@ app.get('/api/partidas/:salaCode', async (req, res) => {
   }
 });
 
+app.get('/api/partidas/id/:id', async (req, res) => {
+  if (!partidasCollection) { res.status(404).json({ error: 'El historial no está disponible en este servidor.' }); return; }
+  try {
+    const doc = await partidasCollection.findOne({ _id: new ObjectId(req.params.id) });
+    if (!doc) { res.status(404).json({ error: 'Partida no encontrada.' }); return; }
+    res.json({
+      id: doc._id.toString(),
+      salaCode: doc.salaCode,
+      partidaNumber: doc.partidaNumber,
+      size: doc.size,
+      captureTarget: doc.captureTarget,
+      moveHistory: doc.moveHistory,
+      captures: doc.captures,
+      gameOver: doc.gameOver,
+      winner: doc.winner,
+      winReason: doc.winReason,
+      createdAt: doc.createdAt,
+      finishedAt: doc.finishedAt,
+    });
+  } catch (err) {
+    res.status(400).json({ error: 'Id de partida inválido.' });
+  }
+});
+
 app.get('/api/partidas/id/:id/sgf', async (req, res) => {
   if (!partidasCollection) { res.status(404).send('El historial no está disponible en este servidor.'); return; }
   try {

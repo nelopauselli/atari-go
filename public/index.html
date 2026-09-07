@@ -81,6 +81,20 @@
   .historial-main{ display:flex; flex-direction:column; gap: 2px; }
   .historial-result{ color: var(--paper); }
   .historial-meta{ color: var(--muted); font-size: 0.78rem; }
+
+  .replay-overlay{
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display:flex; align-items:center; justify-content:center;
+    padding: 20px; z-index: 50;
+  }
+  .replay-panel{
+    background: var(--panel); border: 1px solid #2c281f;
+    padding: 24px; width: 100%; max-width: 520px; max-height: 92vh; overflow-y:auto;
+  }
+  .replay-header{ display:flex; justify-content:space-between; align-items:center; gap: 10px; }
+  .replay-header h2{ font-family:'Shippori Mincho', serif; font-size: 1.1rem; margin:0; }
+  .replay-controls{ display:flex; gap: 8px; justify-content:center; flex-wrap: wrap; margin-top: 14px; }
+  .replay-controls button{ min-width: 44px; }
 </style>
 </head>
 <body>
@@ -185,6 +199,32 @@
   </footer>
 </div>
 
+<!-- REPLAY OVERLAY -->
+<div id="replayOverlay" class="replay-overlay hidden">
+  <div class="replay-panel">
+    <div class="replay-header">
+      <h2 id="replayTitle">Partida</h2>
+      <button id="replayCloseBtn">Cerrar</button>
+    </div>
+    <p class="hint" id="replayMeta"></p>
+    <div class="board-shell">
+      <div class="board-frame">
+        <svg id="replaySvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+    <div class="replay-controls">
+      <button id="replayFirstBtn">|◀</button>
+      <button id="replayPrevBtn">◀</button>
+      <button id="replayPlayBtn">▶ Reproducir</button>
+      <button id="replayNextBtn">▶</button>
+      <button id="replayLastBtn">▶|</button>
+    </div>
+    <p class="hint" id="replayStepLabel"></p>
+    <p class="message" id="replayResult"></p>
+    <a id="replaySgfLink" class="button-link" href="#" download>Descargar SGF de esta partida</a>
+  </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
 (function(){
@@ -224,6 +264,21 @@
   const historialPanel = document.getElementById('historialPanel');
   const historialList = document.getElementById('historialList');
   const historialEmptyHint = document.getElementById('historialEmptyHint');
+
+  // Replay overlay elements
+  const replayOverlay = document.getElementById('replayOverlay');
+  const replayTitle = document.getElementById('replayTitle');
+  const replayMeta = document.getElementById('replayMeta');
+  const replaySvg = document.getElementById('replaySvg');
+  const replayCloseBtn = document.getElementById('replayCloseBtn');
+  const replayFirstBtn = document.getElementById('replayFirstBtn');
+  const replayPrevBtn = document.getElementById('replayPrevBtn');
+  const replayPlayBtn = document.getElementById('replayPlayBtn');
+  const replayNextBtn = document.getElementById('replayNextBtn');
+  const replayLastBtn = document.getElementById('replayLastBtn');
+  const replayStepLabel = document.getElementById('replayStepLabel');
+  const replayResult = document.getElementById('replayResult');
+  const replaySgfLink = document.getElementById('replaySgfLink');
 
   let myColor = null; // 'black' | 'white' | 'spectator'
   let latestState = null;
@@ -370,12 +425,22 @@
 
       li.appendChild(main);
 
+      const actions = document.createElement('div');
+      actions.className = 'action-row';
+
+      const watchBtn = document.createElement('button');
+      watchBtn.textContent = 'Ver partida';
+      watchBtn.addEventListener('click', () => openReplay(item.id));
+      actions.appendChild(watchBtn);
+
       const link = document.createElement('a');
       link.className = 'button-link';
       link.href = `/api/partidas/id/${item.id}/sgf`;
       link.textContent = 'Descargar SGF';
       link.setAttribute('download', '');
-      li.appendChild(link);
+      actions.appendChild(link);
+
+      li.appendChild(actions);
 
       historialList.appendChild(li);
     }
@@ -512,6 +577,190 @@
       }
     }
   }
+
+  // ---------- visor de reproducción (historial) ----------
+
+  let replayData = null; // { size, moveHistory, captureTarget, ... }
+  let replayStep = 0;
+  let replayTimer = null;
+
+  function neighborsC(size, x, y){
+    const list = [];
+    if (x > 0) list.push([x-1, y]);
+    if (x < size-1) list.push([x+1, y]);
+    if (y > 0) list.push([x, y-1]);
+    if (y < size-1) list.push([x, y+1]);
+    return list;
+  }
+
+  function groupLibsC(board, size, x, y){
+    const color = board[x][y];
+    const visited = new Set();
+    const stack = [[x,y]];
+    const group = [];
+    const libSeen = new Set();
+    let liberties = 0;
+    while (stack.length){
+      const [cx, cy] = stack.pop();
+      const key = cx+','+cy;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      group.push([cx,cy]);
+      for (const [nx, ny] of neighborsC(size, cx, cy)){
+        const nkey = nx+','+ny;
+        if (board[nx][ny] === null){
+          if (!libSeen.has(nkey)){ libSeen.add(nkey); liberties++; }
+        } else if (board[nx][ny] === color && !visited.has(nkey)){
+          stack.push([nx, ny]);
+        }
+      }
+    }
+    return { group, liberties };
+  }
+
+  function boardAtStep(moveHistory, size, uptoCount){
+    const board = Array.from({length: size}, () => Array(size).fill(null));
+    for (let i=0; i<uptoCount; i++){
+      const { color, x, y } = moveHistory[i];
+      board[x][y] = color;
+      const opp = color === 'black' ? 'white' : 'black';
+      for (const [nx, ny] of neighborsC(size, x, y)){
+        if (board[nx][ny] === opp){
+          const { group, liberties } = groupLibsC(board, size, nx, ny);
+          if (liberties === 0){
+            for (const [gx, gy] of group) board[gx][gy] = null;
+          }
+        }
+      }
+    }
+    return board;
+  }
+
+  function renderStaticBoard(svgEl, size, board){
+    const { cell, margin } = metricsFor(size);
+    const px = margin * 2 + cell * (size - 1);
+    svgEl.setAttribute('viewBox', `0 0 ${px} ${px}`);
+    svgEl.setAttribute('width', px);
+    svgEl.setAttribute('height', px);
+    while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+
+    for (let i=0;i<size;i++){
+      const l1 = document.createElementNS(svgNS,'line');
+      l1.setAttribute('x1', coord(i,margin,cell)); l1.setAttribute('y1', coord(0,margin,cell));
+      l1.setAttribute('x2', coord(i,margin,cell)); l1.setAttribute('y2', coord(size-1,margin,cell));
+      l1.setAttribute('stroke','var(--line)'); l1.setAttribute('stroke-width','1.4');
+      svgEl.appendChild(l1);
+      const l2 = document.createElementNS(svgNS,'line');
+      l2.setAttribute('x1', coord(0,margin,cell)); l2.setAttribute('y1', coord(i,margin,cell));
+      l2.setAttribute('x2', coord(size-1,margin,cell)); l2.setAttribute('y2', coord(i,margin,cell));
+      l2.setAttribute('stroke','var(--line)'); l2.setAttribute('stroke-width','1.4');
+      svgEl.appendChild(l2);
+    }
+
+    if (size === 9 || size === 13){
+      const pts = size === 9 ? [2,4,6] : [3,6,9];
+      for (const a of pts) for (const b of pts){
+        const dot = document.createElementNS(svgNS,'circle');
+        dot.setAttribute('cx', coord(a,margin,cell)); dot.setAttribute('cy', coord(b,margin,cell));
+        dot.setAttribute('r', 3); dot.setAttribute('fill','var(--line)');
+        svgEl.appendChild(dot);
+      }
+    }
+
+    for (let x=0;x<size;x++){
+      for (let y=0;y<size;y++){
+        const stoneColor = board[x][y];
+        if (stoneColor === null) continue;
+        const g = document.createElementNS(svgNS,'g');
+        g.setAttribute('transform', `translate(${coord(x,margin,cell)}, ${coord(y,margin,cell)})`);
+        const stone = document.createElementNS(svgNS,'circle');
+        stone.setAttribute('r', cell*0.42);
+        const isBlack = stoneColor === 'black';
+        const gradId = 'replay-grad-' + x + '-' + y;
+        const grad = document.createElementNS(svgNS,'radialGradient');
+        grad.setAttribute('id', gradId);
+        grad.setAttribute('cx','35%'); grad.setAttribute('cy','30%');
+        const stop1 = document.createElementNS(svgNS,'stop');
+        stop1.setAttribute('offset','0%');
+        stop1.setAttribute('stop-color', isBlack ? '#5a5a5a' : '#ffffff');
+        const stop2 = document.createElementNS(svgNS,'stop');
+        stop2.setAttribute('offset','100%');
+        stop2.setAttribute('stop-color', isBlack ? '#0a0a0a' : '#cfc7b4');
+        grad.appendChild(stop1); grad.appendChild(stop2);
+        const defs = document.createElementNS(svgNS,'defs');
+        defs.appendChild(grad);
+        g.appendChild(defs);
+        stone.setAttribute('fill', `url(#${gradId})`);
+        stone.setAttribute('stroke', isBlack ? '#000' : '#b5ac96');
+        stone.setAttribute('stroke-width','0.6');
+        g.appendChild(stone);
+        svgEl.appendChild(g);
+      }
+    }
+  }
+
+  function renderReplayStep(){
+    if (!replayData) return;
+    const board = boardAtStep(replayData.moveHistory, replayData.size, replayStep);
+    renderStaticBoard(replaySvg, replayData.size, board);
+    replayStepLabel.textContent = `Jugada ${replayStep} / ${replayData.moveHistory.length}`;
+    replayFirstBtn.disabled = replayStep === 0;
+    replayPrevBtn.disabled = replayStep === 0;
+    replayNextBtn.disabled = replayStep === replayData.moveHistory.length;
+    replayLastBtn.disabled = replayStep === replayData.moveHistory.length;
+  }
+
+  function stopReplayTimer(){
+    if (replayTimer){ clearInterval(replayTimer); replayTimer = null; }
+    replayPlayBtn.textContent = '▶ Reproducir';
+  }
+
+  async function openReplay(id){
+    try {
+      const res = await fetch(`/api/partidas/id/${id}`);
+      if (!res.ok) return;
+      const doc = await res.json();
+      replayData = doc;
+      replayStep = doc.moveHistory.length; // arranca mostrando la posición final
+      stopReplayTimer();
+
+      replayTitle.textContent = `Partida #${doc.partidaNumber} — sala ${doc.salaCode}`;
+      replayMeta.textContent = `${doc.size}×${doc.size} · meta ${doc.captureTarget} · ${formatDate(doc.createdAt)}`;
+      replayResult.textContent = resultLabel(doc);
+      replaySgfLink.href = `/api/partidas/id/${doc.id}/sgf`;
+
+      renderReplayStep();
+      replayOverlay.classList.remove('hidden');
+    } catch (err) {
+      // si falla, no hacemos nada disruptivo
+    }
+  }
+
+  function closeReplay(){
+    stopReplayTimer();
+    replayOverlay.classList.add('hidden');
+    replayData = null;
+  }
+
+  replayCloseBtn.addEventListener('click', closeReplay);
+  replayOverlay.addEventListener('click', (e) => { if (e.target === replayOverlay) closeReplay(); });
+
+  replayFirstBtn.addEventListener('click', () => { stopReplayTimer(); replayStep = 0; renderReplayStep(); });
+  replayPrevBtn.addEventListener('click', () => { stopReplayTimer(); replayStep = Math.max(0, replayStep - 1); renderReplayStep(); });
+  replayNextBtn.addEventListener('click', () => { stopReplayTimer(); replayStep = Math.min(replayData.moveHistory.length, replayStep + 1); renderReplayStep(); });
+  replayLastBtn.addEventListener('click', () => { stopReplayTimer(); replayStep = replayData.moveHistory.length; renderReplayStep(); });
+
+  replayPlayBtn.addEventListener('click', () => {
+    if (!replayData) return;
+    if (replayTimer){ stopReplayTimer(); return; }
+    if (replayStep >= replayData.moveHistory.length) replayStep = 0;
+    replayPlayBtn.textContent = '❚❚ Pausar';
+    replayTimer = setInterval(() => {
+      if (replayStep >= replayData.moveHistory.length){ stopReplayTimer(); return; }
+      replayStep++;
+      renderReplayStep();
+    }, 650);
+  });
 })();
 </script>
 </body>

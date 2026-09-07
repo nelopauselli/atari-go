@@ -23,6 +23,11 @@ con dos jugadores.
 3. El servidor valida cada jugada (capturas, jugadas suicidas) y sincroniza
    el tablero a ambos jugadores.
 4. Si alguien más se conecta a una sala llena, entra como espectador.
+5. En cualquier momento (jugadores o espectadores) se puede descargar la
+   partida en formato SGF con el botón "Descargar SGF" — es el estándar
+   universal de archivos de Go, así que se puede abrir con cualquier editor
+   o visor de SGF (Sabaki, CGoban, OGS, etc.) para revisar la partida
+   jugada a jugada.
 
 ## Desplegarlo online (para jugar entre distintas redes)
 

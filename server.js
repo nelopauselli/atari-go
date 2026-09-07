@@ -77,6 +77,8 @@ function makeRoom(size, captureTarget) {
     winner: null,
     players: { black: null, white: null },
     sockets: new Map(), // socketId -> role ('black' | 'white' | 'spectator')
+    moveHistory: [], // { color, x, y }
+    createdAt: new Date(),
   };
 }
 
@@ -87,6 +89,8 @@ function resetRoom(room) {
   room.gameOver = false;
   room.message = '';
   room.winner = null;
+  room.moveHistory = [];
+  room.createdAt = new Date();
 }
 
 function doMove(room, color, x, y) {
@@ -114,6 +118,8 @@ function doMove(room, color, x, y) {
     room.message = 'Jugada ilegal: esa piedra quedaría sin libertades.';
     return;
   }
+
+  room.moveHistory.push({ color, x, y });
 
   if (capturedStones.length > 0) {
     room.captures[color] += capturedStones.length;
@@ -146,6 +152,35 @@ function countSpectators(room) {
   return count;
 }
 
+function sgfCoord(x, y) {
+  return String.fromCharCode(97 + x) + String.fromCharCode(97 + y);
+}
+
+function buildSgf(room, code) {
+  const dateStr = room.createdAt.toISOString().slice(0, 10);
+
+  let resultTag = '';
+  if (room.winner === 'black') resultTag = `RE[B+${room.captures.black}]`;
+  else if (room.winner === 'white') resultTag = `RE[W+${room.captures.white}]`;
+  else if (room.gameOver) resultTag = 'RE[Void]';
+
+  const header = [
+    'FF[4]', 'GM[1]', `SZ[${room.size}]`,
+    'PB[Negro]', 'PW[Blanco]',
+    `GN[Atari-Go online - sala ${code}]`,
+    `RU[Atari-Go: gana quien capture ${room.captureTarget} piedra(s)]`,
+    `DT[${dateStr}]`,
+    'AP[AtariGoOnline:1.0]',
+    resultTag,
+  ].filter(Boolean).join('');
+
+  const moves = room.moveHistory
+    .map(m => `;${m.color === 'black' ? 'B' : 'W'}[${sgfCoord(m.x, m.y)}]`)
+    .join('');
+
+  return `(;${header}${moves})`;
+}
+
 function publicState(room, code) {
   return {
     code,
@@ -160,6 +195,7 @@ function publicState(room, code) {
     hasBlack: !!room.players.black,
     hasWhite: !!room.players.white,
     spectatorCount: countSpectators(room),
+    moveCount: room.moveHistory.length,
   };
 }
 
@@ -238,6 +274,16 @@ io.on('connection', (socket) => {
     if (socket.data.role !== 'black' && socket.data.role !== 'white') return;
     resetRoom(room);
     io.to(code).emit('state', publicState(room, code));
+  });
+
+  socket.on('export_sgf', () => {
+    const code = socket.data.code;
+    const room = rooms.get(code);
+    if (!room) return;
+    socket.emit('sgf_data', {
+      filename: `atari-go-${code}.sgf`,
+      content: buildSgf(room, code),
+    });
   });
 
   socket.on('disconnect', () => {

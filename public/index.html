@@ -130,6 +130,7 @@
         <p class="hint" id="spectatorCountLabel"></p>
       </div>
       <button id="resetBtn">Reiniciar partida</button>
+      <button id="downloadSgfBtn">Descargar SGF</button>
     </header>
 
     <div class="board-shell">
@@ -180,6 +181,7 @@
   const youAre = document.getElementById('youAre');
   const spectatorCountLabel = document.getElementById('spectatorCountLabel');
   const resetBtn = document.getElementById('resetBtn');
+  const downloadSgfBtn = document.getElementById('downloadSgfBtn');
   const boardFrame = document.getElementById('boardFrame');
   const svg = document.getElementById('board');
   const turnDot = document.getElementById('turnDot');
@@ -242,6 +244,20 @@
 
   resetBtn.addEventListener('click', () => socket.emit('reset'));
 
+  downloadSgfBtn.addEventListener('click', () => socket.emit('export_sgf'));
+
+  socket.on('sgf_data', ({ filename, content }) => {
+    const blob = new Blob([content], { type: 'application/x-go-sgf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
   // Si la URL trae ?watch=CODIGO, entramos directo como espectador.
   const params = new URLSearchParams(location.search);
   const watchParam = params.get('watch');
@@ -276,6 +292,7 @@
     boardFrame.classList.toggle('disabled', !bothPresent || state.gameOver);
 
     resetBtn.classList.toggle('hidden', myColor !== 'black' && myColor !== 'white');
+    downloadSgfBtn.disabled = !state.moveCount;
 
     spectatorCountLabel.textContent = state.spectatorCount > 0
       ? `${state.spectatorCount} persona${state.spectatorCount === 1 ? '' : 's'} mirando`

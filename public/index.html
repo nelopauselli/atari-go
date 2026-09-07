@@ -73,6 +73,11 @@
   .hidden{ display:none !important; }
   footer{ margin-top: 34px; font-size: 0.78rem; color: var(--muted); text-align:center; line-height:1.6; max-width: 50ch; }
 
+  .nav-tabs{ display:flex; gap: 8px; margin-top: 16px; }
+  .nav-tabs button{ border-color: transparent; opacity: 0.7; }
+  .nav-tabs button.active{ border-color: var(--muted); opacity: 1; }
+  .pagination{ display:flex; align-items:center; justify-content:center; gap: 16px; margin-top: 18px; }
+
   .revancha-box{ text-align:center; margin: 6px 0 26px; }
 
   .historial-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 10px; }
@@ -103,11 +108,48 @@
     <header>
       <h1>Atari-Go Online</h1>
       <p class="subtitle">Jugá Atari-Go en tiempo real con otra persona. Gana quien alcance primero la cantidad de piedras capturadas que definan. Cada partida jugada queda guardada.</p>
+      <nav class="nav-tabs">
+        <button :class="{ active: screen === 'main' }" @click="screen = 'main'">Jugar</button>
+        <button :class="{ active: screen === 'historial' }" @click="goToHistorial">Historial de partidas</button>
+      </nav>
     </header>
     <div class="divider"></div>
 
+    <!-- HISTORIAL GLOBAL -->
+    <div v-if="screen === 'historial'">
+      <div class="panel">
+        <h2>Últimas partidas jugadas</h2>
+        <div class="field-row">
+          <label for="salaFilter">Filtrar por sala</label>
+          <input id="salaFilter" v-model="historialFilter" maxlength="4" placeholder="Ej: 7K2Q" style="text-transform:uppercase; width: 100px;">
+          <button @click="searchHistorial">Buscar</button>
+          <button v-if="historialFilter" @click="clearHistorialFilter">Limpiar</button>
+        </div>
+
+        <ul v-if="historialItems.length" class="historial-list">
+          <li v-for="item in historialItems" :key="item.id" class="historial-item">
+            <div class="historial-main">
+              <span class="historial-result">Sala {{ item.salaCode }} — Partida #{{ item.partidaNumber }} — {{ resultLabel(item) }}</span>
+              <span class="historial-meta">{{ item.size }}×{{ item.size }} · meta {{ item.captureTarget }} · {{ formatDate(item.createdAt) }}</span>
+            </div>
+            <div class="action-row">
+              <button @click="openReplay(item.id)">Ver partida</button>
+              <a class="button-link" :href="`/api/partidas/id/${item.id}/sgf`" download>Descargar SGF</a>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="hint">No hay partidas guardadas todavía.</p>
+
+        <div v-if="historialTotalPages > 1" class="pagination">
+          <button :disabled="historialPage === 1" @click="changeHistorialPage(historialPage - 1)">◀ Anterior</button>
+          <span class="hint">Página {{ historialPage }} de {{ historialTotalPages }}</span>
+          <button :disabled="historialPage === historialTotalPages" @click="changeHistorialPage(historialPage + 1)">Siguiente ▶</button>
+        </div>
+      </div>
+    </div>
+
     <!-- LOBBY -->
-    <div v-if="!joined">
+    <div v-else-if="!joined">
       <div class="panel">
         <h2>Crear una sala nueva</h2>
         <div class="field-row">
@@ -186,22 +228,6 @@
 
       <div v-if="isPlayer && state.gameOver" class="revancha-box">
         <button @click="revancha">Jugar revancha en esta sala</button>
-      </div>
-
-      <div v-if="historial.length" class="panel">
-        <h2>Historial de partidas en esta sala</h2>
-        <ul class="historial-list">
-          <li v-for="item in historial" :key="item.id" class="historial-item">
-            <div class="historial-main">
-              <span class="historial-result">Partida #{{ item.partidaNumber }} — {{ resultLabel(item) }}</span>
-              <span class="historial-meta">{{ item.size }}×{{ item.size }} · meta {{ item.captureTarget }} · {{ formatDate(item.createdAt) }}</span>
-            </div>
-            <div class="action-row">
-              <button @click="openReplay(item.id)">Ver partida</button>
-              <a class="button-link" :href="`/api/partidas/id/${item.id}/sgf`" download>Descargar SGF</a>
-            </div>
-          </li>
-        </ul>
       </div>
     </div>
 
@@ -398,8 +424,8 @@ const App = {
     const myColor = ref(null);
     const roomCode = ref(null);
     const lobbyError = ref('');
-    let wasGameOver = false;
 
+    const screen = ref('main'); // 'main' | 'historial'
     const sizeChoice = ref('7');
     const targetChoice = ref('1');
     const codeInput = ref('');
@@ -413,7 +439,45 @@ const App = {
       partidaId: null, partidaNumber: 1,
     });
 
-    const historial = ref([]);
+    // ---------- historial global ----------
+    const historialItems = ref([]);
+    const historialPage = ref(1);
+    const historialTotalPages = ref(1);
+    const historialFilter = ref('');
+    const HISTORIAL_LIMIT = 10;
+
+    async function fetchGlobalHistorial() {
+      try {
+        const params = new URLSearchParams({ page: historialPage.value, limit: HISTORIAL_LIMIT });
+        if (historialFilter.value.trim()) params.set('sala', historialFilter.value.trim().toUpperCase());
+        const res = await fetch(`/api/partidas?${params.toString()}`);
+        if (!res.ok) { historialItems.value = []; historialTotalPages.value = 1; return; }
+        const data = await res.json();
+        historialItems.value = data.items;
+        historialTotalPages.value = data.totalPages;
+      } catch (e) {
+        historialItems.value = [];
+        historialTotalPages.value = 1;
+      }
+    }
+    function goToHistorial() {
+      screen.value = 'historial';
+      fetchGlobalHistorial();
+    }
+    function searchHistorial() {
+      historialPage.value = 1;
+      fetchGlobalHistorial();
+    }
+    function clearHistorialFilter() {
+      historialFilter.value = '';
+      historialPage.value = 1;
+      fetchGlobalHistorial();
+    }
+    function changeHistorialPage(page) {
+      if (page < 1 || page > historialTotalPages.value) return;
+      historialPage.value = page;
+      fetchGlobalHistorial();
+    }
 
     const replay = reactive({ visible: false, data: null, step: 0, timer: null });
 
@@ -442,16 +506,6 @@ const App = {
     }
     function formatDate(iso) {
       try { return new Date(iso).toLocaleString(); } catch (e) { return ''; }
-    }
-
-    async function fetchHistorial() {
-      if (!roomCode.value) return;
-      try {
-        const res = await fetch(`/api/partidas/${roomCode.value}`);
-        historial.value = res.ok ? await res.json() : [];
-      } catch (e) {
-        historial.value = [];
-      }
     }
 
     function createRoom() {
@@ -495,19 +549,14 @@ const App = {
     function applyState(s) {
       Object.assign(state, s);
       roomCode.value = s.code;
-      if (s.gameOver && !wasGameOver) fetchHistorial();
-      wasGameOver = s.gameOver;
     }
 
     socket.on('joined', ({ color, state: s }) => {
       myColor.value = color;
       joined.value = true;
-      wasGameOver = s.gameOver;
       applyState(s);
-      fetchHistorial();
     });
     socket.on('state', (s) => applyState(s));
-    socket.on('history_updated', fetchHistorial);
     socket.on('error_msg', (msg) => { lobbyError.value = msg; });
 
     // ---------- replay ----------
@@ -553,7 +602,9 @@ const App = {
 
     return {
       joined, myColor, roomCode, lobbyError, sizeChoice, targetChoice, codeInput,
-      copyFeedback, copyWatchFeedback, state, historial, replay,
+      copyFeedback, copyWatchFeedback, state, replay,
+      screen, historialItems, historialPage, historialTotalPages, historialFilter,
+      goToHistorial, searchHistorial, clearHistorialFilter, changeHistorialPage,
       bothPresent, isPlayer, canPlay, youAreText, waitingHint, turnLabel, capturesLabel,
       spectatorLabel, downloadHref, resultLabel, formatDate,
       createRoom, joinRoom, watchRoom, playCell, resign, revancha, copyCode, copyWatchLink,

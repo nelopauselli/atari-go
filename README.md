@@ -52,12 +52,13 @@ misma red usando tu IP local) para probarlo con dos jugadores.
    jugadores ven un botón "Jugar revancha en esta sala": arranca una
    partida nueva (#2, #3, ...) en la misma sala, sin perder el registro de
    las anteriores.
-7. Debajo del tablero hay un panel "Historial de partidas en esta sala"
-   con todas las partidas jugadas (en curso o terminadas) y su resultado.
-   Cada una tiene dos acciones: "Ver partida" abre un visor que reproduce
-   la partida jugada por jugada (con controles de avanzar/retroceder y
-   reproducción automática), y "Descargar SGF" baja el archivo estándar
-   de Go, abrible con Sabaki, CGoban, OGS, etc.
+7. El historial **no vive dentro de la sala** — es una vista propia
+   ("Historial de partidas" en la barra de navegación de arriba,
+   accesible siempre, sin necesidad de tener o recordar un código de
+   sala). Lista las últimas partidas jugadas en todo el servidor
+   (paginadas de a 10), con opción de filtrar por código de sala si lo
+   tenés. Cada partida tiene "Ver partida" (abre el visor de reproducción
+   jugada por jugada) y "Descargar SGF".
 
 ## Notas técnicas
 

@@ -26,6 +26,7 @@ async function connectMongo() {
     await client.connect();
     partidasCollection = client.db(MONGODB_DB).collection('partidas');
     await partidasCollection.createIndex({ salaCode: 1, partidaNumber: 1 });
+    await partidasCollection.createIndex({ createdAt: -1 });
     console.log(`Conectado a MongoDB (${MONGODB_URI}/${MONGODB_DB}). El historial de partidas va a persistir.`);
   } catch (err) {
     console.warn('No se pudo conectar a MongoDB — el juego funciona igual, pero sin historial persistente:', err.message);
@@ -290,27 +291,44 @@ function publicState(room, code) {
 
 // ---------- rutas REST del historial ----------
 
-app.get('/api/partidas/:salaCode', async (req, res) => {
-  if (!partidasCollection) { res.json([]); return; }
+app.get('/api/partidas', async (req, res) => {
+  if (!partidasCollection) { res.json({ items: [], page: 1, limit: 10, total: 0, totalPages: 1 }); return; }
   try {
-    const code = String(req.params.salaCode || '').trim().toUpperCase();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const filter = {};
+    if (req.query.sala) filter.salaCode = String(req.query.sala).trim().toUpperCase();
+
+    const total = await partidasCollection.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
     const docs = await partidasCollection
-      .find({ salaCode: code })
+      .find(filter)
       .project({ moveHistory: 0 })
-      .sort({ partidaNumber: -1 })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
       .toArray();
-    res.json(docs.map(d => ({
-      id: d._id.toString(),
-      partidaNumber: d.partidaNumber,
-      size: d.size,
-      captureTarget: d.captureTarget,
-      captures: d.captures,
-      gameOver: d.gameOver,
-      winner: d.winner,
-      winReason: d.winReason,
-      createdAt: d.createdAt,
-      finishedAt: d.finishedAt,
-    })));
+
+    res.json({
+      items: docs.map(d => ({
+        id: d._id.toString(),
+        salaCode: d.salaCode,
+        partidaNumber: d.partidaNumber,
+        size: d.size,
+        captureTarget: d.captureTarget,
+        captures: d.captures,
+        gameOver: d.gameOver,
+        winner: d.winner,
+        winReason: d.winReason,
+        createdAt: d.createdAt,
+        finishedAt: d.finishedAt,
+      })),
+      page,
+      limit,
+      total,
+      totalPages,
+    });
   } catch (err) {
     res.status(500).json({ error: 'No se pudo leer el historial.' });
   }

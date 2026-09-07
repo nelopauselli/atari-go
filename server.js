@@ -140,6 +140,12 @@ function doMove(room, color, x, y) {
   }
 }
 
+function countSpectators(room) {
+  let count = 0;
+  for (const role of room.sockets.values()) if (role === 'spectator') count++;
+  return count;
+}
+
 function publicState(room, code) {
   return {
     code,
@@ -153,6 +159,7 @@ function publicState(room, code) {
     message: room.message,
     hasBlack: !!room.players.black,
     hasWhite: !!room.players.white,
+    spectatorCount: countSpectators(room),
   };
 }
 
@@ -190,6 +197,23 @@ io.on('connection', (socket) => {
     socket.data.role = role;
 
     socket.emit('joined', { color: role, state: publicState(room, normalized) });
+    socket.to(normalized).emit('state', publicState(room, normalized));
+  });
+
+  socket.on('watch_room', ({ code } = {}) => {
+    const normalized = String(code || '').trim().toUpperCase();
+    const room = rooms.get(normalized);
+    if (!room) {
+      socket.emit('error_msg', 'Esa sala no existe o ya terminó. Revisá el código.');
+      return;
+    }
+
+    room.sockets.set(socket.id, 'spectator');
+    socket.join(normalized);
+    socket.data.code = normalized;
+    socket.data.role = 'spectator';
+
+    socket.emit('joined', { color: 'spectator', state: publicState(room, normalized) });
     socket.to(normalized).emit('state', publicState(room, normalized));
   });
 

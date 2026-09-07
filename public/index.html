@@ -105,7 +105,8 @@
       <div class="field-row">
         <label for="codeInput">Código de sala</label>
         <input id="codeInput" maxlength="4" placeholder="Ej: 7K2Q" style="text-transform:uppercase; width: 100px;">
-        <button id="joinBtn">Unirse</button>
+        <button id="joinBtn">Unirse a jugar</button>
+        <button id="watchBtn">Solo mirar</button>
       </div>
       <p class="error" id="lobbyError"></p>
     </div>
@@ -114,10 +115,11 @@
   <!-- WAITING / GAME -->
   <div id="game" class="hidden">
     <div class="panel" id="shareBox">
-      <h2>Compartí este código con tu rival</h2>
+      <h2>Compartí esta sala</h2>
       <div class="share-line">
         <span class="room-code" id="roomCodeLabel">----</span>
         <button id="copyBtn">Copiar código</button>
+        <button id="copyWatchLinkBtn">Copiar link para espectadores</button>
       </div>
       <p class="hint" id="waitingHint">Esperando que se una el segundo jugador…</p>
     </div>
@@ -125,6 +127,7 @@
     <header class="game-header">
       <div>
         <p class="you-are" id="youAre"></p>
+        <p class="hint" id="spectatorCountLabel"></p>
       </div>
       <button id="resetBtn">Reiniciar partida</button>
     </header>
@@ -164,6 +167,7 @@
   const createBtn = document.getElementById('createBtn');
   const codeInput = document.getElementById('codeInput');
   const joinBtn = document.getElementById('joinBtn');
+  const watchBtn = document.getElementById('watchBtn');
   const lobbyError = document.getElementById('lobbyError');
 
   // Game elements
@@ -171,8 +175,10 @@
   const shareBox = document.getElementById('shareBox');
   const roomCodeLabel = document.getElementById('roomCodeLabel');
   const copyBtn = document.getElementById('copyBtn');
+  const copyWatchLinkBtn = document.getElementById('copyWatchLinkBtn');
   const waitingHint = document.getElementById('waitingHint');
   const youAre = document.getElementById('youAre');
+  const spectatorCountLabel = document.getElementById('spectatorCountLabel');
   const resetBtn = document.getElementById('resetBtn');
   const boardFrame = document.getElementById('boardFrame');
   const svg = document.getElementById('board');
@@ -210,6 +216,13 @@
     socket.emit('join_room', { code });
   });
 
+  watchBtn.addEventListener('click', () => {
+    const code = codeInput.value.trim().toUpperCase();
+    if (!code) { lobbyError.textContent = 'Ingresá un código de sala.'; return; }
+    lobbyError.textContent = '';
+    socket.emit('watch_room', { code });
+  });
+
   copyBtn.addEventListener('click', () => {
     if (!roomCode) return;
     navigator.clipboard?.writeText(roomCode).then(() => {
@@ -218,7 +231,23 @@
     });
   });
 
+  copyWatchLinkBtn.addEventListener('click', () => {
+    if (!roomCode) return;
+    const link = `${location.origin}${location.pathname}?watch=${roomCode}`;
+    navigator.clipboard?.writeText(link).then(() => {
+      copyWatchLinkBtn.textContent = '¡Copiado!';
+      setTimeout(() => { copyWatchLinkBtn.textContent = 'Copiar link para espectadores'; }, 1500);
+    });
+  });
+
   resetBtn.addEventListener('click', () => socket.emit('reset'));
+
+  // Si la URL trae ?watch=CODIGO, entramos directo como espectador.
+  const params = new URLSearchParams(location.search);
+  const watchParam = params.get('watch');
+  if (watchParam) {
+    socket.emit('watch_room', { code: watchParam.toUpperCase() });
+  }
 
   socket.on('joined', ({ color, state }) => {
     myColor = color;
@@ -240,10 +269,17 @@
     latestState = state;
     roomCode = state.code;
     const bothPresent = state.hasBlack && state.hasWhite;
-    shareBox.classList.toggle('hidden', bothPresent);
-    waitingHint.textContent = 'Esperando que se una el segundo jugador…';
+    waitingHint.textContent = bothPresent
+      ? 'La sala ya tiene dos jugadores — podés seguir compartiendo el link de espectador.'
+      : 'Esperando que se una el segundo jugador…';
 
     boardFrame.classList.toggle('disabled', !bothPresent || state.gameOver);
+
+    resetBtn.classList.toggle('hidden', myColor !== 'black' && myColor !== 'white');
+
+    spectatorCountLabel.textContent = state.spectatorCount > 0
+      ? `${state.spectatorCount} persona${state.spectatorCount === 1 ? '' : 's'} mirando`
+      : '';
 
     turnDot.className = 'turn-dot ' + state.current;
     turnLabel.textContent = state.gameOver

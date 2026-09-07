@@ -4,13 +4,14 @@
   "description": "Atari-Go multijugador online (primer captura gana)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node --env-file=.env server.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "express": "^4.19.2",
+    "mongodb": "^6.7.0",
     "socket.io": "^4.7.5"
   }
 }

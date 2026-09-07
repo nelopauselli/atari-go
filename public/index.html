@@ -32,10 +32,17 @@
     font-family: inherit; font-size: 0.85rem; background: transparent; color: var(--paper);
     border: 1px solid var(--muted); padding: 9px 12px; cursor: pointer;
   }
+  a.button-link{
+    font-family: inherit; font-size: 0.85rem; color: var(--paper);
+    border: 1px solid var(--muted); padding: 9px 12px; cursor: pointer;
+    text-decoration: none; display: inline-block;
+  }
+  a.button-link:hover{ border-color: var(--paper); }
   input{ cursor:text; }
   select:hover, button:hover{ border-color: var(--paper); }
-  select:focus-visible, button:focus-visible, input:focus-visible{ outline: 2px solid var(--hanko); outline-offset: 2px; }
+  select:focus-visible, button:focus-visible, input:focus-visible, a.button-link:focus-visible{ outline: 2px solid var(--hanko); outline-offset: 2px; }
   button:disabled{ opacity: 0.4; cursor:not-allowed; }
+  a.button-link.disabled{ opacity: 0.4; pointer-events: none; }
 
   .panel{ background: var(--panel); border: 1px solid #2c281f; padding: 26px; }
   .panel + .panel{ margin-top: 18px; }
@@ -47,6 +54,7 @@
 
   .room-code{ font-family:'Shippori Mincho', serif; font-size: 1.6rem; letter-spacing: 0.12em; color: var(--paper); }
   .share-line{ display:flex; align-items:center; gap: 12px; flex-wrap: wrap; }
+  .action-row{ display:flex; gap: 10px; flex-wrap: wrap; align-items:center; }
 
   header.game-header{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 6px; flex-wrap: wrap; gap: 12px; }
   .board-shell{ display:flex; justify-content:center; margin: 26px 0; }
@@ -59,18 +67,27 @@
   .turn-dot.black{ background: radial-gradient(circle at 35% 30%, var(--stone-black-hi), #0a0a0a); }
   .turn-dot.white{ background: radial-gradient(circle at 35% 30%, #fff, var(--stone-white-sh)); }
   .captures{ color: var(--muted); letter-spacing: 0.02em; }
-  .message{ margin-top: 18px; min-height: 1.4em; font-family:'Shippori Mincho', serif; font-size: 1.15rem; color: var(--hanko); text-align:center; }
-  .you-are{ font-size: 0.85rem; color: var(--muted); }
+  .message{ margin: 18px 0; min-height: 1.4em; font-family:'Shippori Mincho', serif; font-size: 1.15rem; color: var(--hanko); text-align:center; }
+  .you-are{ font-size: 0.85rem; color: var(--muted); margin: 0; }
   .intersection{ cursor:pointer; }
   .hidden{ display:none !important; }
   footer{ margin-top: 34px; font-size: 0.78rem; color: var(--muted); text-align:center; line-height:1.6; max-width: 50ch; }
+
+  .revancha-box{ text-align:center; margin: 6px 0 26px; }
+
+  .historial-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 10px; }
+  .historial-item{ display:flex; justify-content:space-between; align-items:center; gap: 10px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid #2c281f; font-size: 0.85rem; }
+  .historial-item:last-child{ border-bottom: none; }
+  .historial-main{ display:flex; flex-direction:column; gap: 2px; }
+  .historial-result{ color: var(--paper); }
+  .historial-meta{ color: var(--muted); font-size: 0.78rem; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Atari-Go Online</h1>
-    <p class="subtitle">Jugá Atari-Go en tiempo real con otra persona. Gana quien alcance primero la cantidad de piedras capturadas que definan.</p>
+    <p class="subtitle">Jugá Atari-Go en tiempo real con otra persona. Gana quien alcance primero la cantidad de piedras capturadas que definan. Cada partida jugada queda guardada.</p>
   </header>
   <div class="divider"></div>
 
@@ -127,10 +144,13 @@
     <header class="game-header">
       <div>
         <p class="you-are" id="youAre"></p>
+        <p class="hint" id="partidaNumberLabel"></p>
         <p class="hint" id="spectatorCountLabel"></p>
       </div>
-      <button id="resetBtn">Reiniciar partida</button>
-      <button id="downloadSgfBtn">Descargar SGF</button>
+      <div class="action-row">
+        <button id="resignBtn">Rendirse</button>
+        <a id="downloadSgfLink" class="button-link disabled" href="#" download>Descargar SGF</a>
+      </div>
     </header>
 
     <div class="board-shell">
@@ -148,10 +168,20 @@
     </div>
 
     <div class="message" id="message"></div>
+
+    <div class="revancha-box hidden" id="revanchaBox">
+      <button id="revanchaBtn">Jugar revancha en esta sala</button>
+    </div>
+
+    <div class="panel hidden" id="historialPanel">
+      <h2>Historial de partidas en esta sala</h2>
+      <ul class="historial-list" id="historialList"></ul>
+      <p class="hint" id="historialEmptyHint">Todavía no hay partidas guardadas en esta sala.</p>
+    </div>
   </div>
 
   <footer>
-    Reglas: se juega igual que el Go — rodeá las piedras del rival para quitarles todas sus libertades. No se permiten jugadas suicidas. La partida termina cuando alguien alcanza la cantidad de capturas configurada al crear la sala.
+    Reglas: se juega igual que el Go — rodeá las piedras del rival para quitarles todas sus libertades. No se permiten jugadas suicidas. La partida termina cuando alguien alcanza la cantidad de capturas configurada, o cuando un jugador se rinde.
   </footer>
 </div>
 
@@ -179,19 +209,26 @@
   const copyWatchLinkBtn = document.getElementById('copyWatchLinkBtn');
   const waitingHint = document.getElementById('waitingHint');
   const youAre = document.getElementById('youAre');
+  const partidaNumberLabel = document.getElementById('partidaNumberLabel');
   const spectatorCountLabel = document.getElementById('spectatorCountLabel');
-  const resetBtn = document.getElementById('resetBtn');
-  const downloadSgfBtn = document.getElementById('downloadSgfBtn');
+  const resignBtn = document.getElementById('resignBtn');
+  const downloadSgfLink = document.getElementById('downloadSgfLink');
   const boardFrame = document.getElementById('boardFrame');
   const svg = document.getElementById('board');
   const turnDot = document.getElementById('turnDot');
   const turnLabel = document.getElementById('turnLabel');
   const capturesLabel = document.getElementById('capturesLabel');
   const messageEl = document.getElementById('message');
+  const revanchaBox = document.getElementById('revanchaBox');
+  const revanchaBtn = document.getElementById('revanchaBtn');
+  const historialPanel = document.getElementById('historialPanel');
+  const historialList = document.getElementById('historialList');
+  const historialEmptyHint = document.getElementById('historialEmptyHint');
 
   let myColor = null; // 'black' | 'white' | 'spectator'
   let latestState = null;
   let roomCode = null;
+  let wasGameOver = false;
 
   function metricsFor(size){
     let cell, margin;
@@ -242,21 +279,13 @@
     });
   });
 
-  resetBtn.addEventListener('click', () => socket.emit('reset'));
-
-  downloadSgfBtn.addEventListener('click', () => socket.emit('export_sgf'));
-
-  socket.on('sgf_data', ({ filename, content }) => {
-    const blob = new Blob([content], { type: 'application/x-go-sgf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  resignBtn.addEventListener('click', () => {
+    if (confirm('¿Seguro que querés rendirte? Le da la victoria a tu rival.')) {
+      socket.emit('resign');
+    }
   });
+
+  revanchaBtn.addEventListener('click', () => socket.emit('revancha'));
 
   // Si la URL trae ?watch=CODIGO, entramos directo como espectador.
   const params = new URLSearchParams(location.search);
@@ -274,12 +303,83 @@
     youAre.textContent = myColor === 'spectator'
       ? 'Estás mirando la partida como espectador.'
       : `Jugás con: ${myColor === 'black' ? 'Negro' : 'Blanco'}`;
+    wasGameOver = state.gameOver;
     applyState(state);
+    fetchHistorial();
   });
 
   socket.on('state', (state) => applyState(state));
 
+  socket.on('history_updated', () => fetchHistorial());
+
   socket.on('error_msg', (msg) => { lobbyError.textContent = msg; });
+
+  async function fetchHistorial(){
+    if (!roomCode) return;
+    try {
+      const res = await fetch(`/api/partidas/${roomCode}`);
+      if (!res.ok) { historialPanel.classList.add('hidden'); return; }
+      const list = await res.json();
+      renderHistorial(list);
+    } catch (err) {
+      historialPanel.classList.add('hidden');
+    }
+  }
+
+  function resultLabel(item){
+    if (!item.gameOver) return 'En curso';
+    if (item.winner === null) return 'Empate';
+    const winnerLabel = item.winner === 'black' ? 'Negro' : 'Blanco';
+    if (item.winReason === 'resign') return `${winnerLabel} gana (rendición)`;
+    return `${winnerLabel} gana (${item.captures[item.winner]}/${item.captureTarget} capturas)`;
+  }
+
+  function formatDate(iso){
+    try {
+      return new Date(iso).toLocaleString();
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function renderHistorial(list){
+    if (!list.length) {
+      historialPanel.classList.add('hidden');
+      return;
+    }
+    historialPanel.classList.remove('hidden');
+    historialEmptyHint.classList.add('hidden');
+    historialList.innerHTML = '';
+
+    for (const item of list) {
+      const li = document.createElement('li');
+      li.className = 'historial-item';
+
+      const main = document.createElement('div');
+      main.className = 'historial-main';
+
+      const result = document.createElement('span');
+      result.className = 'historial-result';
+      result.textContent = `Partida #${item.partidaNumber} — ${resultLabel(item)}`;
+      main.appendChild(result);
+
+      const meta = document.createElement('span');
+      meta.className = 'historial-meta';
+      meta.textContent = `${item.size}×${item.size} · meta ${item.captureTarget} · ${formatDate(item.createdAt)}`;
+      main.appendChild(meta);
+
+      li.appendChild(main);
+
+      const link = document.createElement('a');
+      link.className = 'button-link';
+      link.href = `/api/partidas/id/${item.id}/sgf`;
+      link.textContent = 'Descargar SGF';
+      link.setAttribute('download', '');
+      li.appendChild(link);
+
+      historialList.appendChild(li);
+    }
+  }
 
   function applyState(state){
     latestState = state;
@@ -291,8 +391,19 @@
 
     boardFrame.classList.toggle('disabled', !bothPresent || state.gameOver);
 
-    resetBtn.classList.toggle('hidden', myColor !== 'black' && myColor !== 'white');
-    downloadSgfBtn.disabled = !state.moveCount;
+    const isPlayer = myColor === 'black' || myColor === 'white';
+    resignBtn.classList.toggle('hidden', !isPlayer || state.gameOver);
+    revanchaBox.classList.toggle('hidden', !isPlayer || !state.gameOver);
+
+    if (state.partidaId && state.moveCount > 0) {
+      downloadSgfLink.href = `/api/partidas/id/${state.partidaId}/sgf`;
+      downloadSgfLink.classList.remove('disabled');
+    } else {
+      downloadSgfLink.href = '#';
+      downloadSgfLink.classList.add('disabled');
+    }
+
+    partidaNumberLabel.textContent = `Partida #${state.partidaNumber} en esta sala`;
 
     spectatorCountLabel.textContent = state.spectatorCount > 0
       ? `${state.spectatorCount} persona${state.spectatorCount === 1 ? '' : 's'} mirando`
@@ -304,6 +415,9 @@
       : ('Turno: ' + (state.current === 'black' ? 'Negro' : 'Blanco'));
     capturesLabel.textContent = `Capturas (meta: ${state.captureTarget}) — Negro: ${state.captures.black} · Blanco: ${state.captures.white}`;
     messageEl.textContent = state.message || '';
+
+    if (state.gameOver && !wasGameOver) fetchHistorial();
+    wasGameOver = state.gameOver;
 
     render(state);
   }

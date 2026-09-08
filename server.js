@@ -268,27 +268,47 @@ function countSpectators(room) {
   return count;
 }
 
-// Salas con exactamente un jugador conectado (esperando rival).
-function getWaitingRooms() {
-  const list = [];
+// Salas "activas": primero las que esperan rival, después las que están
+// en curso (o recién terminadas, esperando revancha) — estas últimas se
+// pueden mirar como espectador.
+function getActiveRooms() {
+  const waiting = [];
+  const inProgress = [];
+
   for (const [code, room] of rooms.entries()) {
     const hasBlack = !!room.players.black;
     const hasWhite = !!room.players.white;
+
     if (hasBlack !== hasWhite) {
-      list.push({
+      waiting.push({
         code,
+        status: 'waiting',
         size: room.size,
         captureTarget: room.captureTarget,
         waitingSince: room.createdAt,
       });
+    } else if (hasBlack && hasWhite) {
+      inProgress.push({
+        code,
+        status: 'in_progress',
+        size: room.size,
+        captureTarget: room.captureTarget,
+        partidaNumber: room.partidaNumber,
+        gameOver: room.gameOver,
+        spectatorCount: countSpectators(room),
+        since: room.createdAt,
+      });
     }
   }
-  list.sort((a, b) => new Date(a.waitingSince) - new Date(b.waitingSince));
-  return list;
+
+  waiting.sort((a, b) => new Date(a.waitingSince) - new Date(b.waitingSince));
+  inProgress.sort((a, b) => new Date(b.since) - new Date(a.since));
+
+  return [...waiting, ...inProgress];
 }
 
-function broadcastLobbyRooms() {
-  io.emit('lobby_rooms', getWaitingRooms());
+function broadcastActiveRooms() {
+  io.emit('active_rooms', getActiveRooms());
 }
 
 function publicState(room, code) {
@@ -398,7 +418,7 @@ app.get('/api/partidas/id/:id/sgf', async (req, res) => {
 // ---------- socket.io ----------
 
 io.on('connection', (socket) => {
-  socket.emit('lobby_rooms', getWaitingRooms());
+  socket.emit('active_rooms', getActiveRooms());
 
   socket.on('create_room', async ({ size, captureTarget } = {}) => {
     const code = generateCode();
@@ -414,7 +434,7 @@ io.on('connection', (socket) => {
     room.partidaId = await persistNewPartida(room);
 
     socket.emit('joined', { color: 'black', state: publicState(room, code) });
-    broadcastLobbyRooms();
+    broadcastActiveRooms();
   });
 
   socket.on('join_room', ({ code } = {}) => {
@@ -437,7 +457,7 @@ io.on('connection', (socket) => {
 
     socket.emit('joined', { color: role, state: publicState(room, normalized) });
     socket.to(normalized).emit('state', publicState(room, normalized));
-    if (role === 'black' || role === 'white') broadcastLobbyRooms();
+    broadcastActiveRooms();
   });
 
   socket.on('watch_room', ({ code } = {}) => {
@@ -455,6 +475,7 @@ io.on('connection', (socket) => {
 
     socket.emit('joined', { color: 'spectator', state: publicState(room, normalized) });
     socket.to(normalized).emit('state', publicState(room, normalized));
+    broadcastActiveRooms();
   });
 
   socket.on('move', ({ x, y } = {}) => {
@@ -475,6 +496,7 @@ io.on('connection', (socket) => {
       if (room.gameOver) {
         persistFinish(room).catch(() => {});
         io.to(code).emit('history_updated');
+        broadcastActiveRooms();
       }
     }
   });
@@ -497,6 +519,7 @@ io.on('connection', (socket) => {
     io.to(code).emit('state', publicState(room, code));
     persistFinish(room).catch(() => {});
     io.to(code).emit('history_updated');
+    broadcastActiveRooms();
   });
 
   socket.on('revancha', async () => {
@@ -513,6 +536,7 @@ io.on('connection', (socket) => {
 
     io.to(code).emit('state', publicState(room, code));
     io.to(code).emit('history_updated');
+    broadcastActiveRooms();
   });
 
   socket.on('disconnect', () => {
@@ -520,20 +544,18 @@ io.on('connection', (socket) => {
     const room = rooms.get(code);
     if (!room) return;
 
-    const wasPlayer = socket.data.role === 'black' || socket.data.role === 'white';
-
     room.sockets.delete(socket.id);
     if (room.players.black === socket.id) room.players.black = null;
     if (room.players.white === socket.id) room.players.white = null;
 
     io.to(code).emit('state', publicState(room, code));
-    if (wasPlayer) broadcastLobbyRooms();
+    broadcastActiveRooms();
 
     if (!room.players.black && !room.players.white) {
       setTimeout(() => {
         const r = rooms.get(code);
         if (r && !r.players.black && !r.players.white) rooms.delete(code);
-        broadcastLobbyRooms();
+        broadcastActiveRooms();
       }, 60000);
     }
   });

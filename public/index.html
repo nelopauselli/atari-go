@@ -151,26 +151,46 @@
     <!-- LOBBY -->
     <div v-else-if="!joined">
       <div class="panel">
-        <h2>Salas esperando rival</h2>
+        <h2>Salas activas</h2>
         <div class="field-row">
           <label for="codeFilter">Buscar por código</label>
           <input id="codeFilter" v-model="codeFilter" maxlength="4" placeholder="Ej: 7K2Q" style="text-transform:uppercase; width: 100px;">
         </div>
-        <ul v-if="filteredLobbyRooms.length" class="historial-list">
-          <li v-for="r in filteredLobbyRooms" :key="r.code" class="historial-item">
-            <div class="historial-main">
-              <span class="historial-result">Sala {{ r.code }}</span>
-              <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · esperando desde hace {{ waitingSince(r.waitingSince) }}</span>
-            </div>
-            <button @click="joinWaitingRoom(r.code)">Unirse a jugar</button>
-          </li>
-        </ul>
+
+        <template v-if="filteredWaitingRooms.length || filteredInProgressRooms.length">
+          <template v-if="filteredWaitingRooms.length">
+            <p class="hint">Esperando rival</p>
+            <ul class="historial-list">
+              <li v-for="r in filteredWaitingRooms" :key="r.code" class="historial-item">
+                <div class="historial-main">
+                  <span class="historial-result">Sala {{ r.code }}</span>
+                  <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · esperando desde hace {{ waitingSince(r.waitingSince) }}</span>
+                </div>
+                <button @click="joinWaitingRoom(r.code)">Unirse a jugar</button>
+              </li>
+            </ul>
+          </template>
+
+          <template v-if="filteredInProgressRooms.length">
+            <p class="hint" style="margin-top: 14px;">Partidas en curso</p>
+            <ul class="historial-list">
+              <li v-for="r in filteredInProgressRooms" :key="r.code" class="historial-item">
+                <div class="historial-main">
+                  <span class="historial-result">Sala {{ r.code }} — {{ r.gameOver ? 'esperando revancha' : 'en curso' }}</span>
+                  <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · partida #{{ r.partidaNumber }} · {{ r.spectatorCount }} mirando</span>
+                </div>
+                <button @click="watchByCode(r.code)">Ver como espectador</button>
+              </li>
+            </ul>
+          </template>
+        </template>
         <p v-else class="hint">
-          {{ codeFilter ? 'Ninguna sala esperando coincide con ese código.' : 'Nadie está esperando rival ahora mismo — creá una sala y compartí el código, o esperá a que aparezca alguien acá.' }}
+          {{ codeFilter ? 'Ninguna sala activa coincide con ese código.' : 'No hay salas activas ahora mismo — creá una para arrancar.' }}
         </p>
-        <p v-if="codeFilter.length === 4" class="hint">
-          ¿Buscás la sala {{ codeFilter.toUpperCase() }} para mirarla (ya en curso o completa)?
-          <button @click="watchByCode">Mirar sala {{ codeFilter.toUpperCase() }}</button>
+
+        <p v-if="codeFilter.length === 4 && !exactMatchExists" class="hint">
+          ¿Buscás la sala {{ codeFilter.toUpperCase() }} para mirarla?
+          <button @click="watchByCode(codeFilter)">Mirar sala {{ codeFilter.toUpperCase() }}</button>
         </p>
         <p class="error">{{ lobbyError }}</p>
       </div>
@@ -495,14 +515,27 @@ const App = {
 
     const replay = reactive({ visible: false, data: null, step: 0, timer: null });
 
-    // ---------- salas esperando rival ----------
-    const lobbyRooms = ref([]);
-    socket.on('lobby_rooms', (list) => { lobbyRooms.value = list; });
+    // ---------- salas activas ----------
+    const activeRooms = ref([]); // [{ status: 'waiting'|'in_progress', ... }]
+    socket.on('active_rooms', (list) => { activeRooms.value = list; });
 
-    const filteredLobbyRooms = computed(() => {
+    const waitingRooms = computed(() => activeRooms.value.filter(r => r.status === 'waiting'));
+    const inProgressRooms = computed(() => activeRooms.value.filter(r => r.status === 'in_progress'));
+
+    const filteredWaitingRooms = computed(() => {
       const filter = codeFilter.value.trim().toUpperCase();
-      if (!filter) return lobbyRooms.value;
-      return lobbyRooms.value.filter(r => r.code.includes(filter));
+      if (!filter) return waitingRooms.value;
+      return waitingRooms.value.filter(r => r.code.includes(filter));
+    });
+    const filteredInProgressRooms = computed(() => {
+      const filter = codeFilter.value.trim().toUpperCase();
+      if (!filter) return inProgressRooms.value;
+      return inProgressRooms.value.filter(r => r.code.includes(filter));
+    });
+    const exactMatchExists = computed(() => {
+      const filter = codeFilter.value.trim().toUpperCase();
+      if (!filter) return false;
+      return activeRooms.value.some(r => r.code === filter);
     });
 
     const tick = ref(0); // fuerza recalcular "hace cuánto" cada 30s
@@ -520,11 +553,11 @@ const App = {
       lobbyError.value = '';
       socket.emit('join_room', { code });
     }
-    function watchByCode() {
-      const code = codeFilter.value.trim().toUpperCase();
-      if (!code) return;
+    function watchByCode(code) {
+      const normalized = (code || codeFilter.value).trim().toUpperCase();
+      if (!normalized) return;
       lobbyError.value = '';
-      socket.emit('watch_room', { code });
+      socket.emit('watch_room', { code: normalized });
     }
 
     const bothPresent = computed(() => state.hasBlack && state.hasWhite);
@@ -641,7 +674,7 @@ const App = {
       copyFeedback, copyWatchFeedback, state, replay,
       screen, historialItems, historialPage, historialTotalPages, historialFilter,
       goToHistorial, searchHistorial, clearHistorialFilter, changeHistorialPage,
-      lobbyRooms, filteredLobbyRooms, waitingSince, joinWaitingRoom, watchByCode,
+      filteredWaitingRooms, filteredInProgressRooms, exactMatchExists, waitingSince, joinWaitingRoom, watchByCode,
       bothPresent, isPlayer, canPlay, youAreText, waitingHint, turnLabel, capturesLabel,
       spectatorLabel, downloadHref, resultLabel, formatDate,
       createRoom, playCell, resign, revancha, copyCode, copyWatchLink,

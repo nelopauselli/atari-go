@@ -151,6 +151,31 @@
     <!-- LOBBY -->
     <div v-else-if="!joined">
       <div class="panel">
+        <h2>Salas esperando rival</h2>
+        <div class="field-row">
+          <label for="codeFilter">Buscar por código</label>
+          <input id="codeFilter" v-model="codeFilter" maxlength="4" placeholder="Ej: 7K2Q" style="text-transform:uppercase; width: 100px;">
+        </div>
+        <ul v-if="filteredLobbyRooms.length" class="historial-list">
+          <li v-for="r in filteredLobbyRooms" :key="r.code" class="historial-item">
+            <div class="historial-main">
+              <span class="historial-result">Sala {{ r.code }}</span>
+              <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · esperando desde hace {{ waitingSince(r.waitingSince) }}</span>
+            </div>
+            <button @click="joinWaitingRoom(r.code)">Unirse a jugar</button>
+          </li>
+        </ul>
+        <p v-else class="hint">
+          {{ codeFilter ? 'Ninguna sala esperando coincide con ese código.' : 'Nadie está esperando rival ahora mismo — creá una sala y compartí el código, o esperá a que aparezca alguien acá.' }}
+        </p>
+        <p v-if="codeFilter.length === 4" class="hint">
+          ¿Buscás la sala {{ codeFilter.toUpperCase() }} para mirarla (ya en curso o completa)?
+          <button @click="watchByCode">Mirar sala {{ codeFilter.toUpperCase() }}</button>
+        </p>
+        <p class="error">{{ lobbyError }}</p>
+      </div>
+
+      <div class="panel">
         <h2>Crear una sala nueva</h2>
         <div class="field-row">
           <label for="sizeSelect">Tamaño del tablero</label>
@@ -172,31 +197,6 @@
           </select>
         </div>
         <button @click="createRoom">Crear sala</button>
-      </div>
-
-      <div class="panel">
-        <h2>Unirse a una sala</h2>
-        <div class="field-row">
-          <label for="codeInput">Código de sala</label>
-          <input id="codeInput" v-model="codeInput" maxlength="4" placeholder="Ej: 7K2Q" style="text-transform:uppercase; width: 100px;">
-          <button @click="joinRoom">Unirse a jugar</button>
-          <button @click="watchRoom">Solo mirar</button>
-        </div>
-        <p class="error">{{ lobbyError }}</p>
-      </div>
-
-      <div class="panel">
-        <h2>Salas esperando rival</h2>
-        <ul v-if="lobbyRooms.length" class="historial-list">
-          <li v-for="r in lobbyRooms" :key="r.code" class="historial-item">
-            <div class="historial-main">
-              <span class="historial-result">Sala {{ r.code }}</span>
-              <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · esperando desde hace {{ waitingSince(r.waitingSince) }}</span>
-            </div>
-            <button @click="joinWaitingRoom(r.code)">Unirse a jugar</button>
-          </li>
-        </ul>
-        <p v-else class="hint">Nadie está esperando rival ahora mismo — creá una sala y compartí el código, o esperá a que aparezca alguien acá.</p>
       </div>
     </div>
 
@@ -442,7 +442,7 @@ const App = {
     const screen = ref('main'); // 'main' | 'historial'
     const sizeChoice = ref('7');
     const targetChoice = ref('1');
-    const codeInput = ref('');
+    const codeFilter = ref('');
     const copyFeedback = ref('');
     const copyWatchFeedback = ref(false);
 
@@ -499,6 +499,12 @@ const App = {
     const lobbyRooms = ref([]);
     socket.on('lobby_rooms', (list) => { lobbyRooms.value = list; });
 
+    const filteredLobbyRooms = computed(() => {
+      const filter = codeFilter.value.trim().toUpperCase();
+      if (!filter) return lobbyRooms.value;
+      return lobbyRooms.value.filter(r => r.code.includes(filter));
+    });
+
     const tick = ref(0); // fuerza recalcular "hace cuánto" cada 30s
     function waitingSince(iso) {
       void tick.value;
@@ -513,6 +519,12 @@ const App = {
     function joinWaitingRoom(code) {
       lobbyError.value = '';
       socket.emit('join_room', { code });
+    }
+    function watchByCode() {
+      const code = codeFilter.value.trim().toUpperCase();
+      if (!code) return;
+      lobbyError.value = '';
+      socket.emit('watch_room', { code });
     }
 
     const bothPresent = computed(() => state.hasBlack && state.hasWhite);
@@ -545,18 +557,6 @@ const App = {
     function createRoom() {
       lobbyError.value = '';
       socket.emit('create_room', { size: parseInt(sizeChoice.value, 10), captureTarget: parseInt(targetChoice.value, 10) });
-    }
-    function joinRoom() {
-      const code = codeInput.value.trim().toUpperCase();
-      if (!code) { lobbyError.value = 'Ingresá un código de sala.'; return; }
-      lobbyError.value = '';
-      socket.emit('join_room', { code });
-    }
-    function watchRoom() {
-      const code = codeInput.value.trim().toUpperCase();
-      if (!code) { lobbyError.value = 'Ingresá un código de sala.'; return; }
-      lobbyError.value = '';
-      socket.emit('watch_room', { code });
     }
     function playCell({ x, y }) { socket.emit('move', { x, y }); }
     function resign() {
@@ -637,14 +637,14 @@ const App = {
     });
 
     return {
-      joined, myColor, roomCode, lobbyError, sizeChoice, targetChoice, codeInput,
+      joined, myColor, roomCode, lobbyError, sizeChoice, targetChoice, codeFilter,
       copyFeedback, copyWatchFeedback, state, replay,
       screen, historialItems, historialPage, historialTotalPages, historialFilter,
       goToHistorial, searchHistorial, clearHistorialFilter, changeHistorialPage,
-      lobbyRooms, waitingSince, joinWaitingRoom,
+      lobbyRooms, filteredLobbyRooms, waitingSince, joinWaitingRoom, watchByCode,
       bothPresent, isPlayer, canPlay, youAreText, waitingHint, turnLabel, capturesLabel,
       spectatorLabel, downloadHref, resultLabel, formatDate,
-      createRoom, joinRoom, watchRoom, playCell, resign, revancha, copyCode, copyWatchLink,
+      createRoom, playCell, resign, revancha, copyCode, copyWatchLink,
       replayBoard, openReplay, closeReplay, replayFirst, replayPrev, replayNext, replayLast, replayToggle,
     };
   },

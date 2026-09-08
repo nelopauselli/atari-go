@@ -40,12 +40,14 @@ misma red usando tu IP local) para probarlo con dos jugadores.
 1. Un jugador crea la sala eligiendo tamaño de tablero y piedras necesarias
    para ganar. Recibe un código de 4 caracteres. Esto guarda la partida #1
    de esa sala en MongoDB.
-2. Comparte el código con el rival, que lo ingresa en "Unirse a una sala".
-   Alternativamente, cualquiera que entre a la webapp sin código ve un
-   listado de "Salas esperando rival" con las salas creadas y sin
-   completar en ese momento — puede sumarse a cualquiera con un clic, sin
-   coordinar nada por fuera. La lista se actualiza sola (por WebSocket) a
-   medida que se crean, se completan o quedan libres salas.
+2. Alternativamente, cualquiera que entre a la webapp sin código ve
+   primero un listado de "Salas esperando rival" con las salas creadas y
+   sin completar en ese momento — puede sumarse a cualquiera con un clic,
+   sin coordinar nada por fuera. La lista se actualiza sola (por
+   WebSocket) a medida que se crean, se completan o quedan libres salas.
+   Tiene un buscador por código para filtrarla, que además sirve para
+   pedir "Mirar sala X" directamente si esa sala ya está completa o en
+   curso (y por eso no aparece en el listado de espera).
 3. El servidor valida cada jugada (capturas, jugadas suicidas), sincroniza
    el tablero a ambos jugadores, y guarda cada jugada en MongoDB.
 4. Si alguien más se conecta a una sala llena, entra como espectador. Con

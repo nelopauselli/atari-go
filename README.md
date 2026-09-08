@@ -60,7 +60,8 @@ misma red usando tu IP local) para probarlo con dos jugadores.
 6. Al terminar una partida (por captura, rendición, tiempo agotado o
    empate), los jugadores ven un botón "Jugar revancha en esta sala":
    arranca una partida nueva (#2, #3, ...) en la misma sala, con el mismo
-   reloj configurado, sin perder el registro de las anteriores.
+   reloj configurado y **los colores invertidos** (quien jugó con Negro
+   pasa a Blanco y viceversa), sin perder el registro de las anteriores.
 7. Si la sala tiene reloj, el servidor es quien lo controla (no el
    navegador de cada jugador) — descuenta el tiempo real usado en cada
    jugada, aplica el incremento Fischer cuando corresponde, y si a
@@ -75,6 +76,32 @@ misma red usando tu IP local) para probarlo con dos jugadores.
    (paginadas de a 10), con opción de filtrar por código de sala si lo
    tenés. Cada partida tiene "Ver partida" (abre el visor de reproducción
    jugada por jugada) y "Descargar SGF".
+
+## Estructura del proyecto
+
+```
+atari-go-online/
+├── server.js              # punto de entrada: arma Express + Socket.io y arranca
+├── lib/
+│   ├── go-rules.js         # reglas del tablero (libertades, capturas, jugada válida)
+│   ├── clock.js            # opciones de reloj y toda la aritmética de tiempo
+│   ├── sgf.js               # generación de archivos SGF
+│   ├── persistence.js       # conexión a MongoDB y guardado de partidas
+│   ├── rooms.js              # estado de las salas en memoria
+│   └── sockets.js            # todos los handlers de Socket.io (usa los anteriores)
+├── routes/
+│   └── partidas.js            # endpoints REST del historial (/api/partidas...)
+└── public/
+    ├── index.html               # markup, sin estilos ni lógica embebidos
+    ├── style.css                 # todos los estilos
+    └── js/
+        ├── app.js                  # app raíz de Vue (estado, sockets, historial)
+        ├── atari-board.js          # componente del tablero SVG
+        └── go-replay.js            # recalcula capturas para reproducir partidas guardadas
+```
+
+El cliente usa módulos ES nativos del navegador (`<script type="module">`,
+`import`/`export`) — no hace falta bundler tampoco ahí.
 
 ## Notas técnicas
 
@@ -98,11 +125,15 @@ misma red usando tu IP local) para probarlo con dos jugadores.
   las jugadas sean instantáneas; la persistencia en MongoDB es best-effort
   (se actualiza en cada jugada, pero si Mongo está caído el juego no se
   interrumpe).
-- Las salas vacías (sin jugadores conectados) se eliminan de la memoria
-  después de un minuto — esto no borra nada de MongoDB, solo la sesión en
-  vivo. El código de sala podría reutilizarse más adelante para otra sala
-  distinta, así que el historial se consulta por código + fecha, no hay
-  que asumir que un código pertenece para siempre a la misma sala.
+- Las salas vacías se manejan distinto según si llegaron a completarse
+  alguna vez. Si una sala **nunca encontró un segundo jugador** y quien la
+  creó se va, se cancela al instante (no queda listada ni en "Salas
+  activas" ni en el historial — se borra también la partida vacía de
+  MongoDB, ya que no tiene ninguna jugada). Si la partida **ya había
+  arrancado** (los dos jugadores llegaron a estar presentes) y de golpe
+  se queda sin nadie, se le da un margen de 60 segundos antes de
+  eliminarla de la memoria, por si alguien se reconecta — eso no borra
+  nada de MongoDB, solo la sesión en vivo.
 - Para producción con múltiples instancias del servidor, la sala en
   memoria tendría que resolverse con el adaptador de Redis de Socket.io
   (el historial en MongoDB ya es compartible entre instancias tal cual).

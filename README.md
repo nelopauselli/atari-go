@@ -37,9 +37,10 @@ misma red usando tu IP local) para probarlo con dos jugadores.
 
 ## Cómo se juega
 
-1. Un jugador crea la sala eligiendo tamaño de tablero y piedras necesarias
-   para ganar. Recibe un código de 4 caracteres. Esto guarda la partida #1
-   de esa sala en MongoDB.
+1. Un jugador crea la sala eligiendo tamaño de tablero, piedras necesarias
+   para ganar, y opcionalmente un reloj (Fischer 5m+10s, Fischer 10m+5s,
+   Absoluto 10m, o sin reloj). Recibe un código de 4 caracteres. Esto
+   guarda la partida #1 de esa sala en MongoDB.
 2. Alternativamente, cualquiera que entre a la webapp sin código ve
    primero un listado de "Salas activas": arriba las que están
    "Esperando rival" (podés sumarte con un clic), y debajo las
@@ -56,11 +57,18 @@ misma red usando tu IP local) para probarlo con dos jugadores.
    sumarse a mirar sin ocupar el lugar de un jugador.
 5. Cualquiera de los dos jugadores puede rendirse en cualquier momento con
    "Rendirse" (pide confirmación), lo que le da la victoria al rival.
-6. Al terminar una partida (por captura, rendición o empate), los
-   jugadores ven un botón "Jugar revancha en esta sala": arranca una
-   partida nueva (#2, #3, ...) en la misma sala, sin perder el registro de
-   las anteriores.
-7. El historial **no vive dentro de la sala** — es una vista propia
+6. Al terminar una partida (por captura, rendición, tiempo agotado o
+   empate), los jugadores ven un botón "Jugar revancha en esta sala":
+   arranca una partida nueva (#2, #3, ...) en la misma sala, con el mismo
+   reloj configurado, sin perder el registro de las anteriores.
+7. Si la sala tiene reloj, el servidor es quien lo controla (no el
+   navegador de cada jugador) — descuenta el tiempo real usado en cada
+   jugada, aplica el incremento Fischer cuando corresponde, y si a
+   alguien se le acaba el tiempo, pierde la partida automáticamente
+   aunque no haga ningún movimiento (chequeo cada 1 segundo en el
+   servidor). El reloj se pausa solo si alguno de los dos jugadores se
+   desconecta, y se reanuda cuando ambos vuelven a estar presentes.
+8. El historial **no vive dentro de la sala** — es una vista propia
    ("Historial de partidas" en la barra de navegación de arriba,
    accesible siempre, sin necesidad de tener o recordar un código de
    sala). Lista las últimas partidas jugadas en todo el servidor
@@ -69,6 +77,15 @@ misma red usando tu IP local) para probarlo con dos jugadores.
    jugada por jugada) y "Descargar SGF".
 
 ## Notas técnicas
+
+- El reloj es autoritativo del servidor: cada sala guarda el tiempo
+  restante de cada color en milisegundos, más una marca de cuándo
+  arrancó a correr el turno actual. El cliente solo calcula localmente
+  (cada 250ms) cuánto mostrar, restando ese instante contra la hora
+  actual — así el conteo se ve fluido sin pedirle nada al servidor, pero
+  quien decide si a alguien se le acabó el tiempo es siempre el
+  servidor. Esto evita que alguien pueda "hacer trampa" manipulando el
+  reloj de su propio navegador.
 
 - El frontend está hecho en **Vue 3** (Composition API), cargado desde
   `unpkg.com` directo en el HTML — no hay paso de build, ni npm para el

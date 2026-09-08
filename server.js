@@ -14,6 +14,28 @@ const PORT = process.env.PORT || 3000;
 const ALLOWED_SIZES = [5, 7, 9, 13];
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin caracteres ambiguos
 
+// Opciones de reloj disponibles. 'none' no tiene entrada acá (se maneja aparte).
+const TIME_CONTROLS = {
+  'fischer-5-10': { type: 'fischer', label: 'Fischer 5m + 10s', initialSeconds: 5 * 60, incrementSeconds: 10 },
+  'fischer-10-5': { type: 'fischer', label: 'Fischer 10m + 5s', initialSeconds: 10 * 60, incrementSeconds: 5 },
+  'absolute-10': { type: 'absolute', label: 'Absoluto 10m', initialSeconds: 10 * 60, incrementSeconds: 0 },
+};
+
+function normalizeTimeControl(id) {
+  return Object.prototype.hasOwnProperty.call(TIME_CONTROLS, id) ? id : 'none';
+}
+
+function initClock(timeControlId) {
+  const tc = TIME_CONTROLS[timeControlId];
+  if (!tc) return null;
+  return {
+    black: tc.initialSeconds * 1000,
+    white: tc.initialSeconds * 1000,
+    turnStartedAt: null,
+    running: false,
+  };
+}
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
 const MONGODB_DB = process.env.MONGODB_DB || 'atarigo';
 
@@ -84,9 +106,75 @@ function groupAndLiberties(board, size, x, y) {
 
 function opponent(c) { return c === 'black' ? 'white' : 'black'; }
 
-function makeRoom(code, size, captureTarget) {
+// ---------- manejo del reloj ----------
+
+function pauseClock(room) {
+  if (!room.clock || !room.clock.running) return;
+  const elapsed = Date.now() - room.clock.turnStartedAt;
+  room.clock[room.current] = Math.max(0, room.clock[room.current] - elapsed);
+  room.clock.running = false;
+}
+
+function resumeClock(room) {
+  if (!room.clock || room.clock.running || room.gameOver) return;
+  if (!room.players.black || !room.players.white) return;
+  room.clock.running = true;
+  room.clock.turnStartedAt = Date.now();
+}
+
+// Descuenta el tiempo usado por quien acaba de mover y le suma el incremento (Fischer).
+function tickClockForMove(room, mover) {
+  if (!room.clock) return;
+  const tc = TIME_CONTROLS[room.timeControlId];
+  const elapsed = Date.now() - room.clock.turnStartedAt;
+  room.clock[mover] = Math.max(0, room.clock[mover] - elapsed);
+  if (tc && tc.type === 'fischer') room.clock[mover] += tc.incrementSeconds * 1000;
+  if (room.gameOver) {
+    room.clock.running = false;
+  } else {
+    room.clock.turnStartedAt = Date.now();
+  }
+}
+
+function remainingMs(room, color) {
+  if (!room.clock) return null;
+  if (room.clock.running && room.current === color) {
+    return Math.max(0, room.clock[color] - (Date.now() - room.clock.turnStartedAt));
+  }
+  return room.clock[color];
+}
+
+function applyTimeout(room, code, colorOutOfTime) {
+  if (room.gameOver) return;
+  const winner = opponent(colorOutOfTime);
+  room.gameOver = true;
+  room.winner = winner;
+  room.winReason = 'timeout';
+  const loserLabel = colorOutOfTime === 'black' ? 'Negro' : 'Blanco';
+  const winnerLabel = winner === 'black' ? 'Negro' : 'Blanco';
+  room.message = `${loserLabel} se quedó sin tiempo — ¡${winnerLabel} gana!`;
+  if (room.clock) {
+    room.clock[colorOutOfTime] = 0;
+    room.clock.running = false;
+  }
+  io.to(code).emit('state', publicState(room, code));
+  persistFinish(room).catch(() => {});
+  io.to(code).emit('history_updated');
+  broadcastActiveRooms();
+}
+
+// Revisa todas las salas con reloj corriendo y aplica derrota por tiempo si se les acabó.
+setInterval(() => {
+  for (const [code, room] of rooms.entries()) {
+    if (!room.clock || !room.clock.running || room.gameOver) continue;
+    if (remainingMs(room, room.current) <= 0) applyTimeout(room, code, room.current);
+  }
+}, 1000);
+
+function makeRoom(code, size, captureTarget, timeControlId) {
   size = ALLOWED_SIZES.includes(size) ? size : 7;
   captureTarget = Number.isInteger(captureTarget) && captureTarget >= 1 && captureTarget <= 25 ? captureTarget : 1;
+  const normalizedTimeControl = normalizeTimeControl(timeControlId);
   return {
     salaCode: code,
     size,
@@ -97,13 +185,15 @@ function makeRoom(code, size, captureTarget) {
     gameOver: false,
     message: '',
     winner: null,
-    winReason: null, // 'capture' | 'resign' | 'draw'
+    winReason: null, // 'capture' | 'resign' | 'draw' | 'timeout'
     players: { black: null, white: null },
     sockets: new Map(), // socketId -> role ('black' | 'white' | 'spectator')
     moveHistory: [], // { color, x, y }
     createdAt: new Date(),
     partidaNumber: 1,
     partidaId: null, // ObjectId en Mongo de la partida actual
+    timeControlId: normalizedTimeControl,
+    clock: initClock(normalizedTimeControl),
   };
 }
 
@@ -116,6 +206,7 @@ function startNewPartida(room) {
   room.winner = null;
   room.winReason = null;
   room.moveHistory = [];
+  room.clock = initClock(room.timeControlId);
   room.createdAt = new Date();
   room.partidaId = null;
 }
@@ -187,10 +278,19 @@ function sgfCoord(x, y) {
 function buildSgf(data) {
   const dateStr = (data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt)).toISOString().slice(0, 10);
 
+  function resultSuffix(color) {
+    if (data.winReason === 'resign') return 'R';
+    if (data.winReason === 'timeout') return 'T';
+    return String(data.captures[color]);
+  }
+
   let resultTag = '';
-  if (data.winner === 'black') resultTag = `RE[B+${data.winReason === 'resign' ? 'R' : data.captures.black}]`;
-  else if (data.winner === 'white') resultTag = `RE[W+${data.winReason === 'resign' ? 'R' : data.captures.white}]`;
+  if (data.winner === 'black') resultTag = `RE[B+${resultSuffix('black')}]`;
+  else if (data.winner === 'white') resultTag = `RE[W+${resultSuffix('white')}]`;
   else if (data.gameOver) resultTag = 'RE[Void]';
+
+  const tc = TIME_CONTROLS[data.timeControlId];
+  const timeTags = tc ? [`TM[${tc.initialSeconds}]`, tc.type === 'fischer' ? `OT[Fischer +${tc.incrementSeconds}s por jugada]` : ''] : [];
 
   const header = [
     'FF[4]', 'GM[1]', `SZ[${data.size}]`,
@@ -199,6 +299,7 @@ function buildSgf(data) {
     `RU[Atari-Go: gana quien capture ${data.captureTarget} piedra(s)]`,
     `DT[${dateStr}]`,
     'AP[AtariGoOnline:1.0]',
+    ...timeTags,
     resultTag,
   ].filter(Boolean).join('');
 
@@ -219,6 +320,7 @@ async function persistNewPartida(room) {
       partidaNumber: room.partidaNumber,
       size: room.size,
       captureTarget: room.captureTarget,
+      timeControlId: room.timeControlId,
       moveHistory: [],
       captures: { black: 0, white: 0 },
       gameOver: false,
@@ -285,6 +387,7 @@ function getActiveRooms() {
         status: 'waiting',
         size: room.size,
         captureTarget: room.captureTarget,
+        timeControlId: room.timeControlId,
         waitingSince: room.createdAt,
       });
     } else if (hasBlack && hasWhite) {
@@ -293,6 +396,7 @@ function getActiveRooms() {
         status: 'in_progress',
         size: room.size,
         captureTarget: room.captureTarget,
+        timeControlId: room.timeControlId,
         partidaNumber: room.partidaNumber,
         gameOver: room.gameOver,
         spectatorCount: countSpectators(room),
@@ -329,6 +433,13 @@ function publicState(room, code) {
     moveCount: room.moveHistory.length,
     partidaId: room.partidaId ? room.partidaId.toString() : null,
     partidaNumber: room.partidaNumber,
+    timeControlId: room.timeControlId,
+    clock: room.clock ? {
+      black: room.clock.black,
+      white: room.clock.white,
+      running: room.clock.running,
+      turnStartedAt: room.clock.turnStartedAt,
+    } : null,
   };
 }
 
@@ -364,6 +475,7 @@ app.get('/api/partidas', async (req, res) => {
         gameOver: d.gameOver,
         winner: d.winner,
         winReason: d.winReason,
+        timeControlId: d.timeControlId || 'none',
         createdAt: d.createdAt,
         finishedAt: d.finishedAt,
       })),
@@ -393,6 +505,7 @@ app.get('/api/partidas/id/:id', async (req, res) => {
       gameOver: doc.gameOver,
       winner: doc.winner,
       winReason: doc.winReason,
+      timeControlId: doc.timeControlId || 'none',
       createdAt: doc.createdAt,
       finishedAt: doc.finishedAt,
     });
@@ -420,9 +533,9 @@ app.get('/api/partidas/id/:id/sgf', async (req, res) => {
 io.on('connection', (socket) => {
   socket.emit('active_rooms', getActiveRooms());
 
-  socket.on('create_room', async ({ size, captureTarget } = {}) => {
+  socket.on('create_room', async ({ size, captureTarget, timeControl } = {}) => {
     const code = generateCode();
-    const room = makeRoom(code, Number(size), Number(captureTarget));
+    const room = makeRoom(code, Number(size), Number(captureTarget), timeControl);
     room.players.black = socket.id;
     room.sockets.set(socket.id, 'black');
     rooms.set(code, room);
@@ -454,6 +567,8 @@ io.on('connection', (socket) => {
     socket.join(normalized);
     socket.data.code = normalized;
     socket.data.role = role;
+
+    resumeClock(room);
 
     socket.emit('joined', { color: role, state: publicState(room, normalized) });
     socket.to(normalized).emit('state', publicState(room, normalized));
@@ -488,7 +603,13 @@ io.on('connection', (socket) => {
     if (!room.players.black || !room.players.white) return;
     if (room.current !== role) return;
 
+    if (room.clock && room.clock.running && remainingMs(room, role) <= 0) {
+      applyTimeout(room, code, role);
+      return;
+    }
+
     const legal = doMove(room, role, Number(x), Number(y));
+    if (legal) tickClockForMove(room, role);
     io.to(code).emit('state', publicState(room, code));
 
     if (legal) {
@@ -515,6 +636,7 @@ io.on('connection', (socket) => {
     const loserLabel = role === 'black' ? 'Negro' : 'Blanco';
     const winnerLabel = room.winner === 'black' ? 'Negro' : 'Blanco';
     room.message = `${loserLabel} se rindió — ¡${winnerLabel} gana!`;
+    pauseClock(room);
 
     io.to(code).emit('state', publicState(room, code));
     persistFinish(room).catch(() => {});
@@ -529,10 +651,12 @@ io.on('connection', (socket) => {
     const role = socket.data.role;
     if (role !== 'black' && role !== 'white') return;
     if (!room.gameOver) return;
+    if (!room.players.black || !room.players.white) return;
 
     room.partidaNumber += 1;
     startNewPartida(room);
     room.partidaId = await persistNewPartida(room);
+    resumeClock(room);
 
     io.to(code).emit('state', publicState(room, code));
     io.to(code).emit('history_updated');
@@ -547,6 +671,8 @@ io.on('connection', (socket) => {
     room.sockets.delete(socket.id);
     if (room.players.black === socket.id) room.players.black = null;
     if (room.players.white === socket.id) room.players.white = null;
+
+    pauseClock(room);
 
     io.to(code).emit('state', publicState(room, code));
     broadcastActiveRooms();

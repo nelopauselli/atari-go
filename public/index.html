@@ -62,6 +62,16 @@
   .board-frame.disabled{ filter: saturate(0.7) brightness(0.85); }
   svg{ display:block; max-width:100%; height:auto; touch-action: manipulation; }
   .status-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px; font-size: 0.9rem; }
+  .clock-row{ display:flex; justify-content:center; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
+  .clock-chip{
+    display:flex; align-items:center; gap: 8px;
+    border: 1px solid #2c281f; padding: 8px 14px;
+    font-variant-numeric: tabular-nums; font-size: 0.95rem; color: var(--muted);
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .clock-chip .turn-dot{ width: 12px; height: 12px; }
+  .clock-chip.active{ border-color: var(--paper); color: var(--paper); }
+  .clock-chip.low{ border-color: var(--hanko); color: var(--hanko); }
   .turn-indicator{ display:flex; align-items:center; gap: 10px; }
   .turn-dot{ width:16px; height:16px; border-radius:50%; box-shadow: inset -2px -2px 3px rgba(0,0,0,0.3), inset 2px 2px 3px rgba(255,255,255,0.15); }
   .turn-dot.black{ background: radial-gradient(circle at 35% 30%, var(--stone-black-hi), #0a0a0a); }
@@ -130,7 +140,7 @@
           <li v-for="item in historialItems" :key="item.id" class="historial-item">
             <div class="historial-main">
               <span class="historial-result">Sala {{ item.salaCode }} — Partida #{{ item.partidaNumber }} — {{ resultLabel(item) }}</span>
-              <span class="historial-meta">{{ item.size }}×{{ item.size }} · meta {{ item.captureTarget }} · {{ formatDate(item.createdAt) }}</span>
+              <span class="historial-meta">{{ item.size }}×{{ item.size }} · meta {{ item.captureTarget }} · {{ timeControlLabel(item.timeControlId) }} · {{ formatDate(item.createdAt) }}</span>
             </div>
             <div class="action-row">
               <button @click="openReplay(item.id)">Ver partida</button>
@@ -164,7 +174,7 @@
               <li v-for="r in filteredWaitingRooms" :key="r.code" class="historial-item">
                 <div class="historial-main">
                   <span class="historial-result">Sala {{ r.code }}</span>
-                  <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · esperando desde hace {{ waitingSince(r.waitingSince) }}</span>
+                  <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · {{ timeControlLabel(r.timeControlId) }} · esperando desde hace {{ waitingSince(r.waitingSince) }}</span>
                 </div>
                 <button @click="joinWaitingRoom(r.code)">Unirse a jugar</button>
               </li>
@@ -177,7 +187,7 @@
               <li v-for="r in filteredInProgressRooms" :key="r.code" class="historial-item">
                 <div class="historial-main">
                   <span class="historial-result">Sala {{ r.code }} — {{ r.gameOver ? 'esperando revancha' : 'en curso' }}</span>
-                  <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · partida #{{ r.partidaNumber }} · {{ r.spectatorCount }} mirando</span>
+                  <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · {{ timeControlLabel(r.timeControlId) }} · partida #{{ r.partidaNumber }} · {{ r.spectatorCount }} mirando</span>
                 </div>
                 <button @click="watchByCode(r.code)">Ver como espectador</button>
               </li>
@@ -216,6 +226,15 @@
             <option value="10">10</option>
           </select>
         </div>
+        <div class="field-row">
+          <label for="timeSelect">Reloj</label>
+          <select id="timeSelect" v-model="timeControlChoice">
+            <option value="none">Sin reloj</option>
+            <option value="fischer-5-10">Fischer 5m + 10s</option>
+            <option value="fischer-10-5">Fischer 10m + 5s</option>
+            <option value="absolute-10">Absoluto 10m</option>
+          </select>
+        </div>
         <button @click="createRoom">Crear sala</button>
       </div>
     </div>
@@ -250,6 +269,17 @@
         </div>
       </div>
 
+      <div v-if="state.clock" class="clock-row">
+        <div class="clock-chip" :class="{ active: clockRunningFor('black'), low: clockLow('black') }">
+          <span class="turn-dot black"></span>
+          <span>Negro {{ clockLabel('black') }}</span>
+        </div>
+        <div class="clock-chip" :class="{ active: clockRunningFor('white'), low: clockLow('white') }">
+          <span class="turn-dot white"></span>
+          <span>Blanco {{ clockLabel('white') }}</span>
+        </div>
+      </div>
+
       <div class="status-row">
         <div class="turn-indicator">
           <span class="turn-dot" :class="state.current"></span>
@@ -277,7 +307,7 @@
         <h2>Partida #{{ replay.data.partidaNumber }} — sala {{ replay.data.salaCode }}</h2>
         <button @click="closeReplay">Cerrar</button>
       </div>
-      <p class="hint">{{ replay.data.size }}×{{ replay.data.size }} · meta {{ replay.data.captureTarget }} · {{ formatDate(replay.data.createdAt) }}</p>
+      <p class="hint">{{ replay.data.size }}×{{ replay.data.size }} · meta {{ replay.data.captureTarget }} · {{ timeControlLabel(replay.data.timeControlId) }} · {{ formatDate(replay.data.createdAt) }}</p>
       <div class="board-shell">
         <div class="board-frame">
           <atari-board :size="replay.data.size" :board="replayBoard" :can-play="false" id-prefix="replay"></atari-board>
@@ -432,6 +462,17 @@ function groupLibsC(board, size, x, y) {
   return { group, liberties };
 }
 
+// ---------- reloj ----------
+const TIME_CONTROL_LABELS = {
+  none: 'Sin reloj',
+  'fischer-5-10': 'Fischer 5m+10s',
+  'fischer-10-5': 'Fischer 10m+5s',
+  'absolute-10': 'Absoluto 10m',
+};
+function timeControlLabel(id) {
+  return TIME_CONTROL_LABELS[id] || 'Sin reloj';
+}
+
 function boardAtStep(moveHistory, size, uptoCount) {
   const board = Array.from({ length: size }, () => Array(size).fill(null));
   for (let i = 0; i < uptoCount; i++) {
@@ -462,6 +503,7 @@ const App = {
     const screen = ref('main'); // 'main' | 'historial'
     const sizeChoice = ref('7');
     const targetChoice = ref('1');
+    const timeControlChoice = ref('none');
     const codeFilter = ref('');
     const copyFeedback = ref('');
     const copyWatchFeedback = ref(false);
@@ -514,6 +556,35 @@ const App = {
     }
 
     const replay = reactive({ visible: false, data: null, step: 0, timer: null });
+
+    // ---------- reloj en vivo ----------
+    const clockTick = ref(Date.now());
+    function remainingMs(color) {
+      if (!state.clock) return null;
+      const base = state.clock[color];
+      if (state.clock.running && state.current === color) {
+        void clockTick.value; // dependencia reactiva: recalcula en cada tick
+        return Math.max(0, base - (Date.now() - state.clock.turnStartedAt));
+      }
+      return base;
+    }
+    function formatClock(ms) {
+      if (ms === null) return '';
+      const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+    function clockLow(color) {
+      const ms = remainingMs(color);
+      return ms !== null && ms <= 20000;
+    }
+    function clockRunningFor(color) {
+      return !!(state.clock && state.clock.running && state.current === color);
+    }
+    function clockLabel(color) {
+      return formatClock(remainingMs(color));
+    }
 
     // ---------- salas activas ----------
     const activeRooms = ref([]); // [{ status: 'waiting'|'in_progress', ... }]
@@ -581,6 +652,7 @@ const App = {
       if (item.winner === null) return 'Empate';
       const winnerLabel = item.winner === 'black' ? 'Negro' : 'Blanco';
       if (item.winReason === 'resign') return `${winnerLabel} gana (rendición)`;
+      if (item.winReason === 'timeout') return `${winnerLabel} gana (tiempo)`;
       return `${winnerLabel} gana (${item.captures[item.winner]}/${item.captureTarget} capturas)`;
     }
     function formatDate(iso) {
@@ -589,7 +661,11 @@ const App = {
 
     function createRoom() {
       lobbyError.value = '';
-      socket.emit('create_room', { size: parseInt(sizeChoice.value, 10), captureTarget: parseInt(targetChoice.value, 10) });
+      socket.emit('create_room', {
+        size: parseInt(sizeChoice.value, 10),
+        captureTarget: parseInt(targetChoice.value, 10),
+        timeControl: timeControlChoice.value,
+      });
     }
     function playCell({ x, y }) { socket.emit('move', { x, y }); }
     function resign() {
@@ -667,16 +743,18 @@ const App = {
       if (watchParam) socket.emit('watch_room', { code: watchParam.toUpperCase() });
 
       setInterval(() => { tick.value++; }, 30000);
+      setInterval(() => { clockTick.value = Date.now(); }, 250);
     });
 
     return {
-      joined, myColor, roomCode, lobbyError, sizeChoice, targetChoice, codeFilter,
+      joined, myColor, roomCode, lobbyError, sizeChoice, targetChoice, timeControlChoice, codeFilter,
       copyFeedback, copyWatchFeedback, state, replay,
       screen, historialItems, historialPage, historialTotalPages, historialFilter,
       goToHistorial, searchHistorial, clearHistorialFilter, changeHistorialPage,
       filteredWaitingRooms, filteredInProgressRooms, exactMatchExists, waitingSince, joinWaitingRoom, watchByCode,
+      formatClock, clockLow, clockRunningFor, clockLabel,
       bothPresent, isPlayer, canPlay, youAreText, waitingHint, turnLabel, capturesLabel,
-      spectatorLabel, downloadHref, resultLabel, formatDate,
+      spectatorLabel, downloadHref, resultLabel, formatDate, timeControlLabel,
       createRoom, playCell, resign, revancha, copyCode, copyWatchLink,
       replayBoard, openReplay, closeReplay, replayFirst, replayPrev, replayNext, replayLast, replayToggle,
     };

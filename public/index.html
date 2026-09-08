@@ -184,6 +184,20 @@
         </div>
         <p class="error">{{ lobbyError }}</p>
       </div>
+
+      <div class="panel">
+        <h2>Salas esperando rival</h2>
+        <ul v-if="lobbyRooms.length" class="historial-list">
+          <li v-for="r in lobbyRooms" :key="r.code" class="historial-item">
+            <div class="historial-main">
+              <span class="historial-result">Sala {{ r.code }}</span>
+              <span class="historial-meta">{{ r.size }}×{{ r.size }} · meta {{ r.captureTarget }} · esperando desde hace {{ waitingSince(r.waitingSince) }}</span>
+            </div>
+            <button @click="joinWaitingRoom(r.code)">Unirse a jugar</button>
+          </li>
+        </ul>
+        <p v-else class="hint">Nadie está esperando rival ahora mismo — creá una sala y compartí el código, o esperá a que aparezca alguien acá.</p>
+      </div>
     </div>
 
     <!-- GAME -->
@@ -481,6 +495,26 @@ const App = {
 
     const replay = reactive({ visible: false, data: null, step: 0, timer: null });
 
+    // ---------- salas esperando rival ----------
+    const lobbyRooms = ref([]);
+    socket.on('lobby_rooms', (list) => { lobbyRooms.value = list; });
+
+    const tick = ref(0); // fuerza recalcular "hace cuánto" cada 30s
+    function waitingSince(iso) {
+      void tick.value;
+      const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+      if (seconds < 60) return `${seconds}s`;
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} min`;
+      const hours = Math.floor(minutes / 60);
+      return `${hours} h`;
+    }
+
+    function joinWaitingRoom(code) {
+      lobbyError.value = '';
+      socket.emit('join_room', { code });
+    }
+
     const bothPresent = computed(() => state.hasBlack && state.hasWhite);
     const isPlayer = computed(() => myColor.value === 'black' || myColor.value === 'white');
     const canPlay = computed(() => !state.gameOver && bothPresent.value && isPlayer.value && state.current === myColor.value);
@@ -598,6 +632,8 @@ const App = {
       const params = new URLSearchParams(location.search);
       const watchParam = params.get('watch');
       if (watchParam) socket.emit('watch_room', { code: watchParam.toUpperCase() });
+
+      setInterval(() => { tick.value++; }, 30000);
     });
 
     return {
@@ -605,6 +641,7 @@ const App = {
       copyFeedback, copyWatchFeedback, state, replay,
       screen, historialItems, historialPage, historialTotalPages, historialFilter,
       goToHistorial, searchHistorial, clearHistorialFilter, changeHistorialPage,
+      lobbyRooms, waitingSince, joinWaitingRoom,
       bothPresent, isPlayer, canPlay, youAreText, waitingHint, turnLabel, capturesLabel,
       spectatorLabel, downloadHref, resultLabel, formatDate,
       createRoom, joinRoom, watchRoom, playCell, resign, revancha, copyCode, copyWatchLink,

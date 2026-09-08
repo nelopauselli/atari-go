@@ -41,6 +41,11 @@ misma red usando tu IP local) para probarlo con dos jugadores.
    para ganar. Recibe un código de 4 caracteres. Esto guarda la partida #1
    de esa sala en MongoDB.
 2. Comparte el código con el rival, que lo ingresa en "Unirse a una sala".
+   Alternativamente, cualquiera que entre a la webapp sin código ve un
+   listado de "Salas esperando rival" con las salas creadas y sin
+   completar en ese momento — puede sumarse a cualquiera con un clic, sin
+   coordinar nada por fuera. La lista se actualiza sola (por WebSocket) a
+   medida que se crean, se completan o quedan libres salas.
 3. El servidor valida cada jugada (capturas, jugadas suicidas), sincroniza
    el tablero a ambos jugadores, y guarda cada jugada en MongoDB.
 4. Si alguien más se conecta a una sala llena, entra como espectador. Con

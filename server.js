@@ -268,6 +268,29 @@ function countSpectators(room) {
   return count;
 }
 
+// Salas con exactamente un jugador conectado (esperando rival).
+function getWaitingRooms() {
+  const list = [];
+  for (const [code, room] of rooms.entries()) {
+    const hasBlack = !!room.players.black;
+    const hasWhite = !!room.players.white;
+    if (hasBlack !== hasWhite) {
+      list.push({
+        code,
+        size: room.size,
+        captureTarget: room.captureTarget,
+        waitingSince: room.createdAt,
+      });
+    }
+  }
+  list.sort((a, b) => new Date(a.waitingSince) - new Date(b.waitingSince));
+  return list;
+}
+
+function broadcastLobbyRooms() {
+  io.emit('lobby_rooms', getWaitingRooms());
+}
+
 function publicState(room, code) {
   return {
     code,
@@ -375,6 +398,8 @@ app.get('/api/partidas/id/:id/sgf', async (req, res) => {
 // ---------- socket.io ----------
 
 io.on('connection', (socket) => {
+  socket.emit('lobby_rooms', getWaitingRooms());
+
   socket.on('create_room', async ({ size, captureTarget } = {}) => {
     const code = generateCode();
     const room = makeRoom(code, Number(size), Number(captureTarget));
@@ -389,6 +414,7 @@ io.on('connection', (socket) => {
     room.partidaId = await persistNewPartida(room);
 
     socket.emit('joined', { color: 'black', state: publicState(room, code) });
+    broadcastLobbyRooms();
   });
 
   socket.on('join_room', ({ code } = {}) => {
@@ -411,6 +437,7 @@ io.on('connection', (socket) => {
 
     socket.emit('joined', { color: role, state: publicState(room, normalized) });
     socket.to(normalized).emit('state', publicState(room, normalized));
+    if (role === 'black' || role === 'white') broadcastLobbyRooms();
   });
 
   socket.on('watch_room', ({ code } = {}) => {
@@ -493,16 +520,20 @@ io.on('connection', (socket) => {
     const room = rooms.get(code);
     if (!room) return;
 
+    const wasPlayer = socket.data.role === 'black' || socket.data.role === 'white';
+
     room.sockets.delete(socket.id);
     if (room.players.black === socket.id) room.players.black = null;
     if (room.players.white === socket.id) room.players.white = null;
 
     io.to(code).emit('state', publicState(room, code));
+    if (wasPlayer) broadcastLobbyRooms();
 
     if (!room.players.black && !room.players.white) {
       setTimeout(() => {
         const r = rooms.get(code);
         if (r && !r.players.black && !r.players.white) rooms.delete(code);
+        broadcastLobbyRooms();
       }, 60000);
     }
   });

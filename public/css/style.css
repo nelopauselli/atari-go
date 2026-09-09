@@ -1,0 +1,429 @@
+/*
+  Paleta: inspirada en tableros de kaya (madera clara), piedras de
+  vidrio y tinta sumi. Nada de grises SaaS ni sombras genéricas:
+  líneas finas, madera cálida y mucho contraste tinta-sobre-kaya.
+
+  --kaya-100  #EDE0C8  fondo general (madera clara)
+  --kaya-200  #DCC9A0  paneles / tarjetas
+  --sumi-900  #1F1B16  texto principal, piedras negras
+  --sumi-600  #4B4438  texto secundario
+  --shu-500   #B23A2E  acento (sello / turno / urgencia), rojo bermellón de sello
+  --shiro     #F7F3E9  piedras blancas / superficies elevadas
+  --line      #A8916A  líneas de tablero / bordes
+*/
+
+:root {
+  --kaya-100: #ede0c8;
+  --kaya-200: #dcc9a0;
+  --kaya-300: #cdb888;
+  --sumi-900: #1f1b16;
+  --sumi-600: #4b4438;
+  --shu-500: #b23a2e;
+  --shu-600: #942e24;
+  --shiro: #f7f3e9;
+  --line: #a8916a;
+  --font-display: 'Shippori Mincho', 'Noto Serif', Georgia, serif;
+  --font-body: 'Zen Kaku Gothic New', 'Hiragino Sans', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--kaya-100);
+  color: var(--sumi-900);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(178, 58, 46, 0.05), transparent 40%),
+    repeating-linear-gradient(0deg, rgba(168, 145, 106, 0.06) 0px, rgba(168, 145, 106, 0.06) 1px, transparent 1px, transparent 68px);
+}
+
+a { color: inherit; }
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* ---------- Encabezado del sitio ---------- */
+
+.site-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 22px clamp(20px, 5vw, 56px) 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.site-header .brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.site-header .brand .stone {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #3a3530, var(--sumi-900) 72%);
+  box-shadow: inset 0 -2px 3px rgba(255,255,255,0.08);
+  transform: translateY(2px);
+}
+
+.site-header h1 {
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+}
+
+.site-header .tagline {
+  font-size: 0.85rem;
+  color: var(--sumi-600);
+}
+
+.player-name-chip {
+  font-size: 0.85rem;
+  color: var(--sumi-600);
+  border: 1px solid var(--line);
+  padding: 6px 12px;
+  border-radius: 3px;
+  background: var(--shiro);
+}
+
+/* ---------- Layout general ---------- */
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px clamp(20px, 5vw, 56px) 80px;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 40px;
+}
+
+@media (max-width: 860px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--shiro);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--kaya-300);
+}
+
+.panel-header h2 {
+  font-size: 1.05rem;
+}
+
+.panel-body { padding: 10px 4px; }
+
+.empty-note {
+  padding: 22px 18px;
+  color: var(--sumi-600);
+  font-size: 0.92rem;
+}
+
+/* ---------- Listas de salas / partidas ---------- */
+
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--kaya-200);
+  text-decoration: none;
+  color: inherit;
+}
+
+.list-row:last-child { border-bottom: none; }
+
+.list-row:hover { background: var(--kaya-100); cursor: pointer; }
+
+.list-row .title { font-weight: 600; }
+
+.list-row .meta {
+  font-size: 0.8rem;
+  color: var(--sumi-600);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  color: var(--sumi-600);
+  white-space: nowrap;
+}
+
+.badge.live {
+  border-color: var(--shu-500);
+  color: var(--shu-600);
+}
+
+.badge.live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shu-500);
+}
+
+.player-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.stone-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.stone-dot.black { background: radial-gradient(circle at 32% 28%, #3a3530, var(--sumi-900) 72%); }
+.stone-dot.white { background: radial-gradient(circle at 32% 28%, #ffffff, #d8cfba 72%); border: 1px solid var(--line); }
+
+/* ---------- Botones y formularios ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--sumi-900);
+  background: var(--sumi-900);
+  color: var(--shiro);
+  padding: 9px 18px;
+  border-radius: 2px;
+  font-size: 0.92rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover { background: var(--shu-500); border-color: var(--shu-500); }
+
+.btn.secondary {
+  background: transparent;
+  color: var(--sumi-900);
+}
+
+.btn.secondary:hover { background: var(--kaya-200); color: var(--sumi-900); border-color: var(--sumi-900); }
+
+.btn.danger { border-color: var(--shu-500); color: var(--shu-600); background: transparent; }
+.btn.danger:hover { background: var(--shu-500); color: var(--shiro); }
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.field { margin-bottom: 16px; }
+
+.field label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--sumi-600);
+  margin-bottom: 6px;
+}
+
+.field input, .field select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--kaya-100);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--sumi-900);
+}
+
+.field input:focus, .field select:focus {
+  outline: 2px solid var(--shu-500);
+  outline-offset: 1px;
+}
+
+.radio-cards {
+  display: grid;
+  gap: 8px;
+}
+
+.radio-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.radio-card.selected {
+  border-color: var(--shu-500);
+  background: rgba(178, 58, 46, 0.06);
+}
+
+/* ---------- Tablero de juego ---------- */
+
+.board-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 18px;
+}
+
+.goban {
+  background: linear-gradient(160deg, var(--kaya-200), var(--kaya-300));
+  border: 1px solid var(--line);
+  padding: 26px;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset;
+}
+
+.goban svg { display: block; }
+
+.stone-black {
+  fill: url(#stoneBlackGradient);
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.35));
+}
+
+.stone-white {
+  fill: url(#stoneWhiteGradient);
+  stroke: #a8916a;
+  stroke-width: 0.5;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
+}
+
+.game-shell {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .game-shell { grid-template-columns: 1fr; }
+}
+
+.side-panel > .panel { margin-bottom: 18px; }
+
+.clock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--kaya-200);
+}
+
+.clock-row:last-child { border-bottom: none; }
+
+.clock-row.active { background: rgba(178, 58, 46, 0.06); }
+
+.clock-time {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+}
+
+.clock-time.low { color: var(--shu-600); }
+
+.capture-count {
+  font-size: 0.85rem;
+  color: var(--sumi-600);
+}
+
+.status-line {
+  padding: 12px 18px;
+  font-size: 0.9rem;
+  color: var(--sumi-600);
+  border-bottom: 1px solid var(--kaya-200);
+}
+
+.actions-row {
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px;
+}
+
+.spectator-note {
+  font-size: 0.8rem;
+  color: var(--sumi-600);
+  padding: 10px 18px;
+}
+
+/* ---------- Tableros de sala (grilla dentro de una sala) ---------- */
+
+.boards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.board-card {
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 14px;
+  background: var(--kaya-100);
+}
+
+.board-card .board-number {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.board-card .board-status {
+  font-size: 0.8rem;
+  color: var(--sumi-600);
+  margin-bottom: 10px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 27, 22, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  background: var(--shiro);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 24px;
+  width: min(420px, 92vw);
+}
+
+.modal h3 { margin-bottom: 16px; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}

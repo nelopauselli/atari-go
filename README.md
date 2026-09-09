@@ -1,139 +1,90 @@
 # Atari-Go Online
 
-Backend en Node.js (Express + Socket.io) que arbitra la partida, un cliente
-web hecho con **Vue 3** (sin build step, cargado por CDN) que se conecta
-por WebSocket, y MongoDB para guardar cada partida jugada.
+Sitio para jugar Atari-Go multijugador en vivo: salas con tableros numerados,
+partidas con reloj, capturas configurables por sala y modo espectador.
 
-## Conceptos
+## Stack
 
-- **Sala**: el código de 4 caracteres que usan dos personas para
-  encontrarse y jugar en vivo. Vive en memoria del servidor mientras hay
-  gente conectada.
-- **Partida**: cada juego completo jugado dentro de una sala (desde que
-  arranca hasta que termina por captura, rendición o empate). Cada partida
-  se guarda en MongoDB apenas se crea y se va actualizando jugada a jugada,
-  así sobrevive a un reinicio del servidor.
+- **Backend**: Node.js + Express + Socket.io + MongoDB (mongoose).
+- **Frontend**: Vue 3 sin build step (import maps + CDN, `<script type="module">`).
+- **Tiempo real**: Socket.io para jugadas, reloj y actualización de lobby.
 
-## Correrlo en tu máquina
-
-Necesitás Node.js y una instancia de MongoDB accesible (local o en la nube,
-ej. MongoDB Atlas).
+## Cómo correrlo
 
 ```bash
 npm install
-export MONGODB_URI="mongodb://127.0.0.1:27017"   # o tu connection string de Atlas
-export MONGODB_DB="atarigo"                       # opcional, este es el default
+cp .env.example .env     # ajustá MONGODB_URI si hace falta
+# necesitás un MongoDB corriendo en local (o en la nube) apuntado por MONGODB_URI
 npm start
 ```
 
-Si no configurás `MONGODB_URI`, el servidor intenta conectarse a
-`mongodb://127.0.0.1:27017` por defecto. Si no encuentra Mongo, el juego
-sigue funcionando en vivo con normalidad — simplemente no va a guardar
-historial ni permitir descargar SGF de partidas ya guardadas (verás un
-aviso en la consola del servidor).
+Abrí `http://localhost:3000`.
 
-Abrí `http://localhost:3000` en dos pestañas (o en dos computadoras de la
-misma red usando tu IP local) para probarlo con dos jugadores.
+> Nota: en este entorno de generación no tengo acceso a red para correr
+> `npm install` ni levantar MongoDB, así que el motor de reglas de Go
+> (`src/game/board.js`) fue probado de forma aislada con `node`, y el resto
+> de los archivos fueron chequeados con `node --check`. Antes de production,
+> corré `npm install && npm start` con un Mongo real y probá el flujo
+> completo con dos pestañas.
 
-## Cómo se juega
+## Dominio → código
 
-1. Un jugador crea la sala eligiendo tamaño de tablero, piedras necesarias
-   para ganar, y opcionalmente un reloj (Fischer 5m+10s, Fischer 10m+5s,
-   Absoluto 10m, o sin reloj). Recibe un código de 4 caracteres. Esto
-   guarda la partida #1 de esa sala en MongoDB.
-2. Alternativamente, cualquiera que entre a la webapp sin código ve
-   primero un listado de "Salas activas": arriba las que están
-   "Esperando rival" (podés sumarte con un clic), y debajo las
-   "Partidas en curso" (o recién terminadas, esperando revancha), a las
-   que te podés sumar como espectador con "Ver como espectador". La lista
-   se actualiza sola (por WebSocket) a medida que cambia el estado de
-   cada sala. Tiene un buscador por código para filtrarla, que además
-   sirve para pedir "Mirar sala X" directamente si esa sala no aparece
-   en ninguna de las dos listas.
-3. El servidor valida cada jugada (capturas, jugadas suicidas), sincroniza
-   el tablero a ambos jugadores, y guarda cada jugada en MongoDB.
-4. Si alguien más se conecta a una sala llena, entra como espectador. Con
-   el botón "Solo mirar" (o un link `?watch=CODIGO`) cualquiera puede
-   sumarse a mirar sin ocupar el lugar de un jugador.
-5. Cualquiera de los dos jugadores puede rendirse en cualquier momento con
-   "Rendirse" (pide confirmación), lo que le da la victoria al rival.
-6. Al terminar una partida (por captura, rendición, tiempo agotado o
-   empate), los jugadores ven un botón "Jugar revancha en esta sala":
-   arranca una partida nueva (#2, #3, ...) en la misma sala, con el mismo
-   reloj configurado y **los colores invertidos** (quien jugó con Negro
-   pasa a Blanco y viceversa), sin perder el registro de las anteriores.
-7. Si la sala tiene reloj, el servidor es quien lo controla (no el
-   navegador de cada jugador) — descuenta el tiempo real usado en cada
-   jugada, aplica el incremento Fischer cuando corresponde, y si a
-   alguien se le acaba el tiempo, pierde la partida automáticamente
-   aunque no haga ningún movimiento (chequeo cada 1 segundo en el
-   servidor). El reloj se pausa solo si alguno de los dos jugadores se
-   desconecta, y se reanuda cuando ambos vuelven a estar presentes.
-8. El historial **no vive dentro de la sala** — es una vista propia
-   ("Historial de partidas" en la barra de navegación de arriba,
-   accesible siempre, sin necesidad de tener o recordar un código de
-   sala). Lista las últimas partidas jugadas en todo el servidor
-   (paginadas de a 10), con opción de filtrar por código de sala si lo
-   tenés. Cada partida tiene "Ver partida" (abre el visor de reproducción
-   jugada por jugada) y "Descargar SGF".
+| Concepto  | Dónde vive |
+|---|---|
+| Sala      | `models/Room.js` — nombre, tamaño de tablero, capturas para ganar, tipo de reloj, y su lista de `boards` (tableros numerados). |
+| Tablero   | Subdocumento `boards[]` dentro de `Room`. Persiste entre partidas; al terminar una partida vuelve a `libre` para que otro par de jugadores lo use. |
+| Jugador / Espectador | No hay cuentas: cada socket tiene un nombre (guardado en `localStorage`) y un rol (`player`/`spectator`) por partida. |
+| Partida   | `models/Match.js` — tablero (grilla), jugadas, capturas, reloj embebido, estado y resultado. |
+| Reloj     | `src/game/clock.js` — fischer (con incremento) o absoluto, con proyección de tiempo restante en tiempo real. |
 
-## Estructura del proyecto
+## Decisiones de diseño (confirmadas con vos)
 
-```
-atari-go-online/
-├── server.js              # punto de entrada: arma Express + Socket.io y arranca
-├── lib/
-│   ├── go-rules.js         # reglas del tablero (libertades, capturas, jugada válida)
-│   ├── clock.js            # opciones de reloj y toda la aritmética de tiempo
-│   ├── sgf.js               # generación de archivos SGF
-│   ├── persistence.js       # conexión a MongoDB y guardado de partidas
-│   ├── rooms.js              # estado de las salas en memoria
-│   └── sockets.js            # todos los handlers de Socket.io (usa los anteriores)
-├── routes/
-│   └── partidas.js            # endpoints REST del historial (/api/partidas...)
-└── public/
-    ├── index.html               # markup, sin estilos ni lógica embebidos
-    ├── style.css                 # todos los estilos
-    └── js/
-        ├── app.js                  # app raíz de Vue (estado, sockets, historial)
-        ├── atari-board.js          # componente del tablero SVG
-        └── go-replay.js            # recalcula capturas para reproducir partidas guardadas
-```
+- El tamaño de tablero es elegible al crear la sala: **5×5, 7×7, 9×9 o 13×13**.
+- Al terminar una partida, el tablero **queda libre** para que se siente
+  otro par de jugadores (no hay revancha automática en el mismo tablero).
 
-El cliente usa módulos ES nativos del navegador (`<script type="module">`,
-`import`/`export`) — no hace falta bundler tampoco ahí.
+## Reglas de Go implementadas (`src/game/board.js`)
 
-## Notas técnicas
+- Colocar piedra, detección y remoción de grupos rivales sin libertades
+  (capturas).
+- Regla de suicidio: una jugada que deja al grupo propio sin libertades es
+  ilegal, salvo que capture algo.
+- Regla de ko simple (un paso): no se puede repetir inmediatamente la
+  posición que dejó la jugada anterior del rival.
+- Fin de partida: por capturas alcanzando el objetivo de la sala, por
+  bandera de tiempo caída, por renuncia, o por doble pase consecutivo
+  (en ese caso gana quien tenga más capturas; empate si están iguales).
 
-- El reloj es autoritativo del servidor: cada sala guarda el tiempo
-  restante de cada color en milisegundos, más una marca de cuándo
-  arrancó a correr el turno actual. El cliente solo calcula localmente
-  (cada 250ms) cuánto mostrar, restando ese instante contra la hora
-  actual — así el conteo se ve fluido sin pedirle nada al servidor, pero
-  quien decide si a alguien se le acabó el tiempo es siempre el
-  servidor. Esto evita que alguien pueda "hacer trampa" manipulando el
-  reloj de su propio navegador.
+Está probado con un script rápido (captura en la esquina y suicidio
+bloqueado); no incluye todavía un test runner formal — si querés lo sumo
+con `node:test`.
 
-- El frontend está hecho en **Vue 3** (Composition API), cargado desde
-  `unpkg.com` directo en el HTML — no hay paso de build, ni npm para el
-  cliente, ni bundler. Todo el estado del juego vive en un objeto
-  reactivo (`state`) que se actualiza cada vez que llega un evento
-  `state` del servidor, y la UI se re-renderiza sola. El tablero está en
-  un componente reutilizable (`AtariBoard`) que usan tanto el juego en
-  vivo como el visor de reproducción del historial.
-- El tablero "en vivo" de cada sala vive en memoria del servidor para que
-  las jugadas sean instantáneas; la persistencia en MongoDB es best-effort
-  (se actualiza en cada jugada, pero si Mongo está caído el juego no se
-  interrumpe).
-- Las salas vacías se manejan distinto según si llegaron a completarse
-  alguna vez. Si una sala **nunca encontró un segundo jugador** y quien la
-  creó se va, se cancela al instante (no queda listada ni en "Salas
-  activas" ni en el historial — se borra también la partida vacía de
-  MongoDB, ya que no tiene ninguna jugada). Si la partida **ya había
-  arrancado** (los dos jugadores llegaron a estar presentes) y de golpe
-  se queda sin nadie, se le da un margen de 60 segundos antes de
-  eliminarla de la memoria, por si alguien se reconecta — eso no borra
-  nada de MongoDB, solo la sesión en vivo.
-- Para producción con múltiples instancias del servidor, la sala en
-  memoria tendría que resolverse con el adaptador de Redis de Socket.io
-  (el historial en MongoDB ya es compartible entre instancias tal cual).
+## Eventos de socket
+
+**Cliente → servidor**
+- `room:enter` / `room:leave` — entrar/salir del lobby de una sala (para el contador de conectados).
+- `board:create` — agregar un tablero numerado nuevo a la sala.
+- `board:sit` `{ boardNumber, name }` — sentarse a jugar (negro si el tablero está libre, blanco si ya hay alguien esperando).
+- `board:spectate` `{ matchId, name }` — mirar una partida.
+- `match:rejoin` `{ matchId, color }` — recuperar el asiento tras recargar la página.
+- `match:move` `{ matchId, row, col }`, `match:pass`, `match:resign`.
+
+**Servidor → cliente**
+- `lobby:update` — algo cambió en salas/partidas activas (el cliente refresca vía REST).
+- `room:boards` — estado de los tableros de la sala actual.
+- `match:waiting` / `match:started` / `match:state` / `match:over` — estado público de la partida.
+- `match:clock` — tick liviano de reloj (cada 500ms).
+- `match:spectators` — cambios en la cantidad de espectadores.
+
+## API REST
+
+- `GET /api/rooms`, `POST /api/rooms`, `GET /api/rooms/:id`, `GET /api/rooms/clock-presets`
+- `GET /api/matches/active`, `GET /api/matches/history`, `GET /api/matches/:id`
+
+## Qué falta / próximos pasos sugeridos
+
+- Reconexión automática si se corta el socket a mitad de partida (hoy el
+  reloj sigue corriendo, y `match:rejoin` permite retomar manualmente).
+- Chat en la partida.
+- Ranking / Elo por jugador (hoy no hay cuentas, así que no hay identidad persistente).
+- Tests automatizados del motor de reglas con `node:test`.

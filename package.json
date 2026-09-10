@@ -1,18 +1,19 @@
 {
   "name": "atari-go-online",
   "version": "1.0.0",
-  "description": "Atari-Go multijugador online: salas, tableros, partidas con reloj, y espectadores.",
-  "main": "server.js",
+  "description": "Plataforma multijugador de Atari-Go para torneo interescolar",
+  "main": "server/index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node --env-file=.env server.js",
-    "dev": "nodemon server.js"
+    "start": "node --env-file=.env server/index.js",
+    "dev": "nodemon server/index.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "socket.io": "^4.7.5",
     "mongoose": "^8.5.0",
-    "dotenv": "^16.4.5"
+    "socket.io": "^4.7.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"

@@ -1,23 +1,16 @@
-import { io } from 'socket.io-client';
-
+// Cliente de Socket.IO compartido por toda la app.
+// `io` es provisto globalmente por /socket.io/socket.io.js
 export const socket = io({ autoConnect: true });
 
-const NAME_KEY = 'atari-go:playerName';
-
-export function getPlayerName() {
-  return localStorage.getItem(NAME_KEY) || '';
-}
-
-export function setPlayerName(name) {
-  localStorage.setItem(NAME_KEY, name);
-}
-
-/** Pide (con un prompt simple) un nombre de jugador si todavía no hay uno guardado. */
-export function ensurePlayerName() {
-  let name = getPlayerName();
-  if (!name) {
-    name = (window.prompt('¿Cómo te llamás?', '') || 'Jugador').trim().slice(0, 30) || 'Jugador';
-    setPlayerName(name);
-  }
-  return name;
+/** Emite un evento y espera el ack del servidor como una promesa. */
+export function emitAck(event, payload = {}) {
+  return new Promise((resolve, reject) => {
+    socket.emit(event, payload, (response) => {
+      if (response && response.ok === false) {
+        reject(new Error(response.error || 'Error desconocido'));
+      } else {
+        resolve(response);
+      }
+    });
+  });
 }

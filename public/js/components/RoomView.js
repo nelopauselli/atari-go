@@ -44,21 +44,17 @@ export default {
   methods: {
     async selectBoard(board) {
       this.error = '';
-  try {
-    const res = await emitAck('board:sit', { roomId: this.roomId, boardNumber: board.number });
-    this.$emit('enter-match', { matchId: res.match.matchId, mode: 'player' });
-  } catch (err) {
-    if (err.message === 'tablero_completo') {
       try {
-        const res = await emitAck('board:spectate', { roomId: this.roomId, boardNumber: board.number });
-        this.$emit('enter-match', { matchId: res.match.matchId, mode: 'spectator' });
-      } catch (err2) {
-        this.error = err2.message;
+        if (board.status === 'free') {
+          const res = await emitAck('board:sit', { roomId: this.roomId, boardNumber: board.number });
+          this.$emit('enter-match', { matchId: res.match.matchId, mode: 'player' });
+        } else {
+          const res = await emitAck('board:spectate', { roomId: this.roomId, boardNumber: board.number });
+          this.$emit('enter-match', { matchId: res.match.matchId, mode: 'spectator' });
+        }
+      } catch (err) {
+        this.error = err.message;
       }
-    } else {
-      this.error = err.message;
-    }
-  }
     },
   },
   template: `

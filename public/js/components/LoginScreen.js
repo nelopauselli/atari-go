@@ -38,7 +38,7 @@ export default {
           nickname: this.nickname.trim(),
           dojoId: this.dojoId,
         });
-        this.$emit('logged-in', res.player);
+        this.$emit('logged-in', res.player, this.dojoId);
       } catch (err) {
         this.error = err.message;
       } finally {

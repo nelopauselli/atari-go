@@ -6,7 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "start": "node --env-file=.env server/index.js",
-    "dev": "nodemon server/index.js"
+    "dev": "nodemon server/index.js",
+    "admin": "node --env-file=.env admin/index.js",
+    "admin:dev": "nodemon admin/index.js"
   },
   "dependencies": {
     "express": "^4.19.2",

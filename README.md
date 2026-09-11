@@ -12,10 +12,19 @@ npm start
 
 Servidor en `http://localhost:3000`. Requiere una instancia de MongoDB accesible (local o remota) vía `MONGO_URI`.
 
+### Panel de administración
+
+```bash
+npm run admin       # o npm run admin:dev para hot-reload
+```
+
+Panel en `http://localhost:4000` (configurable con `ADMIN_PORT`). Permite listar, crear, editar y borrar los registros de `models/` (equipos, jugadores y salas; las partidas son de solo lectura). Comparte la misma conexión a Mongo (`config/db.js`) que el servidor de juego.
+
 ## Estructura
 
-- `server.js` – bootstrap: conexión a Mongo, seed de equipos, Express + Socket.io.
-- `config/db.js` – conexión Mongoose.
+- `server/` – bootstrap del juego: conexión a Mongo, seed de equipos, Express + Socket.io.
+- `admin/` – backend + frontend administrativo (Node.js + Vue 3 sin build step) para gestionar las entidades de `models/`.
+- `config/db.js` – conexión Mongoose, compartida por `server/` y `admin/`.
 - `models/` – Team, Player, Room, Match (Mongoose).
 - `services/goEngine.js` – reglas de Go (capturas, libertades, ko simple).
 - `services/matchManager.js` – **única fuente de verdad** del estado en memoria de salas/tableros/partidas. Toda mutación de partidas pasa por acá; los handlers de sockets nunca tocan Mongo directamente. Expone `setBroadcastHandler`.

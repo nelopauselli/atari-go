@@ -2,11 +2,11 @@
   "name": "atari-go-app",
   "version": "1.0.0",
   "description": "App web multijugador en tiempo real para Atari-Go",
-  "main": "server.js",
+  "main": "server/index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node --env-file=.env server.js",
-    "dev": "nodemon server.js"
+    "start": "node --env-file=.env server/index.js",
+    "dev": "nodemon server/index.js"
   },
   "dependencies": {
     "express": "^4.19.2",

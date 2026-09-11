@@ -1,5 +1,5 @@
 const express = require('express');
-const Match = require('../models/Match');
+const Match = require('../../models/Match');
 const { matchToSgf } = require('../services/sgf');
 
 const router = express.Router();

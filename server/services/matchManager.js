@@ -9,7 +9,7 @@
  */
 
 const goEngine = require('./goEngine');
-const Match = require('../models/Match');
+const Match = require('../../models/Match');
 
 const CLOCK_PRESETS = {
   'fischer-1-3': { baseMs: 1 * 60 * 1000, incrementMs: 3 * 1000 },

@@ -1,6 +1,6 @@
 const express = require('express');
-const Player = require('../models/Player');
-const Team = require('../models/Team');
+const Player = require('../../models/Player');
+const Team = require('../../models/Team');
 
 const router = express.Router();
 

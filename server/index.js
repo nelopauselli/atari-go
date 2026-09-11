@@ -5,11 +5,11 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const { connectDB } = require('./config/db');
+const { connectDB } = require('../config/db');
 const { seedTeams } = require('./seed/seedTeams');
 const { initSockets } = require('./sockets/index');
 const matchManager = require('./services/matchManager');
-const Room = require('./models/Room');
+const Room = require('../models/Room');
 
 const teamsRouter = require('./routes/teams');
 const playersRouter = require('./routes/players');

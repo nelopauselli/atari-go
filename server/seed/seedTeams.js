@@ -1,4 +1,4 @@
-const Team = require('../models/Team');
+const Team = require('../../models/Team');
 
 const FIXED_TEAMS = [
   { name: 'Tierra', colorHex: '#6D4C41' },

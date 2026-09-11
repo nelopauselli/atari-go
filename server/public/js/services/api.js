@@ -15,10 +15,6 @@ export const api = {
     body: JSON.stringify({ nickname, teamId }),
   }),
   getRooms: () => request('/rooms'),
-  createRoom: (payload) => request('/rooms', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  }),
   getRoom: (roomId) => request(`/rooms/${roomId}`),
   getGlobalHistory: () => request('/history/global'),
   getRoomHistory: (roomId) => request(`/history/room/${roomId}`),

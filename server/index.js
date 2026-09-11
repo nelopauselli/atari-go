@@ -6,7 +6,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const { connectDB } = require('../config/db');
-const { seedTeams } = require('./seed/seedTeams');
 const { initSockets } = require('./sockets/index');
 const matchManager = require('./services/matchManager');
 const Room = require('../models/Room');
@@ -18,7 +17,6 @@ const historyRouter = require('./routes/history');
 
 async function bootstrap() {
   await connectDB();
-  await seedTeams();
 
   // Registrar en matchManager las salas no cerradas ya existentes en Mongo
   const openRooms = await Room.find({ closed: false });

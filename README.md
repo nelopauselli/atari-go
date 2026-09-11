@@ -31,7 +31,6 @@ Panel en `http://localhost:4000` (configurable con `ADMIN_PORT`). Permite listar
 - `services/sgf.js` – exportación de partidas a formato SGF.
 - `sockets/index.js` – handlers de Socket.io, delegan a `matchManager`.
 - `routes/` – REST: equipos, login de jugador, salas, historial + descarga SGF.
-- `seed/seedTeams.js` – siembra los 4 equipos fijos (Tierra, Agua, Aire, Fuego) al iniciar.
 - `public/` – frontend Vue 3 (ESM vía CDN, sin build step), Material Design.
 
 ## Eventos de Socket.io

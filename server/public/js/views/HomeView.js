@@ -14,7 +14,6 @@ export default {
     const tab = ref('rooms');
     const rooms = ref([]);
     const history = ref([]);
-    const showCreate = ref(false);
     const form = ref({ name: '', type: 'amistosas', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-10-5' });
     const createError = ref('');
     let poller = null;
@@ -37,17 +36,6 @@ export default {
       navigate(`/room/${roomId}`);
     }
 
-    async function createRoom() {
-      createError.value = '';
-      try {
-        const room = await api.createRoom(form.value);
-        showCreate.value = false;
-        openRoom(room._id);
-      } catch (err) {
-        createError.value = err.message;
-      }
-    }
-
     function resultLabel(m) {
       if (!m.result || !m.result.winnerColor) return 'Sin definir';
       const winner = m.players.find((p) => p.color === m.result.winnerColor);
@@ -55,8 +43,8 @@ export default {
     }
 
     return {
-      tab, rooms, history, showCreate, form, createError, CLOCK_LABELS,
-      openRoom, createRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
+      tab, rooms, history, form, createError, CLOCK_LABELS,
+      openRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
     };
   },
   template: `
@@ -69,7 +57,6 @@ export default {
       <div v-if="tab==='rooms'">
         <div class="toolbar">
           <h2>Salas activas</h2>
-          <!-- <button class="btn" @click="showCreate = true">+ Nueva sala</button> -->
         </div>
 
         <div v-if="rooms.length===0" class="empty-state">No hay salas activas. Creá la primera.</div>
@@ -107,51 +94,6 @@ export default {
         </table>
       </div>
 
-      <div v-if="showCreate" class="modal-backdrop" @click.self="showCreate=false">
-        <div class="modal">
-          <h2>Nueva sala</h2>
-          <div class="field">
-            <label>Nombre</label>
-            <input v-model="form.name" type="text" placeholder="Ej: Copa Interescolar 2026" />
-          </div>
-          <div class="field">
-            <label>Tipo de sala</label>
-            <select v-model="form.type">
-              <option value="amistosas">Amistosas</option>
-              <option value="torneo">Torneo por equipos</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Cantidad de tableros</label>
-            <input v-model.number="form.boardCount" type="number" min="1" max="50" />
-          </div>
-          <div class="field">
-            <label>Tamaño de tablero</label>
-            <select v-model.number="form.boardSize">
-              <option :value="7">7x7</option>
-              <option :value="9">9x9</option>
-              <option :value="13">13x13</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Piedras capturadas para ganar</label>
-            <input v-model.number="form.stonesToWin" type="number" min="1" />
-          </div>
-          <div class="field">
-            <label>Reloj</label>
-            <select v-model="form.clockType">
-              <option value="fischer-1-3">Fischer 1m + 3s</option>
-              <option value="fischer-5-3">Fischer 5m + 3s</option>
-              <option value="fischer-10-5">Fischer 10m + 5s</option>
-            </select>
-          </div>
-          <p v-if="createError" style="color:var(--md-error); font-size:14px;">{{ createError }}</p>
-          <div class="toolbar">
-            <button class="btn btn--outline" @click="showCreate=false">Cancelar</button>
-            <button class="btn" @click="createRoom">Crear sala</button>
-          </div>
-        </div>
-      </div>
     </main>
   `,
 };

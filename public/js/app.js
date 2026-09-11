@@ -18,6 +18,7 @@ const App = {
     });
 
     function logout() {
+      //TODO: resignar partidas activas
       clearPlayer();
       navigate('/login');
     }

@@ -74,7 +74,7 @@ main { flex: 1; padding: 24px; max-width: 1200px; width: 100%; margin: 0 auto; }
   font-size: 14px;
   font-weight: 500;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   padding: 10px 20px;
   cursor: pointer;
   transition: box-shadow .15s ease, background-color .15s ease;

@@ -12,9 +12,9 @@ const goEngine = require('./goEngine');
 const Match = require('../models/Match');
 
 const CLOCK_PRESETS = {
-  'fischer-5-3': { baseMs: 5 * 60 * 1000, incrementMs: 3 * 1000, absolute: false },
-  'fischer-10-5': { baseMs: 10 * 60 * 1000, incrementMs: 5 * 1000, absolute: false },
-  'absolute-10': { baseMs: 10 * 60 * 1000, incrementMs: 0, absolute: true },
+  'fischer-1-3': { baseMs: 1 * 60 * 1000, incrementMs: 3 * 1000 },
+  'fischer-5-3': { baseMs: 5 * 60 * 1000, incrementMs: 3 * 1000 },
+  'fischer-10-5': { baseMs: 10 * 60 * 1000, incrementMs: 5 * 1000 }
 };
 
 /** rooms: Map<roomId, { config, boards: Map<boardNumber, BoardState> }> */
@@ -294,9 +294,7 @@ function handleResign({ roomId, boardNumber, playerId }) {
 function applyClockIncrement(g, colorThatMoved) {
   const elapsed = g.lastMoveAt ? Date.now() - g.lastMoveAt : 0;
   g.clocks[colorThatMoved] = Math.max(0, g.clocks[colorThatMoved] - elapsed);
-  if (!g.preset.absolute) {
-    g.clocks[colorThatMoved] += g.preset.incrementMs;
-  }
+  g.clocks[colorThatMoved] += g.preset.incrementMs;
 }
 
 function startClockTimer(roomId, board) {

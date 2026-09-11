@@ -3,9 +3,9 @@ import { api } from '../services/api.js';
 import { navigate } from '../router.js';
 
 const CLOCK_LABELS = {
+  'fischer-1-3': 'Fischer 1m + 3s',
   'fischer-5-3': 'Fischer 5m + 3s',
   'fischer-10-5': 'Fischer 10m + 5s',
-  'absolute-10': 'Absoluto 10m',
 };
 
 export default {
@@ -140,9 +140,9 @@ export default {
           <div class="field">
             <label>Reloj</label>
             <select v-model="form.clockType">
+              <option value="fischer-1-3">Fischer 1m + 3s</option>
               <option value="fischer-5-3">Fischer 5m + 3s</option>
               <option value="fischer-10-5">Fischer 10m + 5s</option>
-              <option value="absolute-10">Absoluto 10m</option>
             </select>
           </div>
           <p v-if="createError" style="color:var(--md-error); font-size:14px;">{{ createError }}</p>

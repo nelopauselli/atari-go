@@ -8,7 +8,7 @@ const RoomSchema = new mongoose.Schema({
   stonesToWin: { type: Number, required: true, min: 1 },
   clockType: {
     type: String,
-    enum: ['fischer-5-3', 'fischer-10-5', 'absolute-10'],
+    enum: ['fischer-1-3', 'fischer-5-3', 'fischer-10-5'],
     required: true,
   },
   closed: { type: Boolean, default: false },

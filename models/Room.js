@@ -4,7 +4,7 @@ const RoomSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   type: { type: String, enum: ['torneo', 'amistosas'], required: true },
   boardCount: { type: Number, required: true, min: 1, max: 50 },
-  boardSize: { type: Number, enum: [5, 7, 9, 13], required: true },
+  boardSize: { type: Number, enum: [7, 9, 13], required: true },
   stonesToWin: { type: Number, required: true, min: 1 },
   clockType: {
     type: String,

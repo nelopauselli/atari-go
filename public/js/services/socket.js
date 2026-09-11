@@ -27,12 +27,6 @@ function move(roomId, boardNumber, playerId, x, y) {
   });
 }
 
-function pass(roomId, boardNumber, playerId) {
-  return new Promise((resolve) => {
-    socket.emit('board:move', { roomId, boardNumber, playerId, x: null, y: null, pass: true }, (result) => resolve(result));
-  });
-}
-
 function resign(roomId, boardNumber, playerId) {
   return new Promise((resolve) => {
     socket.emit('board:resign', { roomId, boardNumber, playerId }, (result) => resolve(result));
@@ -51,7 +45,6 @@ export const socketService = {
   sitBoard,
   leaveSpectator,
   move,
-  pass,
   resign,
   on,
 };

@@ -110,9 +110,6 @@ export default {
     async function playAt({ x, y }) {
       await socketService.move(props.roomId, active.boardNumber, player.id, x, y);
     }
-    async function doPass() {
-      await socketService.pass(props.roomId, active.boardNumber, player.id);
-    }
     async function doResign() {
       if (!confirm('¿Seguro que querés abandonar la partida?')) return;
       await socketService.resign(props.roomId, active.boardNumber, player.id);
@@ -126,7 +123,7 @@ export default {
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, STATUS_LABELS,
-      openBoard, closeActiveBoard, playAt, doPass, doResign, resultLabel,
+      openBoard, closeActiveBoard, playAt, doResign, resultLabel,
       sgfUrl: api.sgfDownloadUrl, backHome: () => navigate('/home'), player,
     };
   },
@@ -176,7 +173,6 @@ export default {
 
         <div class="toolbar" style="margin-top:16px;">
           <div style="display:flex; gap:8px;">
-            <button v-if="active.role==='player' && active.state.status==='playing'" class="btn btn--outline btn--sm" @click="doPass">Pasar</button>
             <button v-if="active.role==='player' && active.state.status==='playing'" class="btn btn--danger btn--sm" @click="doResign">Abandonar</button>
           </div>
           <button class="btn btn--sm" @click="closeActiveBoard">Volver a la Sala</button>

@@ -28,7 +28,7 @@ const App = {
   template: `
     <div>
       <header class="app-bar" v-if="player">
-        <span class="app-bar__title" @click="goHome">⚫⚪ Atari-Go Interescolar</span>
+        <span class="app-bar__title" @click="goHome">⚫⚪ Atari-Go Online</span>
         <div class="app-bar__user">
           <span class="chip chip--team">
             <span class="chip__dot" :style="{ background: player.teamColor }"></span>

@@ -1,7 +1,7 @@
 {
   "name": "atari-go-app",
   "version": "1.0.0",
-  "description": "App web multijugador en tiempo real para Atari-Go, uso interescolar",
+  "description": "App web multijugador en tiempo real para Atari-Go",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

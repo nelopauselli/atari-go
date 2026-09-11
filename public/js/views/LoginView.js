@@ -40,7 +40,7 @@ export default {
   template: `
     <main style="max-width:440px; margin:64px auto;">
       <div class="card">
-        <h1>Atari-Go Interescolar</h1>
+        <h1>Atari-Go Online</h1>
         <p class="muted" style="margin-bottom:24px;">Ingresá tu nickname y elegí tu equipo para jugar.</p>
 
         <div class="field">

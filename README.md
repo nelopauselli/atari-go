@@ -1,4 +1,4 @@
-# Atari-Go Interescolar
+# Atari-Go Online
 
 App web multijugador en tiempo real para Atari-Go (Node.js + Express + Socket.io + MongoDB + Vue 3 sin build step).
 

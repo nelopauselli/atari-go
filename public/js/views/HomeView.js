@@ -69,7 +69,7 @@ export default {
       <div v-if="tab==='rooms'">
         <div class="toolbar">
           <h2>Salas activas</h2>
-          <button class="btn" @click="showCreate = true">+ Nueva sala</button>
+          <!-- <button class="btn" @click="showCreate = true">+ Nueva sala</button> -->
         </div>
 
         <div v-if="rooms.length===0" class="empty-state">No hay salas activas. Creá la primera.</div>

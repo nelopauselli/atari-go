@@ -12,7 +12,7 @@ module.exports = {
     model: Team,
     fields: [
       { name: 'name', label: 'Nombre', type: 'string', required: true },
-      { name: 'colorHex', label: 'Color', type: 'color' },
+      { name: 'color', label: 'Color', type: 'color' },
       { name: 'createdAt', label: 'Creado', type: 'date', readonly: true },
     ],
   },

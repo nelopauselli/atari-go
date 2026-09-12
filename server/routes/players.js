@@ -27,7 +27,7 @@ router.post('/login', async (req, res) => {
       nickname: player.nickname,
       team: team._id,
       teamName: team.name,
-      teamColor: team.colorHex,
+      teamColor: team.color,
     });
   } catch (err) {
     console.error('[routes/players] error en login', err);

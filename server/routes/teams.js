@@ -1,11 +1,10 @@
 const express = require('express');
-const Team = require('../../models/Team');
+const teamManager = require('../services/teamManager');
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-  const teams = await Team.find().sort({ name: 1 });
-  res.json(teams);
+  res.json(teamManager.getAllTeams());
 });
 
 module.exports = router;

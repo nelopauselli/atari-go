@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const { connectDB } = require('../config/db');
 const { initSockets } = require('./sockets/index');
 const matchManager = require('./services/matchManager');
+const teamManager = require('./services/teamManager');
 
 const teamsRouter = require('./routes/teams');
 const playersRouter = require('./routes/players');
@@ -15,18 +16,27 @@ const roomsRouter = require('./routes/rooms');
 const historyRouter = require('./routes/history');
 
 const ROOM_SYNC_INTERVAL_MS = Number(process.env.ROOM_SYNC_INTERVAL_MS) || 30 * 1000;
+const TEAM_SYNC_INTERVAL_MS = Number(process.env.TEAM_SYNC_INTERVAL_MS) || 30 * 1000;
 
 async function bootstrap() {
   await connectDB();
 
   // Registrar en matchManager las salas no cerradas ya existentes en Mongo
   await matchManager.syncRoomsWithDB();
+  // Registrar en teamManager los equipos ya existentes en Mongo
+  await teamManager.syncTeamsWithDB();
 
   // El backend administrativo puede crear/cerrar salas en Mongo mientras este
   // server sigue corriendo; se resincroniza periódicamente para reflejarlas.
   setInterval(() => {
     matchManager.syncRoomsWithDB().catch((err) => console.error('[server] error sincronizando salas', err));
   }, ROOM_SYNC_INTERVAL_MS);
+
+  // Ídem para equipos: el backend administrativo puede crear/editar/eliminar
+  // equipos mientras este server sigue corriendo.
+  setInterval(() => {
+    teamManager.syncTeamsWithDB().catch((err) => console.error('[server] error sincronizando equipos', err));
+  }, TEAM_SYNC_INTERVAL_MS);
 
   const app = express();
   app.use(cors());

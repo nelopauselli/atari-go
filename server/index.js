@@ -8,22 +8,25 @@ const { Server } = require('socket.io');
 const { connectDB } = require('../config/db');
 const { initSockets } = require('./sockets/index');
 const matchManager = require('./services/matchManager');
-const Room = require('../models/Room');
 
 const teamsRouter = require('./routes/teams');
 const playersRouter = require('./routes/players');
 const roomsRouter = require('./routes/rooms');
 const historyRouter = require('./routes/history');
 
+const ROOM_SYNC_INTERVAL_MS = Number(process.env.ROOM_SYNC_INTERVAL_MS) || 30 * 1000;
+
 async function bootstrap() {
   await connectDB();
 
   // Registrar en matchManager las salas no cerradas ya existentes en Mongo
-  const openRooms = await Room.find({ closed: false });
-  for (const room of openRooms) {
-    matchManager.registerRoom(room);
-  }
-  console.log(`[server] ${openRooms.length} sala(s) registradas en memoria`);
+  await matchManager.syncRoomsWithDB();
+
+  // El backend administrativo puede crear/cerrar salas en Mongo mientras este
+  // server sigue corriendo; se resincroniza periódicamente para reflejarlas.
+  setInterval(() => {
+    matchManager.syncRoomsWithDB().catch((err) => console.error('[server] error sincronizando salas', err));
+  }, ROOM_SYNC_INTERVAL_MS);
 
   const app = express();
   app.use(cors());

@@ -10,6 +10,7 @@
 
 const goEngine = require('./goEngine');
 const Match = require('../../models/Match');
+const Room = require('../../models/Room');
 
 const CLOCK_PRESETS = {
   'fischer-1-3': { baseMs: 1 * 60 * 1000, incrementMs: 3 * 1000 },
@@ -81,6 +82,37 @@ function unregisterRoom(roomId) {
     if (board.game && board.game.timer) clearInterval(board.game.timer);
   }
   rooms.delete(String(roomId));
+}
+
+/**
+ * Recarga la lista de salas desde Mongo: registra en memoria las salas nuevas
+ * (creadas por el backend administrativo mientras este server estaba corriendo)
+ * y da de baja las que ya no figuran como abiertas, siempre que no tengan
+ * partidas en curso (en ese caso se pospone la baja hasta el próximo ciclo).
+ */
+async function syncRoomsWithDB() {
+  const openRooms = await Room.find({ closed: false });
+  const openIds = new Set(openRooms.map((r) => String(r._id)));
+
+  for (const roomDoc of openRooms) {
+    const id = String(roomDoc._id);
+    if (!rooms.has(id)) {
+      registerRoom(roomDoc);
+      console.log(`[matchManager] sala nueva registrada: ${roomDoc.name} (${id})`);
+    }
+  }
+
+  for (const id of [...rooms.keys()]) {
+    if (openIds.has(id)) continue;
+    const room = rooms.get(id);
+    const hasActivity = [...room.boards.values()].some((b) => b.status === 'playing' || b.status === 'waiting');
+    if (hasActivity) {
+      console.warn(`[matchManager] sala ${id} cerrada/eliminada en BD pero con partidas activas; se pospone su baja`);
+      continue;
+    }
+    unregisterRoom(id);
+    console.log(`[matchManager] sala dada de baja: ${id}`);
+  }
 }
 
 // ---------- Serialización para el frontend ----------
@@ -417,6 +449,7 @@ module.exports = {
   setBroadcastHandler,
   registerRoom,
   unregisterRoom,
+  syncRoomsWithDB,
   getRoom,
   getRoomBoardsSummary,
   getActiveRoomsSummary,

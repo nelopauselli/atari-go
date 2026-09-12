@@ -1,0 +1,2 @@
+1) Caso de usuarios repetidos ¿es el mismo volviendo a ingresa o es otro que se puso el mismo nombre?
+2) Contador de usuarios conectados

@@ -20,7 +20,8 @@ function emptyForm(fields) {
   const form = {};
   for (const field of fields) {
     if (field.readonly) continue;
-    form[field.name] = field.type === 'boolean' ? false : '';
+    if (field.default !== undefined) form[field.name] = field.default;
+    else form[field.name] = field.type === 'boolean' ? false : '';
   }
   return form;
 }

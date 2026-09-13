@@ -65,6 +65,7 @@ function registerRoom(roomDoc) {
       boardSize: roomDoc.boardSize,
       stonesToWin: roomDoc.stonesToWin,
       clockType: roomDoc.clockType,
+      koRuleEnabled: roomDoc.koRuleEnabled,
     },
     boards,
   });
@@ -132,6 +133,7 @@ function serializeBoard(board) {
     boardSize: g.size,
     stonesToWin: g.stonesToWin,
     clockType: g.clockType,
+    koRuleEnabled: g.koRuleEnabled,
     board: g.board,
     turn: g.turn,
     clocks: g.clocks,
@@ -205,6 +207,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
       size,
       stonesToWin: room.config.stonesToWin,
       clockType: room.config.clockType,
+      koRuleEnabled: room.config.koRuleEnabled,
       turn: 'black',
       clocks: { black: preset.baseMs, white: preset.baseMs },
       preset,
@@ -284,7 +287,7 @@ function handleMove({ roomId, boardNumber, playerId, x, y, pass }) {
     const result = goEngine.playMove(g.board, g.size, x, y, mover.color);
     if (!result.ok) return { ok: false, error: result.error };
     const newKey = goEngine.boardKey(result.board);
-    if (goEngine.violatesSimpleKo(newKey, g.previousBoardKey)) {
+    if (g.koRuleEnabled && goEngine.violatesSimpleKo(newKey, g.previousBoardKey)) {
       return { ok: false, error: 'Jugada inválida: regla de Ko' };
     }
     g.previousBoardKey = goEngine.boardKey(g.board);
@@ -364,6 +367,7 @@ async function persistMatchStart(roomId, board) {
     boardSize: g.size,
     stonesToWin: g.stonesToWin,
     clockType: g.clockType,
+    koRuleEnabled: g.koRuleEnabled,
     players: g.players.map((p) => ({
       player: p.playerId, nickname: p.nickname, team: p.team, teamName: p.teamName, color: p.color,
     })),

@@ -11,6 +11,7 @@ const RoomSchema = new mongoose.Schema({
     enum: ['fischer-1-3', 'fischer-5-3', 'fischer-10-5'],
     required: true,
   },
+  koRuleEnabled: { type: Boolean, default: true },
   closed: { type: Boolean, default: false },
 }, { timestamps: true });
 

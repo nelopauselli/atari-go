@@ -136,7 +136,8 @@ export default {
         <p class="text-muted mb-0">
           {{ room.type==='torneo' ? 'Torneo por equipos' : 'Amistosas' }} ·
           {{ room.boardSize }}x{{ room.boardSize }} ·
-          {{ room.stonesToWin }} piedra(s) para ganar
+          {{ room.stonesToWin }} piedra(s) para ganar ·
+          Ko {{ room.koRuleEnabled === false ? 'deshabilitado' : 'habilitado' }}
         </p>
       </div>
 

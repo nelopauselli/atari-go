@@ -24,6 +24,7 @@ const MatchSchema = new mongoose.Schema({
   boardSize: { type: Number, required: true },
   stonesToWin: { type: Number, required: true },
   clockType: { type: String, required: true },
+  koRuleEnabled: { type: Boolean, default: true },
   players: { type: [MatchPlayerSchema], default: [] },
   moves: { type: [MoveSchema], default: [] },
   status: { type: String, enum: ['waiting', 'playing', 'finished', 'aborted'], default: 'waiting' },

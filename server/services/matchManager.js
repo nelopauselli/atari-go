@@ -343,6 +343,7 @@ function startClockTimer(roomId, board) {
     const remaining = g.clocks[g.turn] - elapsed;
     if (remaining <= 0) {
       clearInterval(g.timer);
+      g.clocks[g.turn] = 0;
       const winnerColor = g.turn === 'black' ? 'white' : 'black';
       finishMatch(roomId, board, winnerColor, 'timeout').catch((err) => console.error('[matchManager]', err));
       return;

@@ -3,6 +3,10 @@ body {
   background: #F5F3FA;
 }
 
+[data-bs-theme="dark"] body {
+  background: #16181c;
+}
+
 .app-bar__title { cursor: pointer; }
 
 .room-card, .board-card {

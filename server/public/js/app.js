@@ -1,6 +1,7 @@
-import { createApp, computed, watchEffect } from 'vue';
+import { createApp, computed, ref, watchEffect } from 'vue';
 import { route, navigate } from './router.js';
 import { getPlayer, clearPlayer } from './services/auth.js';
+import { getTheme, toggleTheme } from './services/theme.js';
 import LoginView from './views/LoginView.js';
 import HomeView from './views/HomeView.js';
 import RoomView from './views/RoomView.js';
@@ -10,6 +11,7 @@ const App = {
   components: { LoginView, HomeView, RoomView },
   setup() {
     const player = computed(() => { route.name; return getPlayer(); });
+    const theme = ref(getTheme());
 
     watchEffect(() => {
       const hasPlayer = !!getPlayer();
@@ -23,7 +25,11 @@ const App = {
       navigate('/login');
     }
 
-    return { route, player, logout, goHome: () => navigate('/home') };
+    function onToggleTheme() {
+      theme.value = toggleTheme();
+    }
+
+    return { route, player, logout, theme, onToggleTheme, goHome: () => navigate('/home') };
   },
   template: `
     <div>
@@ -36,10 +42,16 @@ const App = {
               {{ player.teamName }}
             </span>
             <span class="badge text-bg-secondary">{{ player.nickname }}</span>
+            <button class="btn btn-outline-light btn-sm" type="button" @click="onToggleTheme" :title="theme === 'dark' ? 'Modo claro' : 'Modo oscuro'">
+              {{ theme === 'dark' ? '☀️' : '🌙' }}
+            </button>
             <button class="btn btn-outline-light btn-sm" @click="logout">Salir</button>
           </div>
         </div>
       </nav>
+      <button v-else class="btn btn-outline-secondary btn-sm position-fixed top-0 end-0 m-2" type="button" @click="onToggleTheme" :title="theme === 'dark' ? 'Modo claro' : 'Modo oscuro'">
+        {{ theme === 'dark' ? '☀️' : '🌙' }}
+      </button>
 
       <LoginView v-if="route.name==='login'" />
       <HomeView v-else-if="route.name==='home'" />

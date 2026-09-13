@@ -18,14 +18,22 @@ export default {
     whitePlayer() { return this.players.find((p) => p.color === 'white'); },
   },
   template: `
-    <div class="clocks">
-      <div class="clock" :class="{ 'clock--active': turn==='black', 'clock--low': clocks.black < 20000 }">
-        <div class="clock__label">⚫ {{ blackPlayer ? blackPlayer.nickname : 'Negro' }}</div>
-        <div class="clock__time">{{ formatMs(clocks.black) }}</div>
+    <div class="row g-3">
+      <div class="col-6">
+        <div class="card text-center" :class="{ 'clock--active': turn==='black', 'clock--low': clocks.black < 20000 }">
+          <div class="card-body py-2">
+            <div class="text-muted small">⚫ {{ blackPlayer ? blackPlayer.nickname : 'Negro' }}</div>
+            <div class="clock__time">{{ formatMs(clocks.black) }}</div>
+          </div>
+        </div>
       </div>
-      <div class="clock" :class="{ 'clock--active': turn==='white', 'clock--low': clocks.white < 20000 }">
-        <div class="clock__label">⚪ {{ whitePlayer ? whitePlayer.nickname : 'Blanco' }}</div>
-        <div class="clock__time">{{ formatMs(clocks.white) }}</div>
+      <div class="col-6">
+        <div class="card text-center" :class="{ 'clock--active': turn==='white', 'clock--low': clocks.white < 20000 }">
+          <div class="card-body py-2">
+            <div class="text-muted small">⚪ {{ whitePlayer ? whitePlayer.nickname : 'Blanco' }}</div>
+            <div class="clock__time">{{ formatMs(clocks.white) }}</div>
+          </div>
+        </div>
       </div>
     </div>
   `,

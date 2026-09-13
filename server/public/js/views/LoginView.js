@@ -38,26 +38,28 @@ export default {
     return { teams, nickname, teamId, error, loading, submit };
   },
   template: `
-    <main style="max-width:440px; margin:64px auto;">
-      <div class="card">
-        <h1>Atari-Go Online</h1>
-        <p class="muted" style="margin-bottom:24px;">Ingresá tu nickname y elegí tu equipo para jugar.</p>
+    <main class="container" style="max-width:440px; margin-top:64px;">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <h1 class="h3">Atari-Go Online</h1>
+          <p class="text-muted mb-4">Ingresá tu nickname y elegí tu equipo para jugar.</p>
 
-        <div class="field">
-          <label>Nickname</label>
-          <input v-model="nickname" type="text" placeholder="Tu nombre en el torneo" @keyup.enter="submit" />
+          <div class="mb-3">
+            <label class="form-label">Nickname</label>
+            <input v-model="nickname" type="text" class="form-control" placeholder="Tu nombre en el torneo" @keyup.enter="submit" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Equipo</label>
+            <select v-model="teamId" class="form-select">
+              <option v-for="t in teams" :key="t._id" :value="t._id">{{ t.name }}</option>
+            </select>
+          </div>
+
+          <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
+
+          <button class="btn btn-primary w-100" :disabled="loading" @click="submit">Entrar</button>
         </div>
-
-        <div class="field">
-          <label>Equipo</label>
-          <select v-model="teamId">
-            <option v-for="t in teams" :key="t._id" :value="t._id">{{ t.name }}</option>
-          </select>
-        </div>
-
-        <p v-if="error" style="color:var(--md-error); font-size:14px; margin-bottom:16px;">{{ error }}</p>
-
-        <button class="btn btn--block" :disabled="loading" @click="submit">Entrar</button>
       </div>
     </main>
   `,

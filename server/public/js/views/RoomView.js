@@ -7,6 +7,7 @@ import GoBoard from '../components/GoBoard.js';
 import ClockDisplay from '../components/ClockDisplay.js';
 
 const STATUS_LABELS = { empty: 'Vacío', waiting: 'Esperando rival', playing: 'En curso', finished: 'Finalizado' };
+const STATUS_BADGE_CLASS = { empty: 'text-bg-secondary', waiting: 'text-bg-warning', playing: 'text-bg-success', finished: 'text-bg-info' };
 
 export default {
   name: 'RoomView',
@@ -122,85 +123,95 @@ export default {
     }
 
     return {
-      room, boards, tab, roomHistory, ranking, active, joinError, STATUS_LABELS,
+      room, boards, tab, roomHistory, ranking, active, joinError, STATUS_LABELS, STATUS_BADGE_CLASS,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel,
       sgfUrl: api.sgfDownloadUrl, backHome: () => navigate('/home'), player,
     };
   },
   template: `
-    <main v-if="room">
-      <div class="toolbar">
-        <div>
-          <a class="link" @click="backHome" style="cursor:pointer;">← Salas</a>
-          <h2 style="margin-top:4px;">{{ room.name }}</h2>
-          <p class="muted">
-            {{ room.type==='torneo' ? 'Torneo por equipos' : 'Amistosas' }} ·
-            {{ room.boardSize }}x{{ room.boardSize }} ·
-            {{ room.stonesToWin }} piedra(s) para ganar
-          </p>
-        </div>
+    <main class="container py-4" v-if="room">
+      <div class="mb-3">
+        <a href="#" class="link-secondary text-decoration-none" @click.prevent="backHome">← Salas</a>
+        <h2 class="h4 mt-1 mb-1">{{ room.name }}</h2>
+        <p class="text-muted mb-0">
+          {{ room.type==='torneo' ? 'Torneo por equipos' : 'Amistosas' }} ·
+          {{ room.boardSize }}x{{ room.boardSize }} ·
+          {{ room.stonesToWin }} piedra(s) para ganar
+        </p>
       </div>
 
-      <p v-if="joinError" style="color:var(--md-error);">{{ joinError }}</p>
+      <div v-if="joinError" class="alert alert-danger">{{ joinError }}</div>
 
       <!-- Tablero activo (jugando o espectando) -->
-      <div v-if="active.boardNumber && active.state" class="card" style="margin-bottom:24px;">
-        <div class="toolbar">
-          <h3 style="margin:0;">Tablero #{{ active.boardNumber }}</h3>
-          <span class="chip" :class="active.role==='spectator' ? '' : 'chip--team'">
-            {{ active.role==='spectator' ? 'Observando' : ('Jugás con ' + (active.color==='black' ? 'negras ⚫' : 'blancas ⚪')) }}
-          </span>
-        </div>
-
-        <div v-if="active.sitError" class="spectator-banner">{{ active.sitError }}</div>
-
-        <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" />
-
-        <GoBoard
-          style="margin-top:16px;"
-          :size="active.state.boardSize || room.boardSize"
-          :board="active.state.board || []"
-          :interactive="active.role==='player' && active.state.status==='playing' && active.state.turn===active.color"
-          :my-color="active.color"
-          @play="playAt"
-        />
-
-        <div v-if="active.state.status==='finished' && active.state.lastResult" class="empty-state">
-          <strong>Partida finalizada.</strong>
-          Gana {{ active.state.lastResult.winnerColor==='black' ? '⚫' : '⚪' }}
-          ({{ active.state.lastResult.reason }})
-        </div>
-
-        <div class="toolbar" style="margin-top:16px;">
-          <div style="display:flex; gap:8px;">
-            <button v-if="active.role==='player' && active.state.status==='playing'" class="btn btn--danger btn--sm" @click="doResign">Abandonar</button>
+      <div v-if="active.boardNumber && active.state" class="card shadow-sm mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="h5 mb-0">Tablero #{{ active.boardNumber }}</h3>
+            <span class="badge" :class="active.role==='spectator' ? 'text-bg-light' : 'text-bg-primary'">
+              {{ active.role==='spectator' ? 'Observando' : ('Jugás con ' + (active.color==='black' ? 'negras ⚫' : 'blancas ⚪')) }}
+            </span>
           </div>
-          <button class="btn btn--sm" @click="closeActiveBoard">Volver a la Sala</button>
-        </div>
-      </div>
 
-      <div class="tabs">
-        <div class="tab" :class="{ 'tab--active': tab==='boards' }" @click="tab='boards'">Tableros</div>
-        <div class="tab" :class="{ 'tab--active': tab==='history' }" @click="tab='history'">Historial</div>
-        <div v-if="room.type==='torneo'" class="tab" :class="{ 'tab--active': tab==='ranking' }" @click="tab='ranking'">Ranking</div>
-      </div>
+          <div v-if="active.sitError" class="alert alert-secondary py-2">{{ active.sitError }}</div>
 
-      <div v-if="tab==='boards'" class="grid grid--boards">
-        <div class="board-card" v-for="b in boards" :key="b.number" @click="openBoard(b.number)">
-          <div class="toolbar" style="margin-bottom:8px;">
-            <strong>Tablero #{{ b.number }}</strong>
-            <span class="status-badge" :class="'status-badge--' + b.status">{{ STATUS_LABELS[b.status] }}</span>
+          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" />
+
+          <GoBoard
+            class="mt-3"
+            :size="active.state.boardSize || room.boardSize"
+            :board="active.state.board || []"
+            :interactive="active.role==='player' && active.state.status==='playing' && active.state.turn===active.color"
+            :my-color="active.color"
+            @play="playAt"
+          />
+
+          <div v-if="active.state.status==='finished' && active.state.lastResult" class="alert alert-info text-center mt-3 mb-0">
+            <strong>Partida finalizada.</strong>
+            Gana {{ active.state.lastResult.winnerColor==='black' ? '⚫' : '⚪' }}
+            ({{ active.state.lastResult.reason }})
           </div>
-          <p v-if="b.players && b.players.length" class="muted">
-            {{ b.players.map(p => p.nickname).join(' vs ') || 'Sin jugadores' }}
-          </p>
-          <p v-else class="muted">Sin jugadores</p>
-          <p v-if="b.spectatorCount" class="muted">👁 {{ b.spectatorCount }} observando</p>
+
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="d-flex gap-2">
+              <button v-if="active.role==='player' && active.state.status==='playing'" class="btn btn-danger btn-sm" @click="doResign">Abandonar</button>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" @click="closeActiveBoard">Volver a la Sala</button>
+          </div>
         </div>
       </div>
 
-      <div v-else-if="tab==='history'">
-        <table>
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+          <a class="nav-link" href="#" :class="{ active: tab==='boards' }" @click.prevent="tab='boards'">Tableros</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" :class="{ active: tab==='history' }" @click.prevent="tab='history'">Historial</a>
+        </li>
+        <li class="nav-item" v-if="room.type==='torneo'">
+          <a class="nav-link" href="#" :class="{ active: tab==='ranking' }" @click.prevent="tab='ranking'">Ranking</a>
+        </li>
+      </ul>
+
+      <div v-if="tab==='boards'" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+        <div class="col" v-for="b in boards" :key="b.number">
+          <div class="card h-100 shadow-sm board-card" @click="openBoard(b.number)">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong>Tablero #{{ b.number }}</strong>
+                <span class="badge" :class="STATUS_BADGE_CLASS[b.status]">{{ STATUS_LABELS[b.status] }}</span>
+              </div>
+              <p v-if="b.players && b.players.length" class="text-muted small mb-1">
+                {{ b.players.map(p => p.nickname).join(' vs ') || 'Sin jugadores' }}
+              </p>
+              <p v-else class="text-muted small mb-1">Sin jugadores</p>
+              <p v-if="b.spectatorCount" class="text-muted small mb-0">👁 {{ b.spectatorCount }} observando</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="tab==='history'" class="table-responsive">
+        <table class="table table-hover align-middle">
           <thead><tr><th>Tablero</th><th>Jugadores</th><th>Resultado</th><th>Fecha</th><th>SGF</th></tr></thead>
           <tbody>
             <tr v-for="m in roomHistory" :key="m._id">
@@ -208,14 +219,14 @@ export default {
               <td>{{ m.players.map(p => p.nickname).join(' vs ') }}</td>
               <td>{{ resultLabel(m) }}</td>
               <td>{{ m.endedAt ? new Date(m.endedAt).toLocaleString() : '-' }}</td>
-              <td><a class="link" :href="sgfUrl(m._id)">Descargar</a></td>
+              <td><a class="link-primary" :href="sgfUrl(m._id)">Descargar</a></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div v-else-if="tab==='ranking'">
-        <table>
+      <div v-else-if="tab==='ranking'" class="table-responsive">
+        <table class="table table-hover align-middle">
           <thead><tr><th>Equipo</th><th>Victorias</th></tr></thead>
           <tbody>
             <tr v-for="r in ranking" :key="r.team"><td>{{ r.teamName }}</td><td>{{ r.wins }}</td></tr>

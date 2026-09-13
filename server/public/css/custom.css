@@ -1,0 +1,26 @@
+body {
+  font-family: 'Roboto', system-ui, sans-serif;
+  background: #F5F3FA;
+}
+
+.app-bar__title { cursor: pointer; }
+
+.room-card, .board-card {
+  cursor: pointer;
+  transition: box-shadow .15s ease, transform .1s ease;
+}
+.room-card:hover, .board-card:hover {
+  box-shadow: 0 6px 10px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.08);
+  transform: translateY(-2px);
+}
+
+.go-board-wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.go-board { background: #E8C989; border-radius: .5rem; box-shadow: 0 2px 4px rgba(0,0,0,.08), 0 3px 6px rgba(0,0,0,.10); }
+.go-board .stone { cursor: pointer; }
+.go-board .stone--black { fill: #212121; }
+.go-board .stone--white { fill: #FAFAFA; stroke: #B0AFB6; stroke-width: 1; }
+.go-board .hover-preview { opacity: .35; pointer-events: none; }
+
+.clock--active { border-color: var(--bs-primary) !important; box-shadow: 0 0 0 .15rem rgba(13,110,253,.15); }
+.clock__time { font-family: 'Roboto Mono', monospace; font-size: 1.6rem; font-weight: 500; }
+.clock--low .clock__time { color: var(--bs-danger); }

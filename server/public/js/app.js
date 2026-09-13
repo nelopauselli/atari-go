@@ -9,7 +9,7 @@ const App = {
   name: 'App',
   components: { LoginView, HomeView, RoomView },
   setup() {
-    const player = computed(() => getPlayer());
+    const player = computed(() => { route.name; return getPlayer(); });
 
     watchEffect(() => {
       const hasPlayer = !!getPlayer();
@@ -27,17 +27,19 @@ const App = {
   },
   template: `
     <div>
-      <header class="app-bar" v-if="player">
-        <span class="app-bar__title" @click="goHome">⚫⚪ Atari-Go Online</span>
-        <div class="app-bar__user">
-          <span class="chip chip--team">
-            <span class="chip__dot" :style="{ background: player.teamColor }"></span>
-            {{ player.teamName }}
-          </span>
-          <span class="chip">{{ player.nickname }}</span>
-          <button class="btn btn--outline btn--sm" style="background:transparent; border-color:rgba(255,255,255,.6); color:#fff;" @click="logout">Salir</button>
+      <nav class="navbar navbar-dark bg-primary shadow-sm sticky-top" v-if="player">
+        <div class="container-fluid">
+          <span class="navbar-brand app-bar__title mb-0" @click="goHome">⚫⚪ Atari-Go Online</span>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-light d-inline-flex align-items-center gap-1">
+              <span class="rounded-circle d-inline-block" :style="{ background: player.teamColor, width: '8px', height: '8px' }"></span>
+              {{ player.teamName }}
+            </span>
+            <span class="badge text-bg-secondary">{{ player.nickname }}</span>
+            <button class="btn btn-outline-light btn-sm" @click="logout">Salir</button>
+          </div>
         </div>
-      </header>
+      </nav>
 
       <LoginView v-if="route.name==='login'" />
       <HomeView v-else-if="route.name==='home'" />

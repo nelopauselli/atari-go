@@ -155,7 +155,7 @@ export default {
 
           <div v-if="active.sitError" class="alert alert-secondary py-2">{{ active.sitError }}</div>
 
-          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" />
+          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" />
 
           <GoBoard
             class="mt-3"

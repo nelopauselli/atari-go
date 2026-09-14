@@ -116,15 +116,19 @@ export default {
       await socketService.resign(props.roomId, active.boardNumber, player.id);
     }
 
+    function playerLabel(p) {
+      return p.teamName ? `${p.nickname} (${p.teamName})` : p.nickname;
+    }
+
     function resultLabel(m) {
       if (!m.result || !m.result.winnerColor) return 'Sin definir';
       const winner = m.players.find((p) => p.color === m.result.winnerColor);
-      return winner ? `Gana ${winner.nickname} (${m.result.reason})` : '-';
+      return winner ? `Gana ${playerLabel(winner)} (${m.result.reason})` : '-';
     }
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, STATUS_LABELS, STATUS_BADGE_CLASS,
-      openBoard, closeActiveBoard, playAt, doResign, resultLabel,
+      openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, backHome: () => navigate('/home'), player,
     };
   },
@@ -203,7 +207,7 @@ export default {
                 <span class="badge" :class="STATUS_BADGE_CLASS[b.status]">{{ STATUS_LABELS[b.status] }}</span>
               </div>
               <p v-if="b.players && b.players.length" class="text-muted small mb-1">
-                {{ b.players.map(p => p.nickname).join(' vs ') || 'Sin jugadores' }}
+                {{ b.players.map(playerLabel).join(' vs ') || 'Sin jugadores' }}
               </p>
               <p v-else class="text-muted small mb-1">Sin jugadores</p>
               <p v-if="b.spectatorCount" class="text-muted small mb-0">👁 {{ b.spectatorCount }} observando</p>
@@ -218,7 +222,7 @@ export default {
           <tbody>
             <tr v-for="m in roomHistory" :key="m._id">
               <td>#{{ m.boardNumber }}</td>
-              <td>{{ m.players.map(p => p.nickname).join(' vs ') }}</td>
+              <td>{{ m.players.map(playerLabel).join(' vs ') }}</td>
               <td>{{ resultLabel(m) }}</td>
               <td>{{ m.endedAt ? new Date(m.endedAt).toLocaleString() : '-' }}</td>
               <td><a class="link-primary" :href="sgfUrl(m._id)">Descargar</a></td>

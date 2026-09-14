@@ -8,6 +8,7 @@ export default {
   props: {
     size: { type: Number, required: true },
     board: { type: Array, required: true }, // array plano size*size: 'black' | 'white' | null
+    lastMove: { type: Object, default: null }, // { x, y } | null
     interactive: { type: Boolean, default: false },
     myColor: { type: String, default: null },
   },
@@ -24,6 +25,10 @@ export default {
       return props.board[y * props.size + x];
     }
 
+    function isLastMove(x, y) {
+      return !!props.lastMove && props.lastMove.x === x && props.lastMove.y === y;
+    }
+
     function onCellClick(x, y) {
       if (!props.interactive) return;
       if (cellAt(x, y)) return;
@@ -37,7 +42,7 @@ export default {
       return [];
     }
 
-    return { hover, dim, pos, cellAt, onCellClick, starPoints, CELL, MARGIN };
+    return { hover, dim, pos, cellAt, isLastMove, onCellClick, starPoints, CELL, MARGIN };
   },
   template: `
     <div class="go-board-wrap">
@@ -70,6 +75,11 @@ export default {
                     class="hover-preview"
                     :class="myColor === 'black' ? 'stone--black' : 'stone--white'"
                     :cx="pos(x-1)" :cy="pos(y-1)" r="19" />
+            <rect v-if="cellAt(x-1,y-1) && isLastMove(x-1,y-1)"
+                  class="last-move-marker"
+                  :fill="cellAt(x-1,y-1)==='black' ? '#fff' : '#000'"
+                  style="pointer-events:none"
+                  :x="pos(x-1) - 5" :y="pos(y-1) - 5" width="10" height="10" />
           </g>
         </g>
       </svg>

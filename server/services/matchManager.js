@@ -135,6 +135,7 @@ function serializeBoard(board) {
     clockType: g.clockType,
     koRuleEnabled: g.koRuleEnabled,
     board: g.board,
+    lastMove: g.lastMove,
     turn: g.turn,
     clocks: g.clocks,
     capturedByBlack: g.capturedByBlack,
@@ -215,6 +216,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
       capturedByBlack: 0,
       capturedByWhite: 0,
       previousBoardKey: null,
+      lastMove: null,
       lastMoveAt: null,
       timer: null,
       mongoMatchId: null,
@@ -296,6 +298,7 @@ function handleMove({ roomId, boardNumber, playerId, x, y, pass }) {
     if (mover.color === 'black') g.capturedByBlack += captured;
     else g.capturedByWhite += captured;
     g.moves.push({ color: mover.color, x, y, pass: false, captured, timestamp: Date.now() });
+    g.lastMove = { x, y };
   }
 
   applyClockIncrement(g, mover.color);

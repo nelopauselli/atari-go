@@ -161,6 +161,7 @@ export default {
             class="mt-3"
             :size="active.state.boardSize || room.boardSize"
             :board="active.state.board || []"
+            :last-move="active.state.lastMove"
             :interactive="active.role==='player' && active.state.status==='playing' && active.state.turn===active.color"
             :my-color="active.color"
             @play="playAt"

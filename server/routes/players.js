@@ -1,6 +1,7 @@
 const express = require('express');
 const Player = require('../../models/Player');
 const Team = require('../../models/Team');
+const presence = require('../services/presence');
 
 const router = express.Router();
 
@@ -33,6 +34,10 @@ router.post('/login', async (req, res) => {
     console.error('[routes/players] error en login', err);
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
+});
+
+router.get('/online', (req, res) => {
+  res.json(presence.listOnline());
 });
 
 module.exports = router;

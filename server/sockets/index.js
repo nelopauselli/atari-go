@@ -1,4 +1,5 @@
 const matchManager = require('../services/matchManager');
+const presence = require('../services/presence');
 
 function roomChannel(roomId) {
   return `room:${roomId}`;
@@ -13,6 +14,10 @@ function initSockets(io) {
   io.on('connection', (socket) => {
     socket.data.playerId = null;
     socket.data.roomId = null;
+
+    socket.on('presence:identify', ({ player } = {}) => {
+      presence.identify(socket.id, player);
+    });
 
     socket.on('room:join', ({ roomId, player }, ack) => {
       socket.join(roomChannel(roomId));
@@ -50,6 +55,7 @@ function initSockets(io) {
     });
 
     socket.on('disconnect', () => {
+      presence.remove(socket.id);
       matchManager.handleDisconnect({ socketId: socket.id, playerId: socket.data.playerId });
     });
   });

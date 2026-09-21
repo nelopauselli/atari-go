@@ -1,6 +1,17 @@
 // `io` es global, inyectado por el script CDN de socket.io en index.html
 const socket = io({ autoConnect: true });
 
+// Se re-identifica en cada (re)conexión para figurar como usuario conectado.
+let identified = null;
+socket.on('connect', () => {
+  if (identified) socket.emit('presence:identify', { player: identified });
+});
+
+function identify(player) {
+  identified = player;
+  if (socket.connected) socket.emit('presence:identify', { player });
+}
+
 function joinRoom(roomId, player) {
   return new Promise((resolve) => {
     socket.emit('room:join', { roomId, player }, (summary) => resolve(summary));
@@ -40,6 +51,7 @@ function on(event, handler) {
 
 export const socketService = {
   raw: socket,
+  identify,
   joinRoom,
   leaveRoom,
   sitBoard,

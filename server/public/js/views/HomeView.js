@@ -14,6 +14,7 @@ export default {
     const tab = ref('rooms');
     const rooms = ref([]);
     const history = ref([]);
+    const onlinePlayers = ref([]);
     const form = ref({ name: '', type: 'amistosas', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-10-5' });
     const createError = ref('');
     let poller = null;
@@ -25,10 +26,18 @@ export default {
       history.value = await api.getGlobalHistory();
     }
 
+    async function loadOnlinePlayers() {
+      onlinePlayers.value = await api.getOnlinePlayers();
+    }
+
     onMounted(() => {
       loadRooms();
       loadHistory();
-      poller = setInterval(loadRooms, 4000);
+      loadOnlinePlayers();
+      poller = setInterval(() => {
+        loadRooms();
+        loadOnlinePlayers();
+      }, 4000);
     });
     onUnmounted(() => clearInterval(poller));
 
@@ -43,7 +52,7 @@ export default {
     }
 
     return {
-      tab, rooms, history, form, createError, CLOCK_LABELS,
+      tab, rooms, history, onlinePlayers, form, createError, CLOCK_LABELS,
       openRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
     };
   },
@@ -55,6 +64,11 @@ export default {
         </li>
         <li class="nav-item">
           <a class="nav-link" href="#" :class="{ active: tab==='history' }" @click.prevent="tab='history'">Historial global</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" :class="{ active: tab==='online' }" @click.prevent="tab='online'">
+            Usuarios conectados <span class="badge text-bg-secondary">{{ onlinePlayers.length }}</span>
+          </a>
         </li>
       </ul>
 
@@ -81,6 +95,18 @@ export default {
             </div>
           </div>
         </div>
+      </div>
+
+      <div v-else-if="tab==='online'">
+        <h2 class="h4 mb-3">Usuarios conectados</h2>
+        <div v-if="onlinePlayers.length===0" class="text-center text-muted py-5">No hay usuarios conectados.</div>
+        <ul class="list-group">
+          <li class="list-group-item d-flex align-items-center gap-2" v-for="p in onlinePlayers" :key="p.id">
+            <span class="rounded-circle d-inline-block" :style="{ background: p.teamColor, width: '10px', height: '10px' }"></span>
+            <strong>{{ p.nickname }}</strong>
+            <span class="text-muted small">{{ p.teamName }}</span>
+          </li>
+        </ul>
       </div>
 
       <div v-else>

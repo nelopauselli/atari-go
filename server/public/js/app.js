@@ -1,6 +1,7 @@
 import { createApp, computed, ref, watchEffect } from 'vue';
 import { route, navigate } from './router.js';
 import { getPlayer, clearPlayer } from './services/auth.js';
+import { socketService } from './services/socket.js';
 import { getTheme, toggleTheme } from './services/theme.js';
 import LoginView from './views/LoginView.js';
 import HomeView from './views/HomeView.js';
@@ -15,6 +16,7 @@ const App = {
 
     watchEffect(() => {
       const hasPlayer = !!getPlayer();
+      socketService.identify(getPlayer());
       if (!hasPlayer && route.name !== 'login') navigate('/login');
       if (hasPlayer && route.name === 'login') navigate('/home');
     });

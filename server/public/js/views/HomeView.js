@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { api } from '../services/api.js';
 import { navigate } from '../router.js';
 
@@ -30,6 +30,16 @@ export default {
       onlinePlayers.value = await api.getOnlinePlayers();
     }
 
+    const teamTotals = computed(() => {
+      const totals = new Map();
+      for (const p of onlinePlayers.value) {
+        const t = totals.get(p.teamName) || { name: p.teamName, color: p.teamColor, count: 0 };
+        t.count++;
+        totals.set(p.teamName, t);
+      }
+      return [...totals.values()];
+    });
+
     onMounted(() => {
       loadRooms();
       loadHistory();
@@ -52,7 +62,7 @@ export default {
     }
 
     return {
-      tab, rooms, history, onlinePlayers, form, createError, CLOCK_LABELS,
+      tab, rooms, history, onlinePlayers, teamTotals, form, createError, CLOCK_LABELS,
       openRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
     };
   },
@@ -100,6 +110,12 @@ export default {
       <div v-else-if="tab==='online'">
         <h2 class="h4 mb-3">Usuarios conectados</h2>
         <div v-if="onlinePlayers.length===0" class="text-center text-muted py-5">No hay usuarios conectados.</div>
+        <div v-if="teamTotals.length" class="d-flex flex-wrap gap-2 mb-3">
+          <span class="badge text-bg-light border d-inline-flex align-items-center gap-2" v-for="t in teamTotals" :key="t.name">
+            <span class="rounded-circle d-inline-block" :style="{ background: t.color, width: '10px', height: '10px' }"></span>
+            {{ t.name }}: {{ t.count }}
+          </span>
+        </div>
         <ul class="list-group">
           <li class="list-group-item d-flex align-items-center gap-2" v-for="p in onlinePlayers" :key="p.id">
             <span class="rounded-circle d-inline-block" :style="{ background: p.teamColor, width: '10px', height: '10px' }"></span>

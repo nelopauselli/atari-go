@@ -30,7 +30,7 @@ const MatchSchema = new mongoose.Schema({
   status: { type: String, enum: ['waiting', 'playing', 'finished', 'aborted'], default: 'waiting' },
   result: {
     winnerColor: { type: String, enum: ['black', 'white', null], default: null },
-    reason: { type: String, enum: ['capture', 'resign', 'timeout', 'abandoned', null], default: null },
+    reason: { type: String, enum: ['capture', 'resign', 'timeout', 'abandoned', 'no-moves', null], default: null },
   },
   capturedByBlack: { type: Number, default: 0 },
   capturedByWhite: { type: Number, default: 0 },

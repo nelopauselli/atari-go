@@ -310,6 +310,9 @@ function handleMove({ roomId, boardNumber, playerId, x, y, pass }) {
   const capturesForWin = mover.color === 'black' ? g.capturedByBlack : g.capturedByWhite;
   if (capturesForWin >= g.stonesToWin) {
     finishMatch(roomId, board, mover.color, 'capture').catch((err) => console.error('[matchManager]', err));
+  } else if (!goEngine.hasLegalMove(g.board, g.size, g.turn, g.previousBoardKey, g.koRuleEnabled)) {
+    // Quien tiene el turno no tiene ningún lugar permitido donde jugar -> pierde
+    finishMatch(roomId, board, mover.color, 'no-moves').catch((err) => console.error('[matchManager]', err));
   }
 
   return { ok: true };

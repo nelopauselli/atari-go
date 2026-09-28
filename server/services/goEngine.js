@@ -98,6 +98,23 @@ function boardKey(board) {
   return board.map((c) => (c === null ? '.' : c === 'black' ? 'B' : 'W')).join('');
 }
 
+/**
+ * Indica si `color` tiene al menos una jugada legal (casilla vacía, no suicida
+ * y, si corresponde, que no viole el Ko simple).
+ */
+function hasLegalMove(board, size, color, previousBoardKey, koRuleEnabled) {
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (board[idx(size, x, y)] !== null) continue;
+      const result = playMove(board, size, x, y, color);
+      if (!result.ok) continue;
+      if (koRuleEnabled && violatesSimpleKo(boardKey(result.board), previousBoardKey)) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
 module.exports = {
   createEmptyBoard,
   idx,
@@ -106,4 +123,5 @@ module.exports = {
   playMove,
   violatesSimpleKo,
   boardKey,
+  hasLegalMove,
 };

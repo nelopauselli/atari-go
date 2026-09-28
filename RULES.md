@@ -1,6 +1,6 @@
 # Reglas de Atari-Go
 
-Atari-Go (también llamado "Go de captura") es una variante simplificada del juego de Go pensada para aprender los conceptos básicos: libertades, capturas y suicidio. Gana quien primero captura una cantidad determinada de piedras rivales.
+Atari-Go (también llamado "Go de captura") es una variante simplificada del juego de Go pensada para aprender los conceptos básicos: libertades, capturas y autocaptura. Gana quien primero captura una cantidad determinada de piedras rivales.
 
 ## Objetivo
 
@@ -27,7 +27,7 @@ Después de colocar una piedra:
 2. Si alguno de esos grupos queda sin libertades, se captura completo (todas sus piedras se retiran del tablero).
 3. Las capturas cuentan para el objetivo de victoria de quien jugó la piedra.
 
-## Regla de suicidio
+## Regla de autocaptura
 
 No está permitido jugar una piedra que deje al propio grupo sin libertades, **salvo que esa jugada capture al menos un grupo rival** (en cuyo caso las libertades que deja la captura vuelven a habilitar la jugada).
 
@@ -58,7 +58,7 @@ Una partida termina, y hay una persona ganadora, cuando ocurre alguna de estas s
 - **Captura**: alguien alcanza la cantidad de piedras capturadas requerida (`stonesToWin`) para esa sala.
 - **Rendición**: una persona se rinde (`board:resign`); gana la otra persona.
 - **Tiempo**: a una persona se le agota el reloj; gana la otra persona.
-- **Sin jugadas posibles**: si a quien le toca jugar no le queda ningún lugar permitido donde colocar una piedra (todas las intersecciones vacías son suicidio o, con Ko habilitado, repetirían la posición), pierde la partida; gana la otra persona.
+- **Sin jugadas posibles**: si a quien le toca jugar no le queda ningún lugar permitido donde colocar una piedra (todas las intersecciones vacías son autocaptura o, con Ko habilitado, repetirían la posición), pierde la partida; gana la otra persona.
 
 ## Modo torneo
 

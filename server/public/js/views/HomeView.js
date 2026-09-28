@@ -1,6 +1,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { api } from '../services/api.js';
 import { navigate } from '../router.js';
+import RulesModal from '../components/RulesModal.js';
 
 const CLOCK_LABELS = {
   'fischer-1-3': 'Fischer 1m + 3s',
@@ -10,6 +11,7 @@ const CLOCK_LABELS = {
 
 export default {
   name: 'HomeView',
+  components: { RulesModal },
   setup() {
     const tab = ref('rooms');
     const rooms = ref([]);
@@ -17,6 +19,7 @@ export default {
     const onlinePlayers = ref([]);
     const form = ref({ name: '', type: 'amistosas', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-10-5' });
     const createError = ref('');
+    const rulesRoom = ref(null);
     let poller = null;
 
     async function loadRooms() {
@@ -62,7 +65,7 @@ export default {
     }
 
     return {
-      tab, rooms, history, onlinePlayers, teamTotals, form, createError, CLOCK_LABELS,
+      tab, rooms, history, onlinePlayers, teamTotals, form, createError, rulesRoom, CLOCK_LABELS,
       openRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
     };
   },
@@ -101,10 +104,12 @@ export default {
                 <p class="text-muted small mb-1">Tablero {{ r.boardSize }}x{{ r.boardSize }} · {{ CLOCK_LABELS[r.clockType] }}</p>
                 <p class="text-muted small mb-1">Tableros libres: {{ r.freeBoards }} / {{ r.totalBoards }}</p>
                 <p class="text-muted small mb-0">Jugadores conectados: {{ r.playersOnline }} · Equipos jugando: {{ r.teamsPlaying }}</p>
+                <button type="button" class="btn btn-outline-info btn-sm mt-2" @click.stop="rulesRoom = r">Reglas</button>
               </div>
             </div>
           </div>
         </div>
+        <RulesModal v-if="rulesRoom" :room="rulesRoom" @close="rulesRoom = null" />
       </div>
 
       <div v-else-if="tab==='online'">

@@ -5,13 +5,14 @@ import { getPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 import GoBoard from '../components/GoBoard.js';
 import ClockDisplay from '../components/ClockDisplay.js';
+import RulesModal from '../components/RulesModal.js';
 
 const STATUS_LABELS = { empty: 'Vacío', waiting: 'Esperando rival', playing: 'En curso', finished: 'Finalizado' };
 const STATUS_BADGE_CLASS = { empty: 'text-bg-secondary', waiting: 'text-bg-warning', playing: 'text-bg-success', finished: 'text-bg-info' };
 
 export default {
   name: 'RoomView',
-  components: { GoBoard, ClockDisplay },
+  components: { GoBoard, ClockDisplay, RulesModal },
   props: { roomId: { type: String, required: true } },
   setup(props) {
     const player = getPlayer();
@@ -21,6 +22,7 @@ export default {
     const roomHistory = ref([]);
     const ranking = ref([]);
     const joinError = ref('');
+    const showRules = ref(false);
 
     const active = reactive({
       boardNumber: null,
@@ -127,7 +129,7 @@ export default {
     }
 
     return {
-      room, boards, tab, roomHistory, ranking, active, joinError, STATUS_LABELS, STATUS_BADGE_CLASS,
+      room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, backHome: () => navigate('/home'), player,
     };
@@ -136,7 +138,10 @@ export default {
     <main class="container py-4" v-if="room">
       <div class="mb-3">
         <a href="#" class="link-secondary text-decoration-none" @click.prevent="backHome">← Salas</a>
-        <h2 class="h4 mt-1 mb-1">{{ room.name }}</h2>
+        <div class="d-flex justify-content-between align-items-center gap-2 mt-1 mb-1">
+          <h2 class="h4 mb-0">{{ room.name }}</h2>
+          <button type="button" class="btn btn-outline-info btn-sm" @click="showRules = true">Reglas</button>
+        </div>
         <p class="text-muted mb-0">
           {{ room.type==='torneo' ? 'Torneo por equipos' : 'Amistosas' }} ·
           {{ room.boardSize }}x{{ room.boardSize }} ·
@@ -146,6 +151,8 @@ export default {
       </div>
 
       <div v-if="joinError" class="alert alert-danger">{{ joinError }}</div>
+
+      <RulesModal v-if="showRules" :room="room" @close="showRules = false" />
 
       <!-- Tablero activo (jugando o espectando) -->
       <div v-if="active.boardNumber && active.state" class="card shadow-sm mb-4">

@@ -80,10 +80,10 @@ function playMove(board, size, x, y, color) {
     }
   }
 
-  // Regla de suicidio: si el propio grupo queda sin libertades y no capturó nada, movimiento ilegal
+  // Regla de autocaptura: si el propio grupo queda sin libertades y no capturó nada, movimiento ilegal
   const ownGroup = getGroup(next, size, x, y);
   if (ownGroup.liberties.size === 0 && capturedStones.length === 0) {
-    return { ok: false, error: 'Movimiento suicida no permitido' };
+    return { ok: false, error: 'Autocaptura no permitida' };
   }
 
   return { ok: true, board: next, captured: capturedStones.length, capturedStones };
@@ -99,7 +99,7 @@ function boardKey(board) {
 }
 
 /**
- * Indica si `color` tiene al menos una jugada legal (casilla vacía, no suicida
+ * Indica si `color` tiene al menos una jugada legal (casilla vacía, sin autocaptura
  * y, si corresponde, que no viole el Ko simple).
  */
 function hasLegalMove(board, size, color, previousBoardKey, koRuleEnabled) {

@@ -272,7 +272,7 @@ function handleLeaveSpectator({ roomId, boardNumber, socketId }) {
 
 // ---------- Jugadas ----------
 
-function handleMove({ roomId, boardNumber, playerId, x, y, pass }) {
+function handleMove({ roomId, boardNumber, playerId, x, y }) {
   const room = getRoom(roomId);
   if (!room) return { ok: false, error: 'Sala inexistente' };
   const board = room.boards.get(Number(boardNumber));
@@ -282,24 +282,21 @@ function handleMove({ roomId, boardNumber, playerId, x, y, pass }) {
   if (!mover) return { ok: false, error: 'No participás de esta partida' };
   if (mover.color !== g.turn) return { ok: false, error: 'No es tu turno' };
 
-  let captured = 0;
-  if (pass) {
-    g.moves.push({ color: mover.color, x: null, y: null, pass: true, captured: 0, timestamp: Date.now() });
-  } else {
-    const result = goEngine.playMove(g.board, g.size, x, y, mover.color);
-    if (!result.ok) return { ok: false, error: result.error };
-    const newKey = goEngine.boardKey(result.board);
-    if (g.koRuleEnabled && goEngine.violatesSimpleKo(newKey, g.previousBoardKey)) {
-      return { ok: false, error: 'Jugada inválida: regla de Ko' };
-    }
-    g.previousBoardKey = goEngine.boardKey(g.board);
-    g.board = result.board;
-    captured = result.captured;
-    if (mover.color === 'black') g.capturedByBlack += captured;
-    else g.capturedByWhite += captured;
-    g.moves.push({ color: mover.color, x, y, pass: false, captured, timestamp: Date.now() });
-    g.lastMove = { x, y };
+  if (!Number.isInteger(x) || !Number.isInteger(y)) return { ok: false, error: 'Jugada inválida' };
+
+  const result = goEngine.playMove(g.board, g.size, x, y, mover.color);
+  if (!result.ok) return { ok: false, error: result.error };
+  const newKey = goEngine.boardKey(result.board);
+  if (g.koRuleEnabled && goEngine.violatesSimpleKo(newKey, g.previousBoardKey)) {
+    return { ok: false, error: 'Jugada inválida: regla de Ko' };
   }
+  g.previousBoardKey = goEngine.boardKey(g.board);
+  g.board = result.board;
+  const captured = result.captured;
+  if (mover.color === 'black') g.capturedByBlack += captured;
+  else g.capturedByWhite += captured;
+  g.moves.push({ color: mover.color, x, y, pass: false, captured, timestamp: Date.now() });
+  g.lastMove = { x, y };
 
   applyClockIncrement(g, mover.color);
   g.turn = mover.color === 'black' ? 'white' : 'black';

@@ -40,7 +40,7 @@ Panel en `http://localhost:4000` (configurable con `ADMIN_PORT`). Permite listar
 | `room:join` | `{ roomId, player }` |
 | `room:leave` | `{ roomId }` |
 | `board:sit` | `{ roomId, boardNumber, player }` — siempre se emite, el backend decide jugador/espectador |
-| `board:move` | `{ roomId, boardNumber, playerId, x, y, pass }` |
+| `board:move` | `{ roomId, boardNumber, playerId, x, y }` |
 | `board:resign` | `{ roomId, boardNumber, playerId }` |
 | `board:leaveSpectator` | `{ roomId, boardNumber }` |
 

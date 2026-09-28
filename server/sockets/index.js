@@ -44,8 +44,8 @@ function initSockets(io) {
       matchManager.handleLeaveSpectator({ roomId, boardNumber, socketId: socket.id });
     });
 
-    socket.on('board:move', ({ roomId, boardNumber, playerId, x, y, pass }, ack) => {
-      const result = matchManager.handleMove({ roomId, boardNumber, playerId, x, y, pass });
+    socket.on('board:move', ({ roomId, boardNumber, playerId, x, y }, ack) => {
+      const result = matchManager.handleMove({ roomId, boardNumber, playerId, x, y });
       if (typeof ack === 'function') ack(result);
     });
 

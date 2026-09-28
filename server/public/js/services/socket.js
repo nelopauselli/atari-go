@@ -34,7 +34,7 @@ function leaveSpectator(roomId, boardNumber) {
 
 function move(roomId, boardNumber, playerId, x, y) {
   return new Promise((resolve) => {
-    socket.emit('board:move', { roomId, boardNumber, playerId, x, y, pass: false }, (result) => resolve(result));
+    socket.emit('board:move', { roomId, boardNumber, playerId, x, y }, (result) => resolve(result));
   });
 }
 

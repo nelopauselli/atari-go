@@ -16,6 +16,30 @@ function formatValue(field, row) {
   return value;
 }
 
+const IMAGE_MAX_SIZE = 128;
+
+// Lee un archivo de imagen y lo reduce (manteniendo proporción) para guardarlo como data URL liviana.
+function readImageAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, IMAGE_MAX_SIZE / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('No se pudo leer la imagen'));
+    };
+    img.src = url;
+  });
+}
+
 function emptyForm(fields) {
   const form = {};
   for (const field of fields) {
@@ -96,6 +120,17 @@ export default {
       }
     }
 
+    async function onImageSelected(field, event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        form.value[field.name] = await readImageAsDataUrl(file);
+      } catch (err) {
+        error.value = err.message;
+      }
+      event.target.value = '';
+    }
+
     async function remove(row) {
       if (!window.confirm('¿Eliminar este registro?')) return;
       try {
@@ -108,7 +143,7 @@ export default {
 
     return {
       meta, rows, refOptions, showForm, editingId, form, error, loading,
-      formatValue, openCreate, openEdit, save, remove,
+      formatValue, openCreate, openEdit, save, remove, onImageSelected,
     };
   },
   template: `
@@ -134,7 +169,10 @@ export default {
           </thead>
           <tbody>
             <tr v-for="row in rows" :key="row._id">
-              <td v-for="f in meta.fields" :key="f.name">{{ formatValue(f, row) }}</td>
+              <td v-for="f in meta.fields" :key="f.name">
+                <img v-if="f.type==='image' && row[f.name]" :src="row[f.name]" class="thumb" alt="" />
+                <template v-else>{{ formatValue(f, row) }}</template>
+              </td>
               <td class="actions">
                 <button v-if="!meta.readonly" class="btn btn--outline btn--sm" @click="openEdit(row)">Editar</button>
                 <button class="btn btn--danger btn--sm" @click="remove(row)">Eliminar</button>
@@ -166,6 +204,11 @@ export default {
               <input v-else-if="f.type==='boolean'" type="checkbox" v-model="form[f.name]" />
               <input v-else-if="f.type==='number'" type="number" v-model.number="form[f.name]" />
               <input v-else-if="f.type==='color'" type="color" v-model="form[f.name]" />
+              <div v-else-if="f.type==='image'" class="image-field">
+                <img v-if="form[f.name]" :src="form[f.name]" class="thumb thumb--lg" alt="" />
+                <input type="file" accept="image/*" @change="onImageSelected(f, $event)" />
+                <button v-if="form[f.name]" type="button" class="btn btn--outline btn--sm" @click="form[f.name]=''">Quitar</button>
+              </div>
               <input v-else type="text" v-model="form[f.name]" />
             </div>
           </template>

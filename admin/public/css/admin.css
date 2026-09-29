@@ -127,3 +127,7 @@ td.actions { display: flex; gap: 8px; white-space: nowrap; }
   .sidebar__item { white-space: nowrap; }
   main { padding: 16px; }
 }
+
+.thumb { width: 32px; height: 32px; object-fit: contain; display: block; }
+.thumb--lg { width: 64px; height: 64px; }
+.image-field { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

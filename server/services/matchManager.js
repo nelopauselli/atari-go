@@ -389,7 +389,7 @@ async function finishMatch(roomId, board, winnerColor, reason) {
   board.status = 'finished';
   board.lastResult = {
     winnerColor, reason,
-    players: g.players.map((p) => ({ nickname: p.nickname, color: p.color, teamName: p.teamName })),
+    players: g.players.map((p) => ({ nickname: p.nickname, color: p.color, team: p.team, teamName: p.teamName })),
   };
 
   if (g.mongoMatchId) {

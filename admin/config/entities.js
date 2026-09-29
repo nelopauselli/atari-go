@@ -5,7 +5,7 @@ const Match = require('../../models/Match');
 
 // Metadata que describe cómo listar/editar cada modelo desde el panel admin.
 // `type` de cada campo controla el input generado en el frontend: string, number,
-// boolean, date, color, enum (usa `options`) o ref (usa `ref` = key de otra entidad).
+// boolean, date, color, image (data URL), enum (usa `options`) o ref (usa `ref` = key de otra entidad).
 module.exports = {
   teams: {
     label: 'Equipos',
@@ -13,6 +13,7 @@ module.exports = {
     fields: [
       { name: 'name', label: 'Nombre', type: 'string', required: true },
       { name: 'color', label: 'Color', type: 'color' },
+      { name: 'shield', label: 'Escudo', type: 'image' },
       { name: 'createdAt', label: 'Creado', type: 'date', readonly: true },
     ],
   },

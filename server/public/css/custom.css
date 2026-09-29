@@ -33,3 +33,5 @@ body {
 .go-board .mark-forbidden line { stroke: #dc3545; stroke-width: 3.5; stroke-linecap: round; }
 
 .tutorial-progress { height: .35rem; }
+
+.team-shield { object-fit: contain; flex-shrink: 0; vertical-align: middle; }

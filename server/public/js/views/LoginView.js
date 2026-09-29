@@ -1,10 +1,13 @@
 import { ref, onMounted } from 'vue';
 import { api } from '../services/api.js';
+import { loadTeams } from '../services/teams.js';
+import TeamShield from '../components/TeamShield.js';
 import { setPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 
 export default {
   name: 'LoginView',
+  components: { TeamShield },
   setup() {
     const teams = ref([]);
     const nickname = ref('');
@@ -13,7 +16,7 @@ export default {
     const loading = ref(false);
 
     onMounted(async () => {
-      teams.value = await api.getTeams();
+      teams.value = await loadTeams(true);
       if (teams.value[0]) teamId.value = teams.value[0]._id;
     });
 
@@ -51,9 +54,12 @@ export default {
 
           <div class="mb-3">
             <label class="form-label">Equipo</label>
-            <select v-model="teamId" class="form-select">
-              <option v-for="t in teams" :key="t._id" :value="t._id">{{ t.name }}</option>
-            </select>
+            <div class="d-flex align-items-center gap-2">
+              <TeamShield v-if="teamId" :team="teamId" :size="38" />
+              <select v-model="teamId" class="form-select">
+                <option v-for="t in teams" :key="t._id" :value="t._id">{{ t.name }}</option>
+              </select>
+            </div>
           </div>
 
           <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>

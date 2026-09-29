@@ -11,7 +11,7 @@ async function bootstrap() {
 
   const app = express();
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: '2mb' })); // holgura para imágenes (escudos) en data URL
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.use('/api/entities', entitiesRouter);

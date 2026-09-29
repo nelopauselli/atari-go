@@ -6,13 +6,14 @@ import { navigate } from '../router.js';
 import GoBoard from '../components/GoBoard.js';
 import ClockDisplay from '../components/ClockDisplay.js';
 import RulesModal from '../components/RulesModal.js';
+import TeamShield from '../components/TeamShield.js';
 
 const STATUS_LABELS = { empty: 'Vacío', waiting: 'Esperando rival', playing: 'En curso', finished: 'Finalizado' };
 const STATUS_BADGE_CLASS = { empty: 'text-bg-secondary', waiting: 'text-bg-warning', playing: 'text-bg-success', finished: 'text-bg-info' };
 
 export default {
   name: 'RoomView',
-  components: { GoBoard, ClockDisplay, RulesModal },
+  components: { GoBoard, ClockDisplay, RulesModal, TeamShield },
   props: { roomId: { type: String, required: true } },
   setup(props) {
     const player = getPlayer();
@@ -213,8 +214,12 @@ export default {
                 <strong>Tablero #{{ b.number }}</strong>
                 <span class="badge" :class="STATUS_BADGE_CLASS[b.status]">{{ STATUS_LABELS[b.status] }}</span>
               </div>
-              <p v-if="b.players && b.players.length" class="text-muted small mb-1">
-                {{ b.players.map(playerLabel).join(' vs ') || 'Sin jugadores' }}
+              <p v-if="b.players && b.players.length" class="text-muted small mb-1 d-flex flex-wrap align-items-center gap-1">
+                <template v-for="(p, i) in b.players" :key="p.nickname">
+                  <span v-if="i > 0">vs</span>
+                  <TeamShield :team="p.team" :name="p.teamName" :size="16" />
+                  <span>{{ playerLabel(p) }}</span>
+                </template>
               </p>
               <p v-else class="text-muted small mb-1">Sin jugadores</p>
               <p v-if="b.spectatorCount" class="text-muted small mb-0">👁 {{ b.spectatorCount }} observando</p>
@@ -229,7 +234,15 @@ export default {
           <tbody>
             <tr v-for="m in roomHistory" :key="m._id">
               <td>#{{ m.boardNumber }}</td>
-              <td>{{ m.players.map(playerLabel).join(' vs ') }}</td>
+              <td>
+                <span class="d-inline-flex flex-wrap align-items-center gap-1">
+                  <template v-for="(p, i) in m.players" :key="p.nickname">
+                    <span v-if="i > 0">vs</span>
+                    <TeamShield :team="p.team" :name="p.teamName" :size="16" />
+                    <span>{{ playerLabel(p) }}</span>
+                  </template>
+                </span>
+              </td>
               <td>{{ resultLabel(m) }}</td>
               <td>{{ m.endedAt ? new Date(m.endedAt).toLocaleString() : '-' }}</td>
               <td><a class="link-primary" :href="sgfUrl(m._id)">Descargar</a></td>
@@ -242,7 +255,10 @@ export default {
         <table class="table table-hover align-middle">
           <thead><tr><th>Equipo</th><th>Victorias</th></tr></thead>
           <tbody>
-            <tr v-for="r in ranking" :key="r.team"><td>{{ r.teamName }}</td><td>{{ r.wins }}</td></tr>
+            <tr v-for="r in ranking" :key="r.team">
+              <td><span class="d-inline-flex align-items-center gap-2"><TeamShield :team="r.team" :name="r.teamName" :size="24" />{{ r.teamName }}</span></td>
+              <td>{{ r.wins }}</td>
+            </tr>
           </tbody>
         </table>
       </div>

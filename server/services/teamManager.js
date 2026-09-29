@@ -7,7 +7,7 @@
 
 const Team = require('../../models/Team');
 
-/** teams: Map<teamId, { _id, name, color }> */
+/** teams: Map<teamId, { _id, name, color, shield }> */
 const teams = new Map();
 
 function registerTeam(teamDoc) {
@@ -15,6 +15,7 @@ function registerTeam(teamDoc) {
     _id: String(teamDoc._id),
     name: teamDoc.name,
     color: teamDoc.color,
+    shield: teamDoc.shield || '',
   });
 }
 
@@ -42,10 +43,9 @@ async function syncTeamsWithDB() {
 
   for (const teamDoc of allTeams) {
     const id = String(teamDoc._id);
-    if (!teams.has(id)) {
-      registerTeam(teamDoc);
-      console.log(`[teamManager] equipo nuevo registrado: ${teamDoc.name} (${id})`);
-    }
+    const isNew = !teams.has(id);
+    registerTeam(teamDoc); // también refresca nombre/color/escudo de los existentes
+    if (isNew) console.log(`[teamManager] equipo nuevo registrado: ${teamDoc.name} (${id})`);
   }
 
   for (const id of [...teams.keys()]) {

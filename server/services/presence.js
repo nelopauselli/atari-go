@@ -6,6 +6,7 @@ function identify(socketId, player) {
     sockets.set(socketId, {
       id: String(player.id),
       nickname: player.nickname,
+      team: player.team ? String(player.team) : '',
       teamName: player.teamName || '',
       teamColor: player.teamColor || '',
     });

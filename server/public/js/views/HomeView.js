@@ -4,6 +4,7 @@ import { navigate } from '../router.js';
 import { getPlayer } from '../services/auth.js';
 import RulesModal from '../components/RulesModal.js';
 import TutorialModal from '../components/TutorialModal.js';
+import TeamShield from '../components/TeamShield.js';
 
 const CLOCK_LABELS = {
   'fischer-1-3': 'Fischer 1m + 3s',
@@ -13,7 +14,7 @@ const CLOCK_LABELS = {
 
 export default {
   name: 'HomeView',
-  components: { RulesModal, TutorialModal },
+  components: { RulesModal, TutorialModal, TeamShield },
   setup() {
     const tab = ref('rooms');
     const rooms = ref([]);
@@ -40,7 +41,7 @@ export default {
     const teamTotals = computed(() => {
       const totals = new Map();
       for (const p of onlinePlayers.value) {
-        const t = totals.get(p.teamName) || { name: p.teamName, color: p.teamColor, count: 0 };
+        const t = totals.get(p.teamName) || { id: p.team, name: p.teamName, color: p.teamColor, count: 0 };
         t.count++;
         totals.set(p.teamName, t);
       }
@@ -123,13 +124,13 @@ export default {
         <div v-if="onlinePlayers.length===0" class="text-center text-muted py-5">No hay usuarios conectados.</div>
         <div v-if="teamTotals.length" class="d-flex flex-wrap gap-2 mb-3">
           <span class="badge text-bg-light border d-inline-flex align-items-center gap-2" v-for="t in teamTotals" :key="t.name">
-            <span class="rounded-circle d-inline-block" :style="{ background: t.color, width: '10px', height: '10px' }"></span>
+            <TeamShield :team="t.id" :name="t.name" :color="t.color" :size="18" />
             {{ t.name }}: {{ t.count }}
           </span>
         </div>
         <ul class="list-group">
           <li class="list-group-item d-flex align-items-center gap-2" v-for="p in onlinePlayers" :key="p.id">
-            <span class="rounded-circle d-inline-block" :style="{ background: p.teamColor, width: '10px', height: '10px' }"></span>
+            <TeamShield :team="p.team" :name="p.teamName" :color="p.teamColor" :size="20" />
             <strong>{{ p.nickname }}</strong>
             <span v-if="p.id === myId" class="text-muted small">(t&uacute;)</span>
             <span class="text-muted small">{{ p.teamName }}</span>

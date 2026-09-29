@@ -51,25 +51,77 @@ function makeEmptyBoardState(number) {
   };
 }
 
+function buildRoomConfig(roomDoc) {
+  return {
+    id: String(roomDoc._id),
+    name: roomDoc.name,
+    type: roomDoc.type,
+    boardCount: roomDoc.boardCount,
+    boardSize: roomDoc.boardSize,
+    stonesToWin: roomDoc.stonesToWin,
+    clockType: roomDoc.clockType,
+    koRuleEnabled: roomDoc.koRuleEnabled,
+  };
+}
+
 function registerRoom(roomDoc) {
   const boards = new Map();
   for (let n = 1; n <= roomDoc.boardCount; n++) {
     boards.set(n, makeEmptyBoardState(n));
   }
   rooms.set(String(roomDoc._id), {
-    config: {
-      id: String(roomDoc._id),
-      name: roomDoc.name,
-      type: roomDoc.type,
-      boardCount: roomDoc.boardCount,
-      boardSize: roomDoc.boardSize,
-      stonesToWin: roomDoc.stonesToWin,
-      clockType: roomDoc.clockType,
-      koRuleEnabled: roomDoc.koRuleEnabled,
-    },
+    config: buildRoomConfig(roomDoc),
     boards,
   });
   return rooms.get(String(roomDoc._id));
+}
+
+/**
+ * Aplica a una sala ya registrada los cambios de configuración hechos desde el
+ * backend administrativo. Las partidas en curso (o finalizadas) conservan la
+ * configuración con la que empezaron; las que están esperando rival todavía no
+ * arrancaron, así que se actualizan con la nueva config.
+ * Devuelve true si hubo algún cambio.
+ */
+function updateRoomConfig(room, roomDoc) {
+  const newConfig = buildRoomConfig(roomDoc);
+  const configChanged = Object.keys(newConfig).some((k) => room.config[k] !== newConfig[k]);
+  let boardsChanged = false;
+
+  if (configChanged) {
+    room.config = newConfig;
+    const preset = CLOCK_PRESETS[newConfig.clockType];
+    for (const board of room.boards.values()) {
+      if (board.status !== 'waiting' || !board.game) continue;
+      const g = board.game;
+      if (g.size !== newConfig.boardSize) {
+        g.size = newConfig.boardSize;
+        g.board = goEngine.createEmptyBoard(newConfig.boardSize);
+      }
+      g.stonesToWin = newConfig.stonesToWin;
+      g.clockType = newConfig.clockType;
+      g.koRuleEnabled = newConfig.koRuleEnabled;
+      g.preset = preset;
+      g.clocks = { black: preset.baseMs, white: preset.baseMs };
+    }
+  }
+
+  // Cantidad de tableros: se agregan los que falten; los sobrantes se quitan
+  // solo si están vacíos (si no, se reintenta en el próximo ciclo de sync).
+  for (let n = 1; n <= newConfig.boardCount; n++) {
+    if (!room.boards.has(n)) {
+      room.boards.set(n, makeEmptyBoardState(n));
+      boardsChanged = true;
+    }
+  }
+  for (const [n, board] of [...room.boards.entries()]) {
+    if (n > newConfig.boardCount && board.status === 'empty') {
+      room.boards.delete(n);
+      boardsChanged = true;
+    }
+  }
+
+  return configChanged || boardsChanged;
 }
 
 function getRoom(roomId) {
@@ -100,6 +152,9 @@ async function syncRoomsWithDB() {
     if (!rooms.has(id)) {
       registerRoom(roomDoc);
       console.log(`[matchManager] sala nueva registrada: ${roomDoc.name} (${id})`);
+    } else if (updateRoomConfig(rooms.get(id), roomDoc)) {
+      console.log(`[matchManager] configuración de sala actualizada: ${roomDoc.name} (${id})`);
+      emit('room:update', id, getRoomBoardsSummary(id));
     }
   }
 

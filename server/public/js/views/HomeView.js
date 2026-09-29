@@ -1,6 +1,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { api } from '../services/api.js';
 import { navigate } from '../router.js';
+import { getPlayer } from '../services/auth.js';
 import RulesModal from '../components/RulesModal.js';
 import TutorialModal from '../components/TutorialModal.js';
 
@@ -22,6 +23,7 @@ export default {
     const createError = ref('');
     const rulesRoom = ref(null);
     const showTutorial = ref(false);
+    const myId = String(getPlayer()?.id ?? '');
     let poller = null;
 
     async function loadRooms() {
@@ -67,7 +69,7 @@ export default {
     }
 
     return {
-      tab, rooms, history, onlinePlayers, teamTotals, form, createError, rulesRoom, showTutorial, CLOCK_LABELS,
+      tab, rooms, history, onlinePlayers, teamTotals, form, createError, rulesRoom, showTutorial, CLOCK_LABELS, myId,
       openRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
     };
   },
@@ -129,6 +131,7 @@ export default {
           <li class="list-group-item d-flex align-items-center gap-2" v-for="p in onlinePlayers" :key="p.id">
             <span class="rounded-circle d-inline-block" :style="{ background: p.teamColor, width: '10px', height: '10px' }"></span>
             <strong>{{ p.nickname }}</strong>
+            <span v-if="p.id === myId" class="text-muted small">(t&uacute;)</span>
             <span class="text-muted small">{{ p.teamName }}</span>
           </li>
         </ul>

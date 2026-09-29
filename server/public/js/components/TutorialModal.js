@@ -12,7 +12,7 @@ const STEPS = [
   {
     title: '¿Qué es Atari-Go?',
     text: [
-      'Atari-Go es una versión simplificada del Go, ideal para aprender. Dos personas colocan piedras negras y blancas sobre las intersecciones de un tablero.',
+      'Atari-Go es una versi&oacute;n simplificada del Go, ideal para aprender. Dos personas colocan piedras negras y blancas sobre las intersecciones de un tablero.',
       'El objetivo es simple: <strong>gana quien primero captura la cantidad de piedras rivales</strong> que indique la sala.',
     ],
     board: parse(['.....', '.B.W.', '..B..', '.W...', '.....']),
@@ -21,7 +21,7 @@ const STEPS = [
     title: 'Turnos y jugadas',
     text: [
       'Juega primero <strong>negro</strong> ⚫ y los turnos se alternan.',
-      'En tu turno colocás una piedra en cualquier intersección vacía. Las piedras no se mueven una vez colocadas.',
+      'En tu turno coloc&aacute;s una piedra en cualquier intersecci&oacute;n vac&iacute;a. Las piedras no se mueven una vez colocadas.',
       '<strong>No se puede pasar:</strong> en cada turno es obligatorio jugar.',
     ],
     practice: {
@@ -34,8 +34,8 @@ const STEPS = [
   {
     title: 'Libertades',
     text: [
-      'Las <strong>libertades</strong> de una piedra son las intersecciones vacías pegadas a ella: arriba, abajo, izquierda y derecha (las diagonales no cuentan).',
-      'Las piedras del mismo color conectadas en línea forman una <strong>cadena</strong> y comparten sus libertades.',
+      'Las <strong>libertades</strong> de una piedra son las intersecciones vac&iacute;as pegadas a ella: arriba, abajo, izquierda y derecha (las diagonales no cuentan).',
+      'Las piedras del mismo color conectadas en l&iacute;nea forman una <strong>cadena</strong> y comparten sus libertades.',
     ],
     board: parse(['.....', '.....', '..B..', '.....', '.....']),
     marks: [{ x: 2, y: 1, type: 'liberty' }, { x: 1, y: 2, type: 'liberty' }, { x: 3, y: 2, type: 'liberty' }, { x: 2, y: 3, type: 'liberty' }],
@@ -57,7 +57,7 @@ const STEPS = [
   {
     title: 'Capturar una cadena',
     text: [
-      'Una cadena se captura completa cuando se le tapa la última libertad compartida, sin importar cuántas piedras tenga.',
+      'Una cadena se captura completa cuando se le tapa la &uacute;ltima libertad compartida, sin importar cu&aacute;ntas piedras tenga.',
     ],
     board: parse(['.....', '.BB..', 'BWWB.', '.B...', '.....']),
     practice: {
@@ -70,8 +70,8 @@ const STEPS = [
   {
     title: 'Atari: ¡salvá tu piedra!',
     text: [
-      'Cuando una cadena tiene <strong>una sola libertad</strong> se dice que está en <em>atari</em>: el rival la puede capturar en la próxima jugada.',
-      'Para escapar, podés extender la cadena y así ganar libertades nuevas.',
+      'Cuando una cadena tiene <strong>una sola libertad</strong> se dice que est&aacute; en <em>atari</em>: el rival la puede capturar en la pr&oacute;xima jugada.',
+      'Para escapar, pod&eacute;s extender la cadena y as&iacute; ganar libertades nuevas.',
     ],
     board: parse(['.....', '..W..', '.WB..', '..W..', '.....']),
     practice: {
@@ -86,7 +86,7 @@ const STEPS = [
     title: 'Autocaptura',
     text: [
       'No se puede jugar una piedra que deje a tu propia cadena sin libertades.',
-      '<strong>Excepción:</strong> sí se permite si esa jugada captura piedras rivales, porque la captura le devuelve libertades.',
+      '<strong>Excepci&oacute;n:</strong> s&iacute; se permite si esa jugada captura piedras rivales, porque la captura le devuelve libertades.',
     ],
     board: parse(['.W...', 'W.W..', '.W...', '.....', '.....']),
     marks: [{ x: 1, y: 1, type: 'forbidden' }],
@@ -95,8 +95,8 @@ const STEPS = [
   {
     title: 'Regla de Ko',
     text: [
-      'Si la sala tiene Ko habilitado, no podés jugar una piedra que repita la posición del tablero que había justo antes de tu última jugada.',
-      'Así se evita capturar y recapturar en el mismo lugar para siempre: primero hay que jugar en otro lado.',
+      'Si la sala tiene Ko habilitado, no pod&eacute;s jugar una piedra que repita la posici&oacute;n del tablero que hab&iacute;a justo antes de tu &uacute;ltima jugada.',
+      'As&iacute; se evita capturar y recapturar en el mismo lugar para siempre: primero hay que jugar en otro lado.',
     ],
     board: parse(['.....', '.BW..', 'BW.W.', '.BW..', '.....']),
     lastMove: { x: 1, y: 2 },
@@ -109,11 +109,11 @@ const STEPS = [
       'La partida termina y hay ganador cuando:',
       '<ul class="mb-2">'
         + '<li><strong>Captura:</strong> alguien alcanza las piedras capturadas que pide la sala.</li>'
-        + '<li><strong>Rendición:</strong> una persona abandona; gana la otra.</li>'
-        + '<li><strong>Tiempo:</strong> cada partida usa reloj Fischer (tiempo base + incremento por jugada). Si se te agota, perdés.</li>'
-        + '<li><strong>Sin jugadas posibles:</strong> si en tu turno no te queda ningún lugar permitido, perdés.</li>'
+        + '<li><strong>Rendici&oacute;n:</strong> una persona abandona; gana la otra.</li>'
+        + '<li><strong>Tiempo:</strong> cada partida usa reloj Fischer (tiempo base + incremento por jugada). Si se te agota, perd&eacute;s.</li>'
+        + '<li><strong>Sin jugadas posibles:</strong> si en tu turno no te queda ning&uacute;n lugar permitido, perd&eacute;s.</li>'
         + '</ul>',
-      'Cada sala puede tener su propio tamaño de tablero, reloj y cantidad de capturas: revisá el botón <strong>Reglas</strong> de la sala antes de sentarte. ¡A jugar!',
+      'Cada sala puede tener su propio tama&ntilde;o de tablero, reloj y cantidad de capturas: revis&aacute; el bot&oacute;n <strong>Reglas</strong> de la sala antes de sentarte. &iexcl;A jugar!',
     ],
   },
 ];
@@ -188,7 +188,7 @@ export default {
       <div class="modal-dialog modal-dialog-scrollable modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="tutorial-modal-title">Cómo se juega · {{ step.title }}</h5>
+            <h5 class="modal-title" id="tutorial-modal-title">C&oacute;mo se juega · {{ step.title }}</h5>
             <button type="button" class="btn-close" aria-label="Cerrar" @click="$emit('close')"></button>
           </div>
           <div class="progress rounded-0 tutorial-progress" role="progressbar" :aria-valuenow="index + 1" aria-valuemin="1" :aria-valuemax="STEPS.length">
@@ -219,7 +219,7 @@ export default {
             <div class="d-flex gap-2">
               <button type="button" class="btn btn-outline-secondary" :disabled="isFirst" @click="prev">Anterior</button>
               <button v-if="!isLast" type="button" class="btn btn-primary" @click="next">Siguiente</button>
-              <button v-else type="button" class="btn btn-success" @click="$emit('close')">¡A jugar!</button>
+              <button v-else type="button" class="btn btn-success" @click="$emit('close')">&iexcl;A jugar!</button>
             </div>
           </div>
         </div>

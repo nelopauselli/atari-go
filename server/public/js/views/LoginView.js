@@ -42,7 +42,7 @@ export default {
       <div class="card shadow-sm">
         <div class="card-body p-4">
           <h1 class="h3">Atari-Go Online</h1>
-          <p class="text-muted mb-4">Ingresá tu nickname y elegí tu equipo para jugar.</p>
+          <p class="text-muted mb-4">Ingres&aacute; tu nickname y eleg&iacute; tu equipo para jugar.</p>
 
           <div class="mb-3">
             <label class="form-label">Nickname</label>

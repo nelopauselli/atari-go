@@ -31,18 +31,18 @@ export default {
           </div>
           <div class="modal-body">
             <h6>Objetivo</h6>
-            <p>Gana quien primero capture <strong>{{ stonesLabel }}</strong> del rival. También se gana si el rival se rinde, se le agota el tiempo o se queda sin jugadas posibles.</p>
+            <p>Gana quien primero capture <strong>{{ stonesLabel }}</strong> del rival. Tambi&eacute;n se gana si el rival se rinde, se le agota el tiempo o se queda sin jugadas posibles.</p>
 
             <h6>Tablero y jugadas</h6>
             <ul>
               <li>Tablero de <strong>{{ room.boardSize }}x{{ room.boardSize }}</strong>.</li>
               <li>Juega primero negro ⚫ y los turnos se alternan.</li>
-              <li>En cada turno se coloca una piedra en una intersección vacía. <strong>No se puede pasar.</strong></li>
+              <li>En cada turno se coloca una piedra en una intersecci&oacute;n vac&iacute;a. <strong>No se puede pasar.</strong></li>
             </ul>
 
             <h6>Libertades y capturas</h6>
             <ul>
-              <li>Las libertades de una cadena son las intersecciones vacías adyacentes (arriba, abajo, izquierda, derecha).</li>
+              <li>Las libertades de una cadena son las intersecciones vac&iacute;as adyacentes (arriba, abajo, izquierda, derecha).</li>
               <li>Una cadena rival que queda sin libertades se captura completa y sus piedras suman para tu objetivo.</li>
             </ul>
 
@@ -50,24 +50,24 @@ export default {
             <p>No se puede jugar una piedra que deje a tu propia cadena sin libertades, salvo que esa jugada capture piedras rivales.</p>
 
             <h6>Regla de Ko</h6>
-            <p v-if="koEnabled"><span class="badge text-bg-success me-1">Habilitada</span> No se puede jugar una piedra que repita la posición del tablero inmediatamente anterior a tu última jugada.</p>
-            <p v-else><span class="badge text-bg-secondary me-1">Deshabilitada</span> En esta sala no se aplica la restricción de Ko.</p>
+            <p v-if="koEnabled"><span class="badge text-bg-success me-1">Habilitada</span> No se puede jugar una piedra que repita la posici&oacute;n del tablero inmediatamente anterior a tu &uacute;ltima jugada.</p>
+            <p v-else><span class="badge text-bg-secondary me-1">Deshabilitada</span> En esta sala no se aplica la restricci&oacute;n de Ko.</p>
 
             <h6>Reloj</h6>
-            <p v-if="clock">Fischer: <strong>{{ clock.base }}</strong> de tiempo base, <strong>+{{ clock.increment }}</strong> por jugada. Si se te agota el tiempo, perdés la partida.</p>
-            <p v-else>Si se te agota el tiempo, perdés la partida.</p>
+            <p v-if="clock">Fischer: <strong>{{ clock.base }}</strong> de tiempo base, <strong>+{{ clock.increment }}</strong> por jugada. Si se te agota el tiempo, perd&eacute;s la partida.</p>
+            <p v-else>Si se te agota el tiempo, perd&eacute;s la partida.</p>
 
             <h6>Fin de la partida</h6>
             <ul>
               <li><strong>Captura:</strong> alguien alcanza {{ stonesLabel }} capturada(s).</li>
-              <li><strong>Rendición:</strong> una persona abandona; gana la otra.</li>
+              <li><strong>Rendici&oacute;n:</strong> una persona abandona; gana la otra.</li>
               <li><strong>Tiempo:</strong> a una persona se le agota el reloj; gana la otra.</li>
-              <li><strong>Sin jugadas posibles:</strong> si a quien le toca no le queda ningún lugar permitido<template v-if="koEnabled"> (por autocaptura o Ko)</template><template v-else> (por autocaptura)</template>, pierde.</li>
+              <li><strong>Sin jugadas posibles:</strong> si a quien le toca no le queda ning&uacute;n lugar permitido<template v-if="koEnabled"> (por autocaptura o Ko)</template><template v-else> (por autocaptura)</template>, pierde.</li>
             </ul>
 
             <template v-if="room.type==='torneo'">
               <h6>Modo torneo</h6>
-              <p class="mb-0">Dos jugadores del mismo equipo no pueden enfrentarse en un mismo tablero; quien intente sentarse en esa condición queda como espectador.</p>
+              <p class="mb-0">Dos jugadores del mismo equipo no pueden enfrentarse en un mismo tablero; quien intente sentarse en esa condici&oacute;n queda como espectador.</p>
             </template>
           </div>
           <div class="modal-footer">

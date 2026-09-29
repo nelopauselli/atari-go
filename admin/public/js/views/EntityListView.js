@@ -121,7 +121,7 @@ export default {
       <p v-if="error" class="error-text">{{ error }}</p>
 
       <div class="card" v-if="!loading && rows.length===0">
-        <div class="empty-state">Sin registros todavía.</div>
+        <div class="empty-state">Sin registros todav&iacute;a.</div>
       </div>
 
       <div class="card" v-else>

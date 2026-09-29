@@ -92,10 +92,10 @@ export default {
       <div v-if="tab==='rooms'">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="h4 mb-0">Salas activas</h2>
-          <button type="button" class="btn btn-primary btn-sm" @click="showTutorial = true">¿Cómo se juega?</button>
+          <button type="button" class="btn btn-primary btn-sm" @click="showTutorial = true">&iquest;C&oacute;mo se juega?</button>
         </div>
 
-        <div v-if="rooms.length===0" class="text-center text-muted py-5">No hay salas activas. Creá la primera.</div>
+        <div v-if="rooms.length===0" class="text-center text-muted py-5">No hay salas activas. Cre&aacute; la primera.</div>
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
           <div class="col" v-for="r in rooms" :key="r.id">
             <div class="card h-100 shadow-sm room-card" @click="openRoom(r.id)">

@@ -44,6 +44,18 @@ function resign(roomId, boardNumber, playerId) {
   });
 }
 
+// Resuelve con { latency (ms), online } o null si el servidor no responde a tiempo.
+function ping(timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    if (!socket.connected) return resolve(null);
+    const start = performance.now();
+    socket.timeout(timeoutMs).emit('app:ping', (err, res) => {
+      if (err) return resolve(null);
+      resolve({ latency: Math.round(performance.now() - start), online: res.online });
+    });
+  });
+}
+
 function on(event, handler) {
   socket.on(event, handler);
   return () => socket.off(event, handler);
@@ -58,5 +70,6 @@ export const socketService = {
   leaveSpectator,
   move,
   resign,
+  ping,
   on,
 };

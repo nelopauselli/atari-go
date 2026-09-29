@@ -19,6 +19,11 @@ function initSockets(io) {
       presence.identify(socket.id, player);
     });
 
+    // El cliente mide la latencia con el round-trip de este ack.
+    socket.on('app:ping', (ack) => {
+      if (typeof ack === 'function') ack({ online: presence.listOnline().length });
+    });
+
     socket.on('room:join', ({ roomId, player }, ack) => {
       socket.join(roomChannel(roomId));
       socket.data.roomId = roomId;

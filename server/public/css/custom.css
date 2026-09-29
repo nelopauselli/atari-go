@@ -35,3 +35,7 @@ body {
 .tutorial-progress { height: .35rem; }
 
 .team-shield { object-fit: contain; flex-shrink: 0; vertical-align: middle; }
+
+body { padding-bottom: 2rem; }
+.app-footer { font-size: .75rem; line-height: 1.2; }
+.app-footer__dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; }

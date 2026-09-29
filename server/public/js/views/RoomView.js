@@ -214,13 +214,15 @@ export default {
                 <strong>Tablero #{{ b.number }}</strong>
                 <span class="badge" :class="STATUS_BADGE_CLASS[b.status]">{{ STATUS_LABELS[b.status] }}</span>
               </div>
-              <p v-if="b.players && b.players.length" class="text-muted small mb-1 d-flex flex-wrap align-items-center gap-1">
+              <div v-if="b.players && b.players.length" class="text-muted small mb-1 d-flex flex-wrap align-items-center justify-content-center gap-3">
                 <template v-for="(p, i) in b.players" :key="p.nickname">
                   <span v-if="i > 0">vs</span>
-                  <TeamShield :team="p.team" :name="p.teamName" :size="16" />
-                  <span>{{ playerLabel(p) }}</span>
+                  <span class="d-inline-flex flex-column align-items-center text-center gap-1">
+                    <TeamShield :team="p.team" :name="p.teamName" :size="40" />
+                    <span>{{ playerLabel(p) }}</span>
+                  </span>
                 </template>
-              </p>
+              </div>
               <p v-else class="text-muted small mb-1">Sin jugadores</p>
               <p v-if="b.spectatorCount" class="text-muted small mb-0">👁 {{ b.spectatorCount }} observando</p>
             </div>
@@ -235,11 +237,13 @@ export default {
             <tr v-for="m in roomHistory" :key="m._id">
               <td>#{{ m.boardNumber }}</td>
               <td>
-                <span class="d-inline-flex flex-wrap align-items-center gap-1">
+                <span class="d-inline-flex flex-wrap align-items-center gap-3">
                   <template v-for="(p, i) in m.players" :key="p.nickname">
                     <span v-if="i > 0">vs</span>
-                    <TeamShield :team="p.team" :name="p.teamName" :size="16" />
-                    <span>{{ playerLabel(p) }}</span>
+                    <span class="d-inline-flex flex-column align-items-center text-center gap-1">
+                      <TeamShield :team="p.team" :name="p.teamName" :size="32" />
+                      <span>{{ playerLabel(p) }}</span>
+                    </span>
                   </template>
                 </span>
               </td>

@@ -2,6 +2,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { api } from '../services/api.js';
 import { navigate } from '../router.js';
 import RulesModal from '../components/RulesModal.js';
+import TutorialModal from '../components/TutorialModal.js';
 
 const CLOCK_LABELS = {
   'fischer-1-3': 'Fischer 1m + 3s',
@@ -11,7 +12,7 @@ const CLOCK_LABELS = {
 
 export default {
   name: 'HomeView',
-  components: { RulesModal },
+  components: { RulesModal, TutorialModal },
   setup() {
     const tab = ref('rooms');
     const rooms = ref([]);
@@ -20,6 +21,7 @@ export default {
     const form = ref({ name: '', type: 'amistosas', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-10-5' });
     const createError = ref('');
     const rulesRoom = ref(null);
+    const showTutorial = ref(false);
     let poller = null;
 
     async function loadRooms() {
@@ -65,7 +67,7 @@ export default {
     }
 
     return {
-      tab, rooms, history, onlinePlayers, teamTotals, form, createError, rulesRoom, CLOCK_LABELS,
+      tab, rooms, history, onlinePlayers, teamTotals, form, createError, rulesRoom, showTutorial, CLOCK_LABELS,
       openRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
     };
   },
@@ -88,6 +90,7 @@ export default {
       <div v-if="tab==='rooms'">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="h4 mb-0">Salas activas</h2>
+          <button type="button" class="btn btn-primary btn-sm" @click="showTutorial = true">¿Cómo se juega?</button>
         </div>
 
         <div v-if="rooms.length===0" class="text-center text-muted py-5">No hay salas activas. Creá la primera.</div>
@@ -110,6 +113,7 @@ export default {
           </div>
         </div>
         <RulesModal v-if="rulesRoom" :room="rulesRoom" @close="rulesRoom = null" />
+        <TutorialModal v-if="showTutorial" @close="showTutorial = false" />
       </div>
 
       <div v-else-if="tab==='online'">

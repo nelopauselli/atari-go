@@ -11,6 +11,7 @@ export default {
     lastMove: { type: Object, default: null }, // { x, y } | null
     interactive: { type: Boolean, default: false },
     myColor: { type: String, default: null },
+    marks: { type: Array, default: () => [] }, // [{ x, y, type: 'liberty' | 'forbidden' }]
   },
   emits: ['play'],
   setup(props, { emit }) {
@@ -80,6 +81,14 @@ export default {
                   :fill="cellAt(x-1,y-1)==='black' ? '#fff' : '#000'"
                   style="pointer-events:none"
                   :x="pos(x-1) - 5" :y="pos(y-1) - 5" width="10" height="10" />
+          </g>
+        </g>
+        <!-- marcas ilustrativas (tutorial) -->
+        <g v-for="(m,idx) in marks" :key="'mark'+idx" style="pointer-events:none">
+          <circle v-if="m.type==='liberty'" class="mark-liberty" :cx="pos(m.x)" :cy="pos(m.y)" r="8" />
+          <g v-else-if="m.type==='forbidden'" class="mark-forbidden">
+            <line :x1="pos(m.x)-9" :y1="pos(m.y)-9" :x2="pos(m.x)+9" :y2="pos(m.y)+9" />
+            <line :x1="pos(m.x)-9" :y1="pos(m.y)+9" :x2="pos(m.x)+9" :y2="pos(m.y)-9" />
           </g>
         </g>
       </svg>

@@ -132,13 +132,14 @@ export default {
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
-      sgfUrl: api.sgfDownloadUrl, backHome: () => navigate('/home'), player,
+      sgfUrl: api.sgfDownloadUrl, player,
+      goBack: () => (active.boardNumber ? closeActiveBoard() : navigate('/home')),
     };
   },
   template: `
     <main class="container py-4" v-if="room">
       <div class="mb-3">
-        <a href="#" class="link-secondary text-decoration-none" @click.prevent="backHome">← Salas</a>
+        <a href="#" class="link-secondary text-decoration-none" @click.prevent="goBack">← {{ active.boardNumber ? room.name : 'Salas' }}</a>
         <div class="d-flex justify-content-between align-items-center gap-2 mt-1 mb-1">
           <h2 class="h4 mb-0">{{ room.name }}</h2>
           <button type="button" class="btn btn-outline-info btn-sm" @click="showRules = true">Reglas</button>

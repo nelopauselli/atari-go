@@ -42,12 +42,12 @@ export default {
 
             <h6>Libertades y capturas</h6>
             <ul>
-              <li>Las libertades de un grupo son las intersecciones vacías adyacentes (arriba, abajo, izquierda, derecha).</li>
-              <li>Un grupo rival que queda sin libertades se captura completo y sus piedras suman para tu objetivo.</li>
+              <li>Las libertades de una cadena son las intersecciones vacías adyacentes (arriba, abajo, izquierda, derecha).</li>
+              <li>Una cadena rival que queda sin libertades se captura completa y sus piedras suman para tu objetivo.</li>
             </ul>
 
             <h6>Autocaptura</h6>
-            <p>No se puede jugar una piedra que deje a tu propio grupo sin libertades, salvo que esa jugada capture piedras rivales.</p>
+            <p>No se puede jugar una piedra que deje a tu propia cadena sin libertades, salvo que esa jugada capture piedras rivales.</p>
 
             <h6>Regla de Ko</h6>
             <p v-if="koEnabled"><span class="badge text-bg-success me-1">Habilitada</span> No se puede jugar una piedra que repita la posición del tablero inmediatamente anterior a tu última jugada.</p>

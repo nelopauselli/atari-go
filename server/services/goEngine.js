@@ -25,7 +25,7 @@ function neighbors(size, x, y) {
   return result;
 }
 
-/** Devuelve { stones: Set("x,y"), liberties: Set("x,y") } del grupo que contiene (x,y). */
+/** Devuelve { stones: Set("x,y"), liberties: Set("x,y") } de la cadena que contiene (x,y). */
 function getGroup(board, size, x, y) {
   const color = board[idx(size, x, y)];
   const stones = new Set();
@@ -66,7 +66,7 @@ function playMove(board, size, x, y, color) {
   const opponent = color === 'black' ? 'white' : 'black';
   let capturedStones = [];
 
-  // Capturar grupos rivales adyacentes sin libertades
+  // Capturar cadenas rivales adyacentes sin libertades
   for (const [nx, ny] of neighbors(size, x, y)) {
     if (next[idx(size, nx, ny)] === opponent) {
       const group = getGroup(next, size, nx, ny);
@@ -80,7 +80,7 @@ function playMove(board, size, x, y, color) {
     }
   }
 
-  // Regla de autocaptura: si el propio grupo queda sin libertades y no capturó nada, movimiento ilegal
+  // Regla de autocaptura: si la propia cadena queda sin libertades y no capturó nada, movimiento ilegal
   const ownGroup = getGroup(next, size, x, y);
   if (ownGroup.liberties.size === 0 && capturedStones.length === 0) {
     return { ok: false, error: 'Autocaptura no permitida' };

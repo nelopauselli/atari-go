@@ -14,22 +14,22 @@ A diferencia del Go tradicional (que se gana por territorio), en Atari-Go **gana
 
 ## Libertades
 
-Cada piedra (o grupo de piedras del mismo color conectadas ortogonalmente, es decir arriba/abajo/izquierda/derecha) tiene **libertades**: las intersecciones vacías adyacentes a ese grupo.
+Cada piedra (o cadena de piedras del mismo color conectadas ortogonalmente, es decir arriba/abajo/izquierda/derecha) tiene **libertades**: las intersecciones vacías adyacentes a esa cadena.
 
-- Un grupo con al menos una libertad permanece en el tablero.
-- Un grupo sin libertades es **capturado** y se retira del tablero.
+- Una cadena con al menos una libertad permanece en el tablero.
+- Una cadena sin libertades es **capturada** y se retira del tablero.
 
 ## Capturas
 
 Después de colocar una piedra:
 
-1. Se revisan los grupos rivales adyacentes a la piedra recién jugada.
-2. Si alguno de esos grupos queda sin libertades, se captura completo (todas sus piedras se retiran del tablero).
+1. Se revisan las cadenas rivales adyacentes a la piedra recién jugada.
+2. Si alguna de esas cadenas queda sin libertades, se captura completa (todas sus piedras se retiran del tablero).
 3. Las capturas cuentan para el objetivo de victoria de quien jugó la piedra.
 
 ## Regla de autocaptura
 
-No está permitido jugar una piedra que deje al propio grupo sin libertades, **salvo que esa jugada capture al menos un grupo rival** (en cuyo caso las libertades que deja la captura vuelven a habilitar la jugada).
+No está permitido jugar una piedra que deje a la propia cadena sin libertades, **salvo que esa jugada capture al menos una cadena rival** (en cuyo caso las libertades que deja la captura vuelven a habilitar la jugada).
 
 ## Regla de Ko
 

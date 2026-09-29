@@ -35,7 +35,7 @@ const STEPS = [
     title: 'Libertades',
     text: [
       'Las <strong>libertades</strong> de una piedra son las intersecciones vacías pegadas a ella: arriba, abajo, izquierda y derecha (las diagonales no cuentan).',
-      'Las piedras del mismo color conectadas en línea forman un <strong>grupo</strong> y comparten sus libertades.',
+      'Las piedras del mismo color conectadas en línea forman una <strong>cadena</strong> y comparten sus libertades.',
     ],
     board: parse(['.....', '.....', '..B..', '.....', '.....']),
     marks: [{ x: 2, y: 1, type: 'liberty' }, { x: 1, y: 2, type: 'liberty' }, { x: 3, y: 2, type: 'liberty' }, { x: 2, y: 3, type: 'liberty' }],
@@ -44,7 +44,7 @@ const STEPS = [
   {
     title: 'Capturar',
     text: [
-      'Si un grupo rival se queda <strong>sin libertades</strong>, se captura: se retira del tablero y esas piedras suman para tu objetivo.',
+      'Si una cadena rival se queda <strong>sin libertades</strong>, se captura: se retira del tablero y esas piedras suman para tu objetivo.',
     ],
     board: parse(['.....', '..B..', '.BW..', '..B..', '.....']),
     practice: {
@@ -55,13 +55,13 @@ const STEPS = [
     },
   },
   {
-    title: 'Capturar un grupo',
+    title: 'Capturar una cadena',
     text: [
-      'Un grupo se captura completo cuando se le tapa la última libertad compartida, sin importar cuántas piedras tenga.',
+      'Una cadena se captura completa cuando se le tapa la última libertad compartida, sin importar cuántas piedras tenga.',
     ],
     board: parse(['.....', '.BB..', 'BWWB.', '.B...', '.....']),
     practice: {
-      prompt: 'Las dos piedras blancas comparten una única libertad. Encontrala y capturá el grupo.',
+      prompt: 'Las dos piedras blancas comparten una única libertad. Encontrala y capturá la cadena.',
       answer: { x: 2, y: 3 },
       after: parse(['.....', '.BB..', 'B..B.', '.BB..', '.....']),
       success: '¡Excelente! Capturaste 2 piedras de una sola vez.',
@@ -70,8 +70,8 @@ const STEPS = [
   {
     title: 'Atari: ¡salvá tu piedra!',
     text: [
-      'Cuando un grupo tiene <strong>una sola libertad</strong> se dice que está en <em>atari</em>: el rival lo puede capturar en la próxima jugada.',
-      'Para escapar, podés extender el grupo y así ganar libertades nuevas.',
+      'Cuando una cadena tiene <strong>una sola libertad</strong> se dice que está en <em>atari</em>: el rival la puede capturar en la próxima jugada.',
+      'Para escapar, podés extender la cadena y así ganar libertades nuevas.',
     ],
     board: parse(['.....', '..W..', '.WB..', '..W..', '.....']),
     practice: {
@@ -79,13 +79,13 @@ const STEPS = [
       answer: { x: 3, y: 2 },
       after: parse(['.....', '..W..', '.WBB.', '..W..', '.....']),
       afterMarks: [{ x: 3, y: 1, type: 'liberty' }, { x: 4, y: 2, type: 'liberty' }, { x: 3, y: 3, type: 'liberty' }],
-      success: '¡Salvada! Ahora el grupo negro tiene 3 libertades.',
+      success: '¡Salvada! Ahora la cadena negra tiene 3 libertades.',
     },
   },
   {
     title: 'Autocaptura',
     text: [
-      'No se puede jugar una piedra que deje a tu propio grupo sin libertades.',
+      'No se puede jugar una piedra que deje a tu propia cadena sin libertades.',
       '<strong>Excepción:</strong> sí se permite si esa jugada captura piedras rivales, porque la captura le devuelve libertades.',
     ],
     board: parse(['.W...', 'W.W..', '.W...', '.....', '.....']),

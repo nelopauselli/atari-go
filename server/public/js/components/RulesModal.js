@@ -68,7 +68,8 @@ export default {
             <template v-if="room.type==='torneo'">
               <h6>Modo torneo</h6>
               <p>Al entrar a la sala se te asigna autom&aacute;ticamente un equipo, buscando que los equipos queden parejos y que los compa&ntilde;eros de una misma instituci&oacute;n queden repartidos.</p>
-              <p class="mb-0">Dos jugadores del mismo equipo no pueden enfrentarse en un mismo tablero; quien intente sentarse en esa condici&oacute;n queda como espectador.</p>
+              <p>Dos jugadores del mismo equipo no pueden enfrentarse en un mismo tablero; quien intente sentarse en esa condici&oacute;n queda como espectador.</p>
+              <p class="mb-0">Cada partida que gan&aacute;s suma una victoria al equipo para el que jug&aacute;s.</p>
             </template>
           </div>
           <div class="modal-footer">

@@ -121,6 +121,46 @@ describe('asiento en tableros', () => {
   });
 });
 
+describe('invitados', () => {
+  const GUEST = { guest: true, nickname: 'Invitado' };
+
+  it('no pueden ocupar un tablero vacío', (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc());
+    assert.deepEqual(sit(roomId, GUEST, 1, 's-guest'), { ok: false, error: 'Los invitados no pueden jugar partidas' });
+    assert.equal(getBoard(roomId).status, 'empty');
+  });
+
+  it('no se suman como rival: observan al jugador que espera', (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc());
+    const ana = makePlayer('Ana');
+    sit(roomId, ana);
+    assert.deepEqual(sit(roomId, GUEST, 1, 's-guest'), { ok: true, role: 'spectator' });
+    assert.equal(getBoard(roomId).status, 'waiting');
+    assert.equal(getBoard(roomId).game.players.length, 1);
+    assert.equal(spectatorCount(roomId), 1);
+  });
+
+  it('observan partidas en curso y no pueden jugar ni abandonar', (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc());
+    startMatch(roomId);
+    assert.deepEqual(sit(roomId, GUEST, 1, 's-guest'), { ok: true, role: 'spectator' });
+    assert.equal(matchManager.handleMove({ roomId, boardNumber: 1, playerId: undefined, x: 0, y: 0 }).ok, false);
+    assert.equal(matchManager.handleResign({ roomId, boardNumber: 1, playerId: undefined }).ok, false);
+    assert.equal(getBoard(roomId).status, 'playing');
+  });
+
+  it('no se les asigna equipo en salas torneo', async (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc({ type: 'torneo', teams: makeTeams('Rojo') }));
+    assert.equal(matchManager.isGuest(GUEST), true);
+    assert.equal(await matchManager.assignTeamOnJoin(roomId, null), null);
+    assert.equal(matchManager.getRoom(roomId).assignments.size, 0);
+  });
+});
+
 describe('fin de partida y liberación del tablero', () => {
   it('el tablero finalizado muestra el resultado y se libera a los 15 segundos', async (t) => {
     const env = setup(t);

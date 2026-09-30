@@ -1,7 +1,7 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
 import { api } from '../services/api.js';
 import { socketService } from '../services/socket.js';
-import { getPlayer } from '../services/auth.js';
+import { getPlayer, isGuest } from '../services/auth.js';
 import { setTeams } from '../services/teams.js';
 import { navigate } from '../router.js';
 import GoBoard from '../components/GoBoard.js';
@@ -18,6 +18,7 @@ export default {
   props: { roomId: { type: String, required: true } },
   setup(props) {
     const player = getPlayer();
+    const guest = isGuest(player);
     const room = ref(null);
     const boards = ref([]);
     const tab = ref('boards');
@@ -75,7 +76,7 @@ export default {
         room.value = { ...room.value, ...summary2.config };
         boards.value = summary2.boards;
         // Si el admin agregó equipos o quitó el del jugador, se vuelve a pedir la asignación.
-        if (isTournament.value && roomTeams.value.length && !myTeam.value) joinLive();
+        if (!guest && isTournament.value && roomTeams.value.length && !myTeam.value) joinLive();
         if (active.boardNumber != null) {
           const fresh = summary2.boards.find((b) => b.number === active.boardNumber);
           if (fresh) active.state = fresh;
@@ -147,7 +148,7 @@ export default {
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
-      isTournament, roomTeams, myTeam,
+      isTournament, roomTeams, myTeam, guest,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       goBack: () => (active.boardNumber ? closeActiveBoard() : navigate('/home')),
@@ -176,7 +177,8 @@ export default {
 
       <div v-if="joinError" class="alert alert-danger">{{ joinError }}</div>
 
-      <div v-if="isTournament && !roomTeams.length" class="alert alert-secondary">Esta sala todav&iacute;a no tiene equipos asignados.</div>
+      <div v-if="guest" class="alert alert-info">Est&aacute;s como invitado: pod&eacute;s observar las partidas en curso, pero no jugar ni unirte a un equipo.</div>
+      <div v-if="!guest && isTournament && !roomTeams.length" class="alert alert-secondary">Esta sala todav&iacute;a no tiene equipos asignados.</div>
       <div v-if="!active.boardNumber && active.sitError" class="alert alert-warning">{{ active.sitError }}</div>
 
       <RulesModal v-if="showRules" :room="room" @close="showRules = false" />

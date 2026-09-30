@@ -1,6 +1,6 @@
 import { ref, onMounted } from 'vue';
 import { api } from '../services/api.js';
-import { setPlayer } from '../services/auth.js';
+import { setPlayer, setGuest } from '../services/auth.js';
 import { navigate } from '../router.js';
 
 export default {
@@ -40,7 +40,12 @@ export default {
       }
     }
 
-    return { institutions, institutionId, nickname, password, error, loading, submit };
+    function enterAsGuest() {
+      setGuest();
+      navigate('/home');
+    }
+
+    return { institutions, institutionId, nickname, password, error, loading, submit, enterAsGuest };
   },
   template: `
     <main class="container" style="max-width:440px; margin-top:64px;">
@@ -70,6 +75,10 @@ export default {
           <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
 
           <button class="btn btn-primary w-100" :disabled="loading" @click="submit">Entrar</button>
+
+          <hr class="my-4" />
+          <button class="btn btn-outline-secondary w-100" type="button" @click="enterAsGuest">Entrar como invitado</button>
+          <p class="text-muted small text-center mt-2 mb-0">Como invitado pod&eacute;s observar las partidas, pero no jugar ni unirte a un equipo.</p>
         </div>
       </div>
     </main>

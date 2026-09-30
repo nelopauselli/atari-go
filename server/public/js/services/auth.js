@@ -6,7 +6,7 @@ export function getPlayer() {
   try {
     const player = JSON.parse(raw);
     // Sesiones previas a las instituciones: obligan a volver a ingresar.
-    return player && player.institution ? player : null;
+    return player && (player.institution || player.guest) ? player : null;
   } catch {
     return null;
   }
@@ -14,6 +14,15 @@ export function getPlayer() {
 
 export function setPlayer(player) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(player));
+}
+
+// Invitado: ingresa sin autenticarse y sin id; solo puede observar partidas.
+export function setGuest() {
+  setPlayer({ guest: true, nickname: 'Invitado' });
+}
+
+export function isGuest(player = getPlayer()) {
+  return !!player && player.guest === true;
 }
 
 export function clearPlayer() {

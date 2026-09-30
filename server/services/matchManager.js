@@ -335,6 +335,12 @@ function resolveSeatTeam(room, playerId) {
 }
 
 const TEAM_REQUIRED_ERROR = 'No tenés equipo asignado en esta sala (todavía no tiene equipos)';
+const GUEST_CANNOT_PLAY_ERROR = 'Los invitados no pueden jugar partidas';
+
+/** Un invitado ingresa sin autenticarse: no tiene id de jugador. */
+function isGuest(player) {
+  return !player || !player.id || player.guest === true;
+}
 
 /**
  * El frontend SIEMPRE llama a esto sin importar board.status; el backend decide
@@ -345,6 +351,13 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
   if (!room) return { ok: false, error: 'Sala inexistente' };
   const board = room.boards.get(Number(boardNumber));
   if (!board) return { ok: false, error: 'Tablero inexistente' };
+
+  // Invitado -> solo puede observar partidas ya iniciadas (o esperando rival)
+  if (isGuest(player)) {
+    if (board.status === 'empty') return { ok: false, error: GUEST_CANNOT_PLAY_ERROR };
+    board.spectators.add(socketId);
+    return { ok: true, role: 'spectator' };
+  }
 
   // Tablero vacío -> se crea partida en estado "waiting" con el primer jugador
   if (board.status === 'empty') {
@@ -618,6 +631,7 @@ module.exports = {
   assignTeamOnJoin,
   handleSit,
   handleLeaveSpectator,
+  isGuest,
   handleMove,
   handleResign,
   handleDisconnect,

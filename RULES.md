@@ -65,3 +65,7 @@ Una partida termina, y hay una persona ganadora, cuando ocurre alguna de estas s
 Solo las salas de tipo "torneo" tienen equipos: el administrador define en cada sala torneo la lista de equipos que participan (nombre y avatar), y a cada jugador se le asigna automáticamente uno de ellos al entrar a la sala. La asignación reparte a los jugadores de una misma institución en distintos equipos de forma equilibrada: se elige el equipo con menos jugadores de su institución y, a igualdad, el que tenga menos jugadores en total. El jugador conserva ese equipo cada vez que vuelve a la sala. Las salas amistosas no tienen equipos.
 
 En salas de tipo "torneo", dos jugadores del mismo equipo no pueden enfrentarse entre sí en un mismo tablero; quien intente sentarse en esa condición queda como espectador.
+
+## Modo invitado
+
+Se puede ingresar como invitado, sin usuario ni contraseña. Un invitado puede entrar a las salas y observar los tableros con partidas en curso (o esperando rival), pero no puede jugar partidas ni se le asigna equipo en las salas torneo.

@@ -25,10 +25,11 @@ function initSockets(io) {
     });
 
     // En salas torneo, al entrar se le asigna automáticamente un equipo al jugador (myTeam).
+    // Los invitados no tienen id: no se les asigna equipo.
     socket.on('room:join', async ({ roomId, player }, ack) => {
       socket.join(roomChannel(roomId));
       socket.data.roomId = roomId;
-      socket.data.playerId = player ? player.id : null;
+      socket.data.playerId = matchManager.isGuest(player) ? null : player.id;
       const myTeam = await matchManager.assignTeamOnJoin(roomId, socket.data.playerId);
       const summary = matchManager.getRoomBoardsSummary(roomId);
       if (typeof ack === 'function') ack(summary ? { ...summary, myTeam } : { error: 'Sala inexistente' });
@@ -43,7 +44,7 @@ function initSockets(io) {
     // sin importar su estado; el backend decide el rol (jugador/espectador).
     // El equipo (salas torneo) es el asignado al entrar a la sala; el cliente no lo elige.
     socket.on('board:sit', ({ roomId, boardNumber, player }, ack) => {
-      socket.data.playerId = player.id;
+      socket.data.playerId = matchManager.isGuest(player) ? null : player.id;
       const result = matchManager.handleSit({ roomId, boardNumber, player, socketId: socket.id });
       if (typeof ack === 'function') ack(result);
     });

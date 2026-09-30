@@ -8,7 +8,11 @@
     "start": "node --env-file=.env server/index.js",
     "dev": "nodemon server/index.js",
     "admin": "node --env-file=.env admin/index.js",
-    "admin:dev": "nodemon admin/index.js"
+    "admin:dev": "nodemon admin/index.js",
+    "test": "node --test \"test/*.test.js\"",
+    "test:atari-go": "node --test test/atari-go.test.js",
+    "test:salas": "node --test test/salas.test.js",
+    "test:equipos": "node --test test/equipos.test.js"
   },
   "dependencies": {
     "express": "^4.19.2",

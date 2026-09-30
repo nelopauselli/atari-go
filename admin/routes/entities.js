@@ -20,9 +20,31 @@ function pickBody(body, entity) {
   const out = {};
   for (const field of entity.fields) {
     if (field.readonly) continue;
-    if (body[field.name] !== undefined) out[field.name] = body[field.name];
+    let value = body[field.name];
+    if (value === undefined) continue;
+    if (field.type === 'password') {
+      // Vacío = conservar la contraseña actual (al crear, el `required` del modelo lo rechaza).
+      if (!value) continue;
+      value = entity.model.hashPassword(value);
+    } else if (field.type === 'list') {
+      const items = Array.isArray(value) ? value : String(value).split(/\r?\n/);
+      value = [...new Set(items.map((v) => String(v).trim()).filter(Boolean))];
+    } else if (field.type === 'ref' && value === '') {
+      value = null;
+    }
+    out[field.name] = value;
   }
   return out;
+}
+
+// Los campos password nunca salen del backend.
+function hidePasswords(doc, entity) {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject() : doc;
+  for (const field of entity.fields) {
+    if (field.type === 'password') delete obj[field.name];
+  }
+  return obj;
 }
 
 // Listado de entidades disponibles, para armar el menú del panel.
@@ -66,7 +88,7 @@ router.post('/:entity', async (req, res) => {
   if (entity.readonly) return res.status(403).json({ error: 'Entidad de solo lectura' });
   try {
     const doc = await entity.model.create(pickBody(req.body, entity));
-    res.status(201).json(doc);
+    res.status(201).json(hidePasswords(doc, entity));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -82,7 +104,7 @@ router.put('/:entity/:id', async (req, res) => {
       runValidators: true,
     });
     if (!doc) return res.status(404).json({ error: 'No encontrado' });
-    res.json(doc);
+    res.json(hidePasswords(doc, entity));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

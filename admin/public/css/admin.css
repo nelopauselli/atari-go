@@ -82,7 +82,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; }
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
 .field label { font-size: 13px; color: var(--md-on-surface-variant); font-weight: 500; }
-.field input, .field select {
+.field input, .field select, .field textarea {
   font-family: inherit;
   font-size: 15px;
   padding: 10px 12px;
@@ -91,7 +91,7 @@ main { flex: 1; padding: 28px; max-width: 1100px; }
   background: var(--md-surface);
   color: var(--md-on-surface);
 }
-.field input:focus, .field select:focus { outline: none; border-color: var(--md-primary); }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--md-primary); }
 .field input[type=color] { padding: 4px; height: 42px; }
 .field input[type=checkbox] { width: 20px; height: 20px; align-self: flex-start; }
 

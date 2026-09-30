@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const PlayerSchema = new mongoose.Schema({
   nickname: { type: String, required: true, trim: true },
   team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', required: true },
+  institution: { type: mongoose.Schema.Types.ObjectId, ref: 'Institution', default: null },
   lastSeenAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 

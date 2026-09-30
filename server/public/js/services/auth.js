@@ -4,7 +4,9 @@ export function getPlayer() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    const player = JSON.parse(raw);
+    // Sesiones previas a las instituciones: obligan a volver a ingresar.
+    return player && player.institution ? player : null;
   } catch {
     return null;
   }

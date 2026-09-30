@@ -1,4 +1,4 @@
-import { ref, reactive, watch, onMounted } from 'vue';
+import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { api } from '../services/api.js';
 
 function refLabel(value) {
@@ -13,6 +13,7 @@ function formatValue(field, row) {
   if (field.type === 'ref') return refLabel(value);
   if (field.type === 'boolean') return value ? 'Sí' : 'No';
   if (field.type === 'date') return new Date(value).toLocaleString();
+  if (field.type === 'list') return value.length ? value.join(', ') : '-';
   return value;
 }
 
@@ -82,6 +83,9 @@ export default {
       }
     }
 
+    // Los campos password no se listan (el backend nunca los devuelve).
+    const listFields = computed(() => (meta.value ? meta.value.fields.filter((f) => f.type !== 'password') : []));
+
     watch(() => props.entityKey, load);
     onMounted(load);
 
@@ -98,7 +102,10 @@ export default {
       for (const key of Object.keys(values)) {
         const field = meta.value.fields.find((f) => f.name === key);
         const raw = row[key];
-        values[key] = field.type === 'ref' ? (raw && raw._id ? raw._id : raw) : raw ?? (field.type === 'boolean' ? false : '');
+        if (field.type === 'ref') values[key] = raw && raw._id ? raw._id : raw ?? '';
+        else if (field.type === 'list') values[key] = (raw || []).join('\n');
+        else if (field.type === 'password') values[key] = '';
+        else values[key] = raw ?? (field.type === 'boolean' ? false : '');
       }
       form.value = values;
       error.value = '';
@@ -142,7 +149,7 @@ export default {
     }
 
     return {
-      meta, rows, refOptions, showForm, editingId, form, error, loading,
+      meta, listFields, rows, refOptions, showForm, editingId, form, error, loading,
       formatValue, openCreate, openEdit, save, remove, onImageSelected,
     };
   },
@@ -163,13 +170,13 @@ export default {
         <table>
           <thead>
             <tr>
-              <th v-for="f in meta.fields" :key="f.name">{{ f.label }}</th>
+              <th v-for="f in listFields" :key="f.name">{{ f.label }}</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in rows" :key="row._id">
-              <td v-for="f in meta.fields" :key="f.name">
+              <td v-for="f in listFields" :key="f.name">
                 <img v-if="f.type==='image' && row[f.name]" :src="row[f.name]" class="thumb" alt="" />
                 <template v-else>{{ formatValue(f, row) }}</template>
               </td>
@@ -192,7 +199,7 @@ export default {
               <label>{{ f.label }}</label>
 
               <select v-if="f.type==='ref'" v-model="form[f.name]">
-                <option value="" disabled>Seleccionar...</option>
+                <option value="" :disabled="f.required">{{ f.required ? 'Seleccionar...' : '(ninguna)' }}</option>
                 <option v-for="opt in (refOptions[f.name]||[])" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
               </select>
 
@@ -204,6 +211,9 @@ export default {
               <input v-else-if="f.type==='boolean'" type="checkbox" v-model="form[f.name]" />
               <input v-else-if="f.type==='number'" type="number" v-model.number="form[f.name]" />
               <input v-else-if="f.type==='color'" type="color" v-model="form[f.name]" />
+              <input v-else-if="f.type==='password'" type="password" autocomplete="new-password" v-model="form[f.name]"
+                :placeholder="editingId ? 'Dejar vacío para conservar la actual' : ''" />
+              <textarea v-else-if="f.type==='list'" rows="6" v-model="form[f.name]" placeholder="Uno por línea"></textarea>
               <div v-else-if="f.type==='image'" class="image-field">
                 <img v-if="form[f.name]" :src="form[f.name]" class="thumb thumb--lg" alt="" />
                 <input type="file" accept="image/*" @change="onImageSelected(f, $event)" />

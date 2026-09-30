@@ -14,6 +14,7 @@ const teamsRouter = require('./routes/teams');
 const playersRouter = require('./routes/players');
 const roomsRouter = require('./routes/rooms');
 const historyRouter = require('./routes/history');
+const institutionsRouter = require('./routes/institutions');
 
 const ROOM_SYNC_INTERVAL_MS = Number(process.env.ROOM_SYNC_INTERVAL_MS) || 30 * 1000;
 const TEAM_SYNC_INTERVAL_MS = Number(process.env.TEAM_SYNC_INTERVAL_MS) || 30 * 1000;
@@ -44,6 +45,7 @@ async function bootstrap() {
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.use('/api/teams', teamsRouter);
+  app.use('/api/institutions', institutionsRouter);
   app.use('/api/players', playersRouter);
   app.use('/api/rooms', roomsRouter);
   app.use('/api/history', historyRouter);

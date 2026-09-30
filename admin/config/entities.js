@@ -2,11 +2,24 @@ const Team = require('../../models/Team');
 const Player = require('../../models/Player');
 const Room = require('../../models/Room');
 const Match = require('../../models/Match');
+const Institution = require('../../models/Institution');
 
 // Metadata que describe cómo listar/editar cada modelo desde el panel admin.
 // `type` de cada campo controla el input generado en el frontend: string, number,
-// boolean, date, color, image (data URL), enum (usa `options`) o ref (usa `ref` = key de otra entidad).
+// boolean, date, color, image (data URL), enum (usa `options`), ref (usa `ref` = key de otra entidad),
+// list (array de strings, uno por línea) o password (nunca se devuelve; se guarda hasheado con
+// `model.hashPassword` y si se deja vacío al editar se conserva la actual).
 module.exports = {
+  institutions: {
+    label: 'Instituciones',
+    model: Institution,
+    fields: [
+      { name: 'name', label: 'Nombre', type: 'string', required: true },
+      { name: 'password', label: 'Contraseña', type: 'password', required: true },
+      { name: 'users', label: 'Usuarios', type: 'list' },
+      { name: 'createdAt', label: 'Creado', type: 'date', readonly: true },
+    ],
+  },
   teams: {
     label: 'Equipos',
     model: Team,
@@ -23,6 +36,7 @@ module.exports = {
     fields: [
       { name: 'nickname', label: 'Apodo', type: 'string', required: true },
       { name: 'team', label: 'Equipo', type: 'ref', ref: 'teams', required: true },
+      { name: 'institution', label: 'Institución', type: 'ref', ref: 'institutions' },
       { name: 'lastSeenAt', label: 'Última conexión', type: 'date' },
     ],
   },

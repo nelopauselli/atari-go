@@ -9,9 +9,9 @@
  */
 
 const goEngine = require('./goEngine');
-const Match = require('../../models/Match');
-const Room = require('../../models/Room');
-const Player = require('../../models/Player');
+const Match = require('../models/Match');
+const Room = require('../models/Room');
+const Player = require('../models/Player');
 
 const CLOCK_PRESETS = {
   'fischer-1-3': { baseMs: 1 * 60 * 1000, incrementMs: 3 * 1000 },

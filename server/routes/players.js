@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const Player = require('../../models/Player');
-const Institution = require('../../models/Institution');
+const Player = require('../models/Player');
+const Institution = require('../models/Institution');
 const presence = require('../services/presence');
 
 const router = express.Router();

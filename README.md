@@ -14,18 +14,22 @@ Servidor en `http://localhost:3000`. Requiere una instancia de MongoDB accesible
 
 ### Panel de administración
 
-```bash
-npm run admin       # o npm run admin:dev para hot-reload
+Lo sirve el mismo servidor en `http://localhost:3000/admin/`, protegido con HTTP Basic Auth. Las credenciales se definen en `.env`:
+
+```
+ADMIN_USER=admin
+ADMIN_PASSWORD=una-contraseña-larga
 ```
 
-Panel en `http://localhost:4000` (configurable con `ADMIN_PORT`). Permite listar, crear, editar y borrar los registros de `models/` (instituciones, jugadores y salas —con sus equipos—; las partidas son de solo lectura). Comparte la misma conexión a Mongo (`config/db.js`) que el servidor de juego.
+Si alguna de las dos falta, el panel no se monta. En producción tiene que ir detrás de HTTPS (Basic Auth manda la contraseña en base64). Permite listar, crear, editar y borrar los registros de `server/models/` (instituciones, jugadores y salas —con sus equipos—; las partidas son de solo lectura). Los cambios en salas se reflejan al instante en las salas en memoria.
 
 ## Estructura
 
-- `server/` – bootstrap del juego: conexión a Mongo, migraciones, Express + Socket.io.
-- `admin/` – backend + frontend administrativo (Node.js + Vue 3 sin build step) para gestionar las entidades de `models/`.
-- `config/db.js` – conexión Mongoose, compartida por `server/` y `admin/`.
-- `models/` – Institution, Player, Room (con sus equipos), Match (Mongoose).
+- `server/` – todo el código de la app: bootstrap (conexión a Mongo, migraciones, Express + Socket.io) y las carpetas de abajo.
+- `server/admin/` – panel administrativo (router Express + frontend Vue 3 sin build step) para gestionar las entidades de `server/models/`, montado en `/admin`.
+- `server/middleware/adminAuth.js` – Basic Auth del panel.
+- `server/config/db.js` – conexión Mongoose.
+- `server/models/` – Institution, Player, Room (con sus equipos), Match (Mongoose).
 
 ### Instituciones y login
 

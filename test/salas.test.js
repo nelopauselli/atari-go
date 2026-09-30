@@ -8,7 +8,7 @@ const {
   oid, makeRoomDoc, makeTeams, makePlayer, setup, flush, startMatch, getBoard,
 } = require('./helpers');
 const matchManager = require('../server/services/matchManager');
-const Room = require('../models/Room');
+const Room = require('../server/models/Room');
 
 const TEAM_REQUIRED_ERROR = 'No tenés equipo asignado en esta sala (todavía no tiene equipos)';
 

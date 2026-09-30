@@ -1,5 +1,5 @@
 async function request(path, options = {}) {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`api${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });

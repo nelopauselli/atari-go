@@ -10,9 +10,9 @@ const mongoose = require('mongoose');
 mongoose.set('autoIndex', false);
 mongoose.set('autoCreate', false);
 
-const Match = require('../models/Match');
-const Room = require('../models/Room');
-const Player = require('../models/Player');
+const Match = require('../server/models/Match');
+const Room = require('../server/models/Room');
+const Player = require('../server/models/Player');
 const matchManager = require('../server/services/matchManager');
 
 const START_TIME = 1_000_000;

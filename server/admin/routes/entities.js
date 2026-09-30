@@ -1,7 +1,19 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const entities = require('../config/entities');
+const matchManager = require('../../services/matchManager');
 
 const router = express.Router();
+
+// Express 4 no captura los rechazos de handlers async: sin esto un error (p. ej. un id
+// inválido) sería un unhandledRejection y tiraría abajo el server con las partidas en curso.
+const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+// Las salas viven en memoria en matchManager: tras tocarlas se resincroniza al instante.
+function afterWrite(req) {
+  if (req.params.entity !== 'rooms') return;
+  matchManager.syncRoomsWithDB().catch((err) => console.error('[admin] error sincronizando salas', err));
+}
 
 function getEntity(req, res) {
   const entity = entities[req.params.entity];
@@ -79,16 +91,16 @@ router.get('/:entity/meta', (req, res) => {
   res.json({ key: req.params.entity, label: entity.label, readonly: !!entity.readonly, fields: entity.fields });
 });
 
-router.get('/:entity', async (req, res) => {
+router.get('/:entity', asyncHandler(async (req, res) => {
   const entity = getEntity(req, res);
   if (!entity) return;
   let query = entity.model.find().sort({ createdAt: -1 }).limit(500);
   for (const field of refFieldNames(entity)) query = query.populate(field);
   const docs = await query;
   res.json(docs);
-});
+}));
 
-router.get('/:entity/:id', async (req, res) => {
+router.get('/:entity/:id', asyncHandler(async (req, res) => {
   const entity = getEntity(req, res);
   if (!entity) return;
   let query = entity.model.findById(req.params.id);
@@ -96,21 +108,22 @@ router.get('/:entity/:id', async (req, res) => {
   const doc = await query;
   if (!doc) return res.status(404).json({ error: 'No encontrado' });
   res.json(doc);
-});
+}));
 
-router.post('/:entity', async (req, res) => {
+router.post('/:entity', asyncHandler(async (req, res) => {
   const entity = getEntity(req, res);
   if (!entity) return;
   if (entity.readonly) return res.status(403).json({ error: 'Entidad de solo lectura' });
   try {
     const doc = await entity.model.create(pickBody(req.body, entity));
+    afterWrite(req);
     res.status(201).json(hidePasswords(doc, entity));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-});
+}));
 
-router.put('/:entity/:id', async (req, res) => {
+router.put('/:entity/:id', asyncHandler(async (req, res) => {
   const entity = getEntity(req, res);
   if (!entity) return;
   if (entity.readonly) return res.status(403).json({ error: 'Entidad de solo lectura' });
@@ -120,18 +133,29 @@ router.put('/:entity/:id', async (req, res) => {
       runValidators: true,
     });
     if (!doc) return res.status(404).json({ error: 'No encontrado' });
+    afterWrite(req);
     res.json(hidePasswords(doc, entity));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-});
+}));
 
-router.delete('/:entity/:id', async (req, res) => {
+router.delete('/:entity/:id', asyncHandler(async (req, res) => {
   const entity = getEntity(req, res);
   if (!entity) return;
   const doc = await entity.model.findByIdAndDelete(req.params.id);
   if (!doc) return res.status(404).json({ error: 'No encontrado' });
+  afterWrite(req);
   res.status(204).end();
+}));
+
+// Ids mal formados y validaciones -> 400; el resto -> 500 sin detalles internos.
+router.use((err, req, res, next) => {
+  if (err instanceof mongoose.Error.CastError || err instanceof mongoose.Error.ValidationError) {
+    return res.status(400).json({ error: err.message });
+  }
+  console.error('[admin] error', err);
+  res.status(500).json({ error: 'Error interno' });
 });
 
 module.exports = router;

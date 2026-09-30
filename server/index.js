@@ -6,10 +6,12 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const { connectDB } = require('../config/db');
+const { connectDB } = require('./config/db');
 const { initSockets } = require('./sockets/index');
 const matchManager = require('./services/matchManager');
-const Player = require('../models/Player');
+const Player = require('./models/Player');
+const { isAdminConfigured } = require('./middleware/adminAuth');
+const adminRouter = require('./admin');
 
 const playersRouter = require('./routes/players');
 const roomsRouter = require('./routes/rooms');
@@ -28,13 +30,23 @@ async function bootstrap() {
   // Registrar en matchManager las salas no cerradas ya existentes en Mongo
   await matchManager.syncRoomsWithDB();
 
-  // El backend administrativo puede crear/cerrar salas en Mongo mientras este
-  // server sigue corriendo; se resincroniza periódicamente para reflejarlas.
+  // El panel admin resincroniza al instante cada vez que toca una sala. Este ciclo
+  // queda como respaldo: completa las bajas pospuestas (salas cerradas o tableros
+  // quitados con partidas activas) y refleja cambios hechos a mano en Mongo.
   setInterval(() => {
     matchManager.syncRoomsWithDB().catch((err) => console.error('[server] error sincronizando salas', err));
   }, ROOM_SYNC_INTERVAL_MS);
 
   const app = express();
+
+  // El panel va antes de cors() y express.json() globales: no debe responder headers
+  // CORS (protege contra CSRF) y usa su propio límite de body para las imágenes.
+  if (isAdminConfigured()) {
+    app.use('/admin', adminRouter);
+  } else {
+    console.warn('[server] ADMIN_USER / ADMIN_PASSWORD sin definir: panel admin deshabilitado');
+  }
+
   app.use(cors());
   app.use(express.json());
   app.use(express.static(path.join(__dirname, 'public')));

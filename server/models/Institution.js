@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 
 const InstitutionSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true, trim: true },
+  // Posición al mostrarlas (login, totales, etc.): menor primero; a igual orden, por nombre.
+  order: { type: Number, default: 0 },
   // Contraseña compartida por todos los usuarios de la institución, guardada como "salt:hash" (scrypt).
   password: { type: String, required: true, select: false },
   // Nicknames habilitados para ingresar con esta institución.

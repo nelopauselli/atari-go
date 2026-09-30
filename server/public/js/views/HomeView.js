@@ -19,6 +19,7 @@ export default {
     const rooms = ref([]);
     const history = ref([]);
     const onlinePlayers = ref([]);
+    const institutionNames = ref([]); // en el orden definido en el admin
     const form = ref({ name: '', type: 'amistosas', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-10-5' });
     const createError = ref('');
     const rulesRoom = ref(null);
@@ -43,13 +44,22 @@ export default {
         if (!p.institutionName) continue;
         totals.set(p.institutionName, (totals.get(p.institutionName) || 0) + 1);
       }
-      return [...totals.entries()].map(([name, count]) => ({ name, count }));
+      const pos = (name) => {
+        const i = institutionNames.value.indexOf(name);
+        return i === -1 ? Infinity : i;
+      };
+      return [...totals.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => (pos(a.name) - pos(b.name)) || a.name.localeCompare(b.name));
     });
 
     onMounted(() => {
       loadRooms();
       loadHistory();
       loadOnlinePlayers();
+      api.getInstitutions()
+        .then((list) => { institutionNames.value = list.map((i) => i.name); })
+        .catch(() => {});
       poller = setInterval(() => {
         loadRooms();
         loadOnlinePlayers();

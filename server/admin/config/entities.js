@@ -10,12 +10,15 @@ const Institution = require('../../models/Institution');
 // se describen en `fields`), list (array de strings, uno por línea) o password (nunca se devuelve; se guarda hasheado con
 // `model.hashPassword` y si se deja vacío al editar se conserva la actual).
 // `showIf` = { campo: valor } muestra el campo solo en ese caso.
+// `sort` (opcional) = orden del listado; por defecto, los más nuevos primero.
 module.exports = {
   institutions: {
     label: 'Instituciones',
     model: Institution,
+    sort: { order: 1, name: 1 },
     fields: [
       { name: 'name', label: 'Nombre', type: 'string', required: true },
+      { name: 'order', label: 'Orden', type: 'number', default: 0 },
       { name: 'password', label: 'Contraseña', type: 'password', required: true },
       { name: 'users', label: 'Usuarios', type: 'list' },
       { name: 'createdAt', label: 'Creado', type: 'date', readonly: true },

@@ -94,7 +94,7 @@ router.get('/:entity/meta', (req, res) => {
 router.get('/:entity', asyncHandler(async (req, res) => {
   const entity = getEntity(req, res);
   if (!entity) return;
-  let query = entity.model.find().sort({ createdAt: -1 }).limit(500);
+  let query = entity.model.find().sort(entity.sort || { createdAt: -1 }).limit(500);
   for (const field of refFieldNames(entity)) query = query.populate(field);
   const docs = await query;
   res.json(docs);

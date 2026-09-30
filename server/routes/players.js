@@ -8,7 +8,7 @@ const router = express.Router();
 
 // Login: institución + usuario (debe figurar en la lista de la institución) + contraseña
 // de la institución. Crea el jugador si no existe (regla A). El equipo no se elige acá:
-// solo las salas torneo tienen equipos y se elige al entrar a cada una.
+// solo las salas torneo tienen equipos y se asigna automáticamente al entrar a cada una.
 router.post('/login', async (req, res) => {
   try {
     const { institutionId, nickname, password } = req.body;

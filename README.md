@@ -18,23 +18,23 @@ Servidor en `http://localhost:3000`. Requiere una instancia de MongoDB accesible
 npm run admin       # o npm run admin:dev para hot-reload
 ```
 
-Panel en `http://localhost:4000` (configurable con `ADMIN_PORT`). Permite listar, crear, editar y borrar los registros de `models/` (instituciones, equipos, jugadores y salas; las partidas son de solo lectura). Comparte la misma conexión a Mongo (`config/db.js`) que el servidor de juego.
+Panel en `http://localhost:4000` (configurable con `ADMIN_PORT`). Permite listar, crear, editar y borrar los registros de `models/` (instituciones, jugadores y salas —con sus equipos—; las partidas son de solo lectura). Comparte la misma conexión a Mongo (`config/db.js`) que el servidor de juego.
 
 ## Estructura
 
-- `server/` – bootstrap del juego: conexión a Mongo, seed de equipos, Express + Socket.io.
+- `server/` – bootstrap del juego: conexión a Mongo, migraciones, Express + Socket.io.
 - `admin/` – backend + frontend administrativo (Node.js + Vue 3 sin build step) para gestionar las entidades de `models/`.
 - `config/db.js` – conexión Mongoose, compartida por `server/` y `admin/`.
-- `models/` – Institution, Team, Player, Room, Match (Mongoose).
+- `models/` – Institution, Player, Room (con sus equipos), Match (Mongoose).
 
 ### Instituciones y login
 
-Cada institución tiene una lista de usuarios (nicknames) y una contraseña compartida, que se guarda hasheada (scrypt). Para ingresar al juego hay que elegir la institución, poner un usuario que figure en su lista, la contraseña de la institución y el equipo. Se administran desde el panel (al editar, dejar la contraseña vacía conserva la actual).
+Cada institución tiene una lista de usuarios (nicknames) y una contraseña compartida, que se guarda hasheada (scrypt). Para ingresar al juego hay que elegir la institución, poner un usuario que figure en su lista, y la contraseña de la institución. El equipo no se elige en el login: solo las salas torneo tienen equipos (cada sala define desde el panel su lista de equipos, con nombre y avatar) y el jugador elige uno al entrar a la sala. Se administran desde el panel (al editar, dejar la contraseña vacía conserva la actual).
 - `services/goEngine.js` – reglas de Go (capturas, libertades, ko simple).
 - `services/matchManager.js` – **única fuente de verdad** del estado en memoria de salas/tableros/partidas. Toda mutación de partidas pasa por acá; los handlers de sockets nunca tocan Mongo directamente. Expone `setBroadcastHandler`.
 - `services/sgf.js` – exportación de partidas a formato SGF.
 - `sockets/index.js` – handlers de Socket.io, delegan a `matchManager`.
-- `routes/` – REST: equipos, instituciones, login de jugador, salas, historial + descarga SGF.
+- `routes/` – REST: instituciones, login de jugador, salas, historial + descarga SGF.
 - `public/` – frontend Vue 3 (ESM vía CDN, sin build step), Material Design.
 
 ## Eventos de Socket.io

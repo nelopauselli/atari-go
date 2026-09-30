@@ -1,7 +1,8 @@
-import { ref, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
 import { api } from '../services/api.js';
 import { socketService } from '../services/socket.js';
-import { getPlayer } from '../services/auth.js';
+import { getPlayer, getRoomTeam, setRoomTeam } from '../services/auth.js';
+import { setTeams } from '../services/teams.js';
 import { navigate } from '../router.js';
 import GoBoard from '../components/GoBoard.js';
 import ClockDisplay from '../components/ClockDisplay.js';
@@ -24,6 +25,22 @@ export default {
     const ranking = ref([]);
     const joinError = ref('');
     const showRules = ref(false);
+
+    // Equipos: solo en salas torneo. El jugador elige uno de los equipos de la sala.
+    const chosenTeamId = ref(getRoomTeam(props.roomId));
+    const showTeamPicker = ref(false);
+    const isTournament = computed(() => !!room.value && room.value.type === 'torneo');
+    const roomTeams = computed(() => (isTournament.value ? room.value.teams || [] : []));
+    // TeamShield resuelve el avatar por id/nombre entre los equipos de esta sala.
+    watch(roomTeams, setTeams, { immediate: true });
+    const myTeam = computed(() => roomTeams.value.find((t) => t._id === chosenTeamId.value) || null);
+
+    function chooseTeam(teamId) {
+      chosenTeamId.value = teamId;
+      setRoomTeam(props.roomId, teamId);
+      showTeamPicker.value = false;
+      active.sitError = '';
+    }
 
     const active = reactive({
       boardNumber: null,
@@ -60,6 +77,7 @@ export default {
       }
 
       unsubs.push(socketService.on('room:update', (summary2) => {
+        room.value = { ...room.value, ...summary2.config };
         boards.value = summary2.boards;
         if (active.boardNumber != null) {
           const fresh = summary2.boards.find((b) => b.number === active.boardNumber);
@@ -81,13 +99,21 @@ export default {
     });
 
     onUnmounted(() => {
+      setTeams([]);
       unsubs.forEach((u) => u());
       socketService.leaveRoom(props.roomId);
     });
 
     async function openBoard(boardNumber) {
       active.sitError = '';
-      const result = await socketService.sitBoard(props.roomId, boardNumber, player);
+      const target = boards.value.find((b) => b.number === boardNumber);
+      const wantsToPlay = target && (target.status === 'empty' || target.status === 'waiting');
+      if (isTournament.value && !myTeam.value && wantsToPlay) {
+        showTeamPicker.value = true;
+        active.sitError = 'Elegí tu equipo para poder jugar en esta sala';
+        return;
+      }
+      const result = await socketService.sitBoard(props.roomId, boardNumber, player, myTeam.value ? myTeam.value._id : '');
       if (!result.ok) {
         active.sitError = result.error || 'No se pudo entrar al tablero';
         return;
@@ -131,6 +157,7 @@ export default {
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
+      isTournament, roomTeams, myTeam, showTeamPicker, chooseTeam,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       goBack: () => (active.boardNumber ? closeActiveBoard() : navigate('/home')),
@@ -150,9 +177,33 @@ export default {
           {{ room.stonesToWin }} piedra(s) para ganar ·
           Ko {{ room.koRuleEnabled === false ? 'deshabilitado' : 'habilitado' }}
         </p>
+        <p v-if="isTournament && myTeam" class="mb-0 mt-1 d-flex align-items-center gap-2">
+          <span class="text-muted">Tu equipo:</span>
+          <TeamShield :team="myTeam._id" :name="myTeam.name" :size="24" />
+          <strong>{{ myTeam.name }}</strong>
+          <a v-if="!active.boardNumber && !showTeamPicker" href="#" class="small" @click.prevent="showTeamPicker = true">Cambiar</a>
+        </p>
       </div>
 
       <div v-if="joinError" class="alert alert-danger">{{ joinError }}</div>
+
+      <!-- Selección de equipo (solo salas torneo) -->
+      <div v-if="isTournament && !active.boardNumber && (showTeamPicker || !myTeam)" class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h3 class="h6">Eleg&iacute; tu equipo para esta sala</h3>
+          <div v-if="active.sitError" class="alert alert-warning py-2">{{ active.sitError }}</div>
+          <p v-if="!roomTeams.length" class="text-muted small mb-0">Esta sala todav&iacute;a no tiene equipos asignados.</p>
+          <div class="d-flex flex-wrap gap-2">
+            <button v-for="t in roomTeams" :key="t._id" type="button" class="btn d-inline-flex align-items-center gap-2"
+              :class="myTeam && t._id===myTeam._id ? 'btn-primary' : 'btn-outline-secondary'" @click="chooseTeam(t._id)">
+              <TeamShield :team="t._id" :name="t.name" :size="28" />
+              {{ t.name }}
+            </button>
+          </div>
+          <button v-if="myTeam" type="button" class="btn btn-link btn-sm px-0 mt-2" @click="showTeamPicker = false">Cancelar</button>
+        </div>
+      </div>
+      <div v-else-if="!active.boardNumber && active.sitError" class="alert alert-warning">{{ active.sitError }}</div>
 
       <RulesModal v-if="showRules" :room="room" @close="showRules = false" />
 
@@ -219,7 +270,7 @@ export default {
                 <template v-for="(p, i) in b.players" :key="p.nickname">
                   <span v-if="i > 0">vs</span>
                   <span class="d-inline-flex flex-column align-items-center text-center gap-1">
-                    <TeamShield :team="p.team" :name="p.teamName" :size="40" />
+                    <TeamShield v-if="p.team" :team="p.team" :name="p.teamName" :size="40" />
                     <span>{{ playerLabel(p) }}</span>
                   </span>
                 </template>
@@ -242,7 +293,7 @@ export default {
                   <template v-for="(p, i) in m.players" :key="p.nickname">
                     <span v-if="i > 0">vs</span>
                     <span class="d-inline-flex flex-column align-items-center text-center gap-1">
-                      <TeamShield :team="p.team" :name="p.teamName" :size="32" />
+                      <TeamShield v-if="p.team" :team="p.team" :name="p.teamName" :size="32" />
                       <span>{{ playerLabel(p) }}</span>
                     </span>
                   </template>

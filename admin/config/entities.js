@@ -1,4 +1,3 @@
-const Team = require('../../models/Team');
 const Player = require('../../models/Player');
 const Room = require('../../models/Room');
 const Match = require('../../models/Match');
@@ -7,8 +6,10 @@ const Institution = require('../../models/Institution');
 // Metadata que describe cómo listar/editar cada modelo desde el panel admin.
 // `type` de cada campo controla el input generado en el frontend: string, number,
 // boolean, date, color, image (data URL), enum (usa `options`), ref (usa `ref` = key de otra entidad),
-// list (array de strings, uno por línea) o password (nunca se devuelve; se guarda hasheado con
+// refs (varias referencias a otra entidad), items (array de sub-registros cuyos campos string/image
+// se describen en `fields`), list (array de strings, uno por línea) o password (nunca se devuelve; se guarda hasheado con
 // `model.hashPassword` y si se deja vacío al editar se conserva la actual).
+// `showIf` = { campo: valor } muestra el campo solo en ese caso.
 module.exports = {
   institutions: {
     label: 'Instituciones',
@@ -20,22 +21,11 @@ module.exports = {
       { name: 'createdAt', label: 'Creado', type: 'date', readonly: true },
     ],
   },
-  teams: {
-    label: 'Equipos',
-    model: Team,
-    fields: [
-      { name: 'name', label: 'Nombre', type: 'string', required: true },
-      { name: 'color', label: 'Color', type: 'color' },
-      { name: 'shield', label: 'Escudo', type: 'image' },
-      { name: 'createdAt', label: 'Creado', type: 'date', readonly: true },
-    ],
-  },
   players: {
     label: 'Jugadores',
     model: Player,
     fields: [
       { name: 'nickname', label: 'Apodo', type: 'string', required: true },
-      { name: 'team', label: 'Equipo', type: 'ref', ref: 'teams', required: true },
       { name: 'institution', label: 'Institución', type: 'ref', ref: 'institutions' },
       { name: 'lastSeenAt', label: 'Última conexión', type: 'date' },
     ],
@@ -57,6 +47,17 @@ module.exports = {
         required: true,
       },
       { name: 'koRuleEnabled', label: 'Regla de Ko', type: 'boolean', default: true },
+      {
+        name: 'teams',
+        label: 'Equipos',
+        type: 'items',
+        itemLabel: 'equipo',
+        showIf: { type: 'torneo' },
+        fields: [
+          { name: 'name', label: 'Nombre', type: 'string', required: true },
+          { name: 'avatar', label: 'Avatar', type: 'image' },
+        ],
+      },
       { name: 'closed', label: 'Cerrada', type: 'boolean' },
     ],
   },

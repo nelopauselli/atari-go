@@ -61,6 +61,10 @@ function buildRoomConfig(roomDoc) {
     stonesToWin: roomDoc.stonesToWin,
     clockType: roomDoc.clockType,
     koRuleEnabled: roomDoc.koRuleEnabled,
+    // Solo las salas torneo tienen equipos (nombre + avatar, definidos en la sala).
+    teams: roomDoc.type === 'torneo'
+      ? (roomDoc.teams || []).map((t) => ({ _id: String(t._id), name: t.name, avatar: t.avatar || '' }))
+      : [],
   };
 }
 
@@ -85,7 +89,7 @@ function registerRoom(roomDoc) {
  */
 function updateRoomConfig(room, roomDoc) {
   const newConfig = buildRoomConfig(roomDoc);
-  const configChanged = Object.keys(newConfig).some((k) => room.config[k] !== newConfig[k]);
+  const configChanged = Object.keys(newConfig).some((k) => JSON.stringify(room.config[k]) !== JSON.stringify(newConfig[k]));
   let boardsChanged = false;
 
   if (configChanged) {
@@ -222,12 +226,14 @@ function getActiveRoomsSummary() {
       if (b.game) {
         for (const p of b.game.players) {
           playersSet.add(p.playerId);
-          teamsSet.add(String(p.team));
+          if (p.team) teamsSet.add(String(p.team));
         }
       }
     }
+    // Los avatares de los equipos no hacen falta en el listado de salas.
+    const { teams, ...config } = room.config;
     list.push({
-      ...room.config,
+      ...config,
       freeBoards,
       totalBoards: boardsArr.length,
       playersOnline: playersSet.size,
@@ -240,10 +246,22 @@ function getActiveRoomsSummary() {
 // ---------- Lógica de asiento (board:sit) ----------
 
 /**
+ * Equipo con el que se sienta el jugador. En amistosas no hay equipos; en
+ * torneo tiene que ser uno de los equipos de la sala (si no, devuelve null).
+ */
+function resolveSeatTeam(room, teamId) {
+  if (room.config.type !== 'torneo') return { team: null, teamName: '' };
+  const team = teamId && room.config.teams.find((t) => t._id === String(teamId));
+  return team ? { team: team._id, teamName: team.name } : null;
+}
+
+const TEAM_REQUIRED_ERROR = 'Elegí uno de los equipos de la sala para poder jugar';
+
+/**
  * El frontend SIEMPRE llama a esto sin importar board.status; el backend decide
  * si el jugador entra como jugador (negro/blanco) o como espectador.
  */
-function handleSit({ roomId, boardNumber, player, socketId }) {
+function handleSit({ roomId, boardNumber, player, teamId, socketId }) {
   const room = getRoom(roomId);
   if (!room) return { ok: false, error: 'Sala inexistente' };
   const board = room.boards.get(Number(boardNumber));
@@ -251,13 +269,14 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
 
   // Tablero vacío -> se crea partida en estado "waiting" con el primer jugador
   if (board.status === 'empty') {
+    const seat = resolveSeatTeam(room, teamId);
+    if (!seat) return { ok: false, error: TEAM_REQUIRED_ERROR };
     const size = room.config.boardSize;
     const preset = CLOCK_PRESETS[room.config.clockType];
     board.status = 'waiting';
     board.game = {
       players: [{
-        playerId: player.id, socketId, nickname: player.nickname,
-        team: String(player.team), teamName: player.teamName, color: 'black',
+        playerId: player.id, socketId, nickname: player.nickname, ...seat, color: 'black',
       }],
       board: goEngine.createEmptyBoard(size),
       size,
@@ -287,13 +306,14 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     if (seated.playerId === player.id) {
       return { ok: true, role: 'player', color: seated.color };
     }
-    if (room.config.type === 'torneo' && String(seated.team) === String(player.team)) {
+    const seat = resolveSeatTeam(room, teamId);
+    if (!seat) return { ok: false, error: TEAM_REQUIRED_ERROR };
+    if (room.config.type === 'torneo' && String(seated.team) === String(seat.team)) {
       board.spectators.add(socketId);
       return { ok: true, role: 'spectator', error: 'No pueden enfrentarse jugadores del mismo equipo' };
     }
     board.game.players.push({
-      playerId: player.id, socketId, nickname: player.nickname,
-      team: String(player.team), teamName: player.teamName, color: 'white',
+      playerId: player.id, socketId, nickname: player.nickname, ...seat, color: 'white',
     });
     board.status = 'playing';
     board.game.lastMoveAt = Date.now();
@@ -504,7 +524,7 @@ function handleDisconnect({ socketId, playerId }) {
       freeBoard(loc.roomId, board.number);
     }
   }
-  // Si está "playing", no se aborta: se permite reconexión (nickname+equipo persistido)
+  // Si está "playing", no se aborta: se permite reconexión (por id de jugador)
   // y el reloj del jugador desconectado sigue corriendo con normalidad.
 }
 

@@ -4,7 +4,6 @@ import { navigate } from '../router.js';
 import { getPlayer } from '../services/auth.js';
 import RulesModal from '../components/RulesModal.js';
 import TutorialModal from '../components/TutorialModal.js';
-import TeamShield from '../components/TeamShield.js';
 
 const CLOCK_LABELS = {
   'fischer-1-3': 'Fischer 1m + 3s',
@@ -14,7 +13,7 @@ const CLOCK_LABELS = {
 
 export default {
   name: 'HomeView',
-  components: { RulesModal, TutorialModal, TeamShield },
+  components: { RulesModal, TutorialModal },
   setup() {
     const tab = ref('rooms');
     const rooms = ref([]);
@@ -38,14 +37,13 @@ export default {
       onlinePlayers.value = await api.getOnlinePlayers();
     }
 
-    const teamTotals = computed(() => {
+    const institutionTotals = computed(() => {
       const totals = new Map();
       for (const p of onlinePlayers.value) {
-        const t = totals.get(p.teamName) || { id: p.team, name: p.teamName, color: p.teamColor, count: 0 };
-        t.count++;
-        totals.set(p.teamName, t);
+        if (!p.institutionName) continue;
+        totals.set(p.institutionName, (totals.get(p.institutionName) || 0) + 1);
       }
-      return [...totals.values()];
+      return [...totals.entries()].map(([name, count]) => ({ name, count }));
     });
 
     onMounted(() => {
@@ -70,7 +68,7 @@ export default {
     }
 
     return {
-      tab, rooms, history, onlinePlayers, teamTotals, form, createError, rulesRoom, showTutorial, CLOCK_LABELS, myId,
+      tab, rooms, history, onlinePlayers, institutionTotals, form, createError, rulesRoom, showTutorial, CLOCK_LABELS, myId,
       openRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
     };
   },
@@ -109,7 +107,7 @@ export default {
                 </div>
                 <p class="text-muted small mb-1">Tablero {{ r.boardSize }}x{{ r.boardSize }} · {{ CLOCK_LABELS[r.clockType] }}</p>
                 <p class="text-muted small mb-1">Tableros libres: {{ r.freeBoards }} / {{ r.totalBoards }}</p>
-                <p class="text-muted small mb-0">Jugadores conectados: {{ r.playersOnline }} · Equipos jugando: {{ r.teamsPlaying }}</p>
+                <p class="text-muted small mb-0">Jugadores conectados: {{ r.playersOnline }}<template v-if="r.type==='torneo'"> · Equipos jugando: {{ r.teamsPlaying }}</template></p>
                 <button type="button" class="btn btn-outline-info btn-sm mt-2" @click.stop="rulesRoom = r">Reglas</button>
               </div>
             </div>
@@ -122,18 +120,14 @@ export default {
       <div v-else-if="tab==='online'">
         <h2 class="h4 mb-3">Usuarios conectados</h2>
         <div v-if="onlinePlayers.length===0" class="text-center text-muted py-5">No hay usuarios conectados.</div>
-        <div v-if="teamTotals.length" class="d-flex flex-wrap gap-2 mb-3">
-          <span class="badge text-bg-light border d-inline-flex align-items-center gap-2" v-for="t in teamTotals" :key="t.name">
-            <TeamShield :team="t.id" :name="t.name" :color="t.color" :size="18" />
-            {{ t.name }}: {{ t.count }}
-          </span>
+        <div v-if="institutionTotals.length" class="d-flex flex-wrap gap-2 mb-3">
+          <span class="badge text-bg-light border" v-for="t in institutionTotals" :key="t.name">{{ t.name }}: {{ t.count }}</span>
         </div>
         <ul class="list-group">
           <li class="list-group-item d-flex align-items-center gap-2" v-for="p in onlinePlayers" :key="p.id">
-            <TeamShield :team="p.team" :name="p.teamName" :color="p.teamColor" :size="20" />
             <strong>{{ p.nickname }}</strong>
             <span v-if="p.id === myId" class="text-muted small">(t&uacute;)</span>
-            <span class="text-muted small">{{ p.teamName }}</span>
+            <span class="text-muted small">{{ p.institutionName }}</span>
           </li>
         </ul>
       </div>

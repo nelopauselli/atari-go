@@ -39,9 +39,10 @@ function initSockets(io) {
 
     // El frontend SIEMPRE emite esto al hacer click en un tablero,
     // sin importar su estado; el backend decide el rol (jugador/espectador).
-    socket.on('board:sit', ({ roomId, boardNumber, player }, ack) => {
+    // teamId: equipo elegido por el jugador en esta sala (solo salas torneo).
+    socket.on('board:sit', ({ roomId, boardNumber, player, teamId }, ack) => {
       socket.data.playerId = player.id;
-      const result = matchManager.handleSit({ roomId, boardNumber, player, socketId: socket.id });
+      const result = matchManager.handleSit({ roomId, boardNumber, player, teamId, socketId: socket.id });
       if (typeof ack === 'function') ack(result);
     });
 

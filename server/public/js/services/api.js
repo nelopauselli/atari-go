@@ -9,11 +9,10 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  getTeams: () => request('/teams'),
   getInstitutions: () => request('/institutions'),
-  login: ({ institutionId, nickname, password, teamId }) => request('/players/login', {
+  login: ({ institutionId, nickname, password }) => request('/players/login', {
     method: 'POST',
-    body: JSON.stringify({ institutionId, nickname, password, teamId }),
+    body: JSON.stringify({ institutionId, nickname, password }),
   }),
   getOnlinePlayers: () => request('/players/online'),
   getRooms: () => request('/rooms'),

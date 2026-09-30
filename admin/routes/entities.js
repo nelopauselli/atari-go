@@ -13,7 +13,19 @@ function getEntity(req, res) {
 }
 
 function refFieldNames(entity) {
-  return entity.fields.filter((f) => f.type === 'ref').map((f) => f.name);
+  return entity.fields.filter((f) => f.type === 'ref' || f.type === 'refs').map((f) => f.name);
+}
+
+// Sub-registro de un campo `items`: solo sus campos declarados, más el _id si ya existía
+// (así se conserva la identidad del ítem al editar).
+function pickItem(item, field) {
+  const out = {};
+  if (item && item._id) out._id = item._id;
+  for (const sub of field.fields) {
+    const value = item ? item[sub.name] : undefined;
+    out[sub.name] = typeof value === 'string' ? value.trim() : value;
+  }
+  return out;
 }
 
 function pickBody(body, entity) {
@@ -31,6 +43,10 @@ function pickBody(body, entity) {
       value = [...new Set(items.map((v) => String(v).trim()).filter(Boolean))];
     } else if (field.type === 'ref' && value === '') {
       value = null;
+    } else if (field.type === 'refs') {
+      value = Array.isArray(value) ? [...new Set(value.filter(Boolean))] : [];
+    } else if (field.type === 'items') {
+      value = (Array.isArray(value) ? value : []).map((item) => pickItem(item, field));
     }
     out[field.name] = value;
   }

@@ -6,12 +6,11 @@ import { getTheme, toggleTheme } from './services/theme.js';
 import LoginView from './views/LoginView.js';
 import HomeView from './views/HomeView.js';
 import RoomView from './views/RoomView.js';
-import TeamShield from './components/TeamShield.js';
 import AppFooter from './components/AppFooter.js';
 
 const App = {
   name: 'App',
-  components: { LoginView, HomeView, RoomView, TeamShield, AppFooter },
+  components: { LoginView, HomeView, RoomView, AppFooter },
   setup() {
     const player = computed(() => { route.name; return getPlayer(); });
     const theme = ref(getTheme());
@@ -41,10 +40,7 @@ const App = {
         <div class="container-fluid">
           <span class="navbar-brand app-bar__title mb-0" @click="goHome">⚫⚪ Atari-Go Online</span>
           <div class="d-flex align-items-center gap-2">
-            <span class="badge text-bg-light d-inline-flex align-items-center gap-1">
-              <TeamShield :team="player.team" :name="player.teamName" :color="player.teamColor" :size="16" />
-              {{ player.teamName }}
-            </span>
+            <span class="badge text-bg-light">{{ player.institutionName }}</span>
             <span class="badge text-bg-secondary">{{ player.nickname }}</span>
             <button class="btn btn-outline-light btn-sm" type="button" @click="onToggleTheme" :title="theme === 'dark' ? 'Modo claro' : 'Modo oscuro'">
               {{ theme === 'dark' ? '☀️' : '🌙' }}

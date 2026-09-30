@@ -1,21 +1,21 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Player = require('../../models/Player');
-const Team = require('../../models/Team');
 const Institution = require('../../models/Institution');
 const presence = require('../services/presence');
 
 const router = express.Router();
 
 // Login: institución + usuario (debe figurar en la lista de la institución) + contraseña
-// de la institución + equipo. Crea el jugador si no existe (regla A).
+// de la institución. Crea el jugador si no existe (regla A). El equipo no se elige acá:
+// solo las salas torneo tienen equipos y se elige al entrar a cada una.
 router.post('/login', async (req, res) => {
   try {
-    const { institutionId, nickname, password, teamId } = req.body;
-    if (!institutionId || !nickname || !nickname.trim() || !password || !teamId) {
-      return res.status(400).json({ error: 'Institución, usuario, contraseña y equipo son obligatorios' });
+    const { institutionId, nickname, password } = req.body;
+    if (!institutionId || !nickname || !nickname.trim() || !password) {
+      return res.status(400).json({ error: 'Institución, usuario y contraseña son obligatorios' });
     }
-    if (!mongoose.isValidObjectId(institutionId) || !mongoose.isValidObjectId(teamId)) {
+    if (!mongoose.isValidObjectId(institutionId)) {
       return res.status(400).json({ error: 'Datos inválidos' });
     }
 
@@ -26,24 +26,17 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
-    const team = await Team.findById(teamId);
-    if (!team) return res.status(400).json({ error: 'Equipo inválido' });
-
-    let player = await Player.findOne({ nickname: username, team: team._id });
+    let player = await Player.findOne({ nickname: username, institution: institution._id }).sort({ lastSeenAt: -1 });
     if (!player) {
-      player = await Player.create({ nickname: username, team: team._id, institution: institution._id });
+      player = await Player.create({ nickname: username, institution: institution._id });
     } else {
       player.lastSeenAt = new Date();
-      player.institution = institution._id;
       await player.save();
     }
 
     res.json({
       id: player._id,
       nickname: player.nickname,
-      team: team._id,
-      teamName: team.name,
-      teamColor: team.color,
       institution: institution._id,
       institutionName: institution.name,
     });

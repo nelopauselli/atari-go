@@ -22,7 +22,7 @@ router.get('/room/:roomId', async (req, res) => {
   for (const m of matches) {
     if (!m.result || !m.result.winnerColor) continue;
     const winner = m.players.find((p) => p.color === m.result.winnerColor);
-    if (!winner) continue;
+    if (!winner || !winner.team) continue; // amistosas: sin equipos
     const key = String(winner.team);
     if (!rankingByTeam.has(key)) rankingByTeam.set(key, { team: key, teamName: winner.teamName, wins: 0 });
     rankingByTeam.get(key).wins += 1;

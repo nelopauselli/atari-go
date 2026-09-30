@@ -12,8 +12,9 @@ const MoveSchema = new mongoose.Schema({
 const MatchPlayerSchema = new mongoose.Schema({
   player: { type: mongoose.Schema.Types.ObjectId, ref: 'Player', required: true },
   nickname: { type: String, required: true },
-  team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', required: true },
-  teamName: { type: String, required: true },
+  // Solo en salas torneo; en amistosas quedan vacíos. `team` es el _id del equipo dentro de room.teams.
+  team: { type: mongoose.Schema.Types.ObjectId, default: null },
+  teamName: { type: String, default: '' },
   color: { type: String, enum: ['black', 'white'], required: true },
 }, { _id: false });
 

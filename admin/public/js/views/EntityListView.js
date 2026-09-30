@@ -7,13 +7,21 @@ function refLabel(value) {
   return value;
 }
 
+// Campos con `showIf` ({ campo: valor }) solo aplican cuando el registro cumple esa condición.
+function isApplicable(field, values) {
+  if (!field.showIf) return true;
+  return Object.entries(field.showIf).every(([key, expected]) => values[key] === expected);
+}
+
 function formatValue(field, row) {
   const value = row[field.name];
-  if (value === null || value === undefined || value === '') return '-';
+  if (value === null || value === undefined || value === '' || !isApplicable(field, row)) return '-';
   if (field.type === 'ref') return refLabel(value);
+  if (field.type === 'refs') return value.length ? value.map(refLabel).join(', ') : '-';
   if (field.type === 'boolean') return value ? 'Sí' : 'No';
   if (field.type === 'date') return new Date(value).toLocaleString();
   if (field.type === 'list') return value.length ? value.join(', ') : '-';
+  if (field.type === 'items') return value.length ? value.map((item) => item.name).join(', ') : '-';
   return value;
 }
 
@@ -46,6 +54,7 @@ function emptyForm(fields) {
   for (const field of fields) {
     if (field.readonly) continue;
     if (field.default !== undefined) form[field.name] = field.default;
+    else if (field.type === 'refs' || field.type === 'items') form[field.name] = [];
     else form[field.name] = field.type === 'boolean' ? false : '';
   }
   return form;
@@ -71,7 +80,7 @@ export default {
         meta.value = await api.getMeta(props.entityKey);
         rows.value = await api.getList(props.entityKey);
         for (const field of meta.value.fields) {
-          if (field.type === 'ref' && !refOptions[field.name]) {
+          if ((field.type === 'ref' || field.type === 'refs') && !refOptions[field.name]) {
             const options = await api.getList(field.ref);
             refOptions[field.name] = options.map((o) => ({ id: o._id, label: o.name || o.nickname || o._id }));
           }
@@ -103,6 +112,7 @@ export default {
         const field = meta.value.fields.find((f) => f.name === key);
         const raw = row[key];
         if (field.type === 'ref') values[key] = raw && raw._id ? raw._id : raw ?? '';
+        else if (field.type === 'refs') values[key] = (raw || []).map((v) => (v && v._id ? v._id : v));
         else if (field.type === 'list') values[key] = (raw || []).join('\n');
         else if (field.type === 'password') values[key] = '';
         else values[key] = raw ?? (field.type === 'boolean' ? false : '');
@@ -127,15 +137,26 @@ export default {
       }
     }
 
-    async function onImageSelected(field, event) {
+    // `target` es el objeto que recibe la imagen: el form o un ítem de un campo `items`.
+    async function onImageSelected(field, event, target = form.value) {
       const file = event.target.files[0];
       if (!file) return;
       try {
-        form.value[field.name] = await readImageAsDataUrl(file);
+        target[field.name] = await readImageAsDataUrl(file);
       } catch (err) {
         error.value = err.message;
       }
       event.target.value = '';
+    }
+
+    function addItem(field) {
+      const item = {};
+      for (const sub of field.fields) item[sub.name] = '';
+      form.value[field.name].push(item);
+    }
+
+    function removeItem(field, index) {
+      form.value[field.name].splice(index, 1);
     }
 
     async function remove(row) {
@@ -150,7 +171,7 @@ export default {
 
     return {
       meta, listFields, rows, refOptions, showForm, editingId, form, error, loading,
-      formatValue, openCreate, openEdit, save, remove, onImageSelected,
+      formatValue, isApplicable, openCreate, openEdit, save, remove, onImageSelected, addItem, removeItem,
     };
   },
   template: `
@@ -195,13 +216,39 @@ export default {
           <p v-if="error" class="error-text">{{ error }}</p>
 
           <template v-for="f in meta.fields" :key="f.name">
-            <div class="field" v-if="!f.readonly">
+            <div class="field" v-if="!f.readonly && isApplicable(f, form)">
               <label>{{ f.label }}</label>
 
               <select v-if="f.type==='ref'" v-model="form[f.name]">
                 <option value="" :disabled="f.required">{{ f.required ? 'Seleccionar...' : '(ninguna)' }}</option>
                 <option v-for="opt in (refOptions[f.name]||[])" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
               </select>
+
+              <div v-else-if="f.type==='refs'" class="checkbox-list">
+                <label v-for="opt in (refOptions[f.name]||[])" :key="opt.id">
+                  <input type="checkbox" :value="opt.id" v-model="form[f.name]" /> {{ opt.label }}
+                </label>
+                <span v-if="!(refOptions[f.name]||[]).length" class="muted">Sin opciones cargadas</span>
+              </div>
+
+              <div v-else-if="f.type==='items'" class="items-field">
+                <div v-for="(item, i) in form[f.name]" :key="item._id || i" class="item-row">
+                  <template v-for="sub in f.fields" :key="sub.name">
+                    <div v-if="sub.type==='image'" class="image-field">
+                      <img v-if="item[sub.name]" :src="item[sub.name]" class="thumb" alt="" />
+                      <label class="btn btn--outline btn--sm file-btn">
+                        {{ item[sub.name] ? 'Cambiar' : sub.label }}
+                        <input type="file" accept="image/*" @change="onImageSelected(sub, $event, item)" />
+                      </label>
+                      <button v-if="item[sub.name]" type="button" class="btn btn--outline btn--sm" @click="item[sub.name]=''">Quitar</button>
+                    </div>
+                    <input v-else type="text" v-model="item[sub.name]" :placeholder="sub.label" />
+                  </template>
+                  <button type="button" class="btn btn--danger btn--sm" @click="removeItem(f, i)">&times;</button>
+                </div>
+                <span v-if="!form[f.name].length" class="muted">Sin {{ f.label.toLowerCase() }} todav&iacute;a</span>
+                <div><button type="button" class="btn btn--outline btn--sm" @click="addItem(f)">+ Agregar {{ f.itemLabel || 'ítem' }}</button></div>
+              </div>
 
               <select v-else-if="f.type==='enum'" v-model="form[f.name]">
                 <option value="" disabled>Seleccionar...</option>

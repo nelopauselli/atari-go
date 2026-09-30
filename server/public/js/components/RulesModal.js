@@ -67,6 +67,7 @@ export default {
 
             <template v-if="room.type==='torneo'">
               <h6>Modo torneo</h6>
+              <p>Para jugar, eleg&iacute; uno de los equipos de la sala al entrar.</p>
               <p class="mb-0">Dos jugadores del mismo equipo no pueden enfrentarse en un mismo tablero; quien intente sentarse en esa condici&oacute;n queda como espectador.</p>
             </template>
           </div>

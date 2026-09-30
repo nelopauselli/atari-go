@@ -22,9 +22,10 @@ function leaveRoom(roomId) {
   socket.emit('room:leave', { roomId });
 }
 
-function sitBoard(roomId, boardNumber, player) {
+// teamId: equipo elegido en la sala (solo salas torneo).
+function sitBoard(roomId, boardNumber, player, teamId) {
   return new Promise((resolve) => {
-    socket.emit('board:sit', { roomId, boardNumber, player }, (result) => resolve(result));
+    socket.emit('board:sit', { roomId, boardNumber, player, teamId }, (result) => resolve(result));
   });
 }
 

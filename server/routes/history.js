@@ -40,8 +40,25 @@ router.get('/:matchId/sgf', async (req, res) => {
   if (!match) return res.status(404).json({ error: 'Partida no encontrada' });
   const sgf = matchToSgf(match);
   res.setHeader('Content-Type', 'application/x-go-sgf');
-  res.setHeader('Content-Disposition', `attachment; filename="tablero${match.boardNumber}_${match._id}.sgf"`);
+  const filename = sgfFilename(match);
+  // filename= lleva un fallback ASCII; filename* conserva acentos/ñ en navegadores modernos
+  const asciiFallback = filename.normalize('NFD').replace(/[^\x20-\x7E]/g, '');
+  res.setHeader('Content-Disposition',
+    `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename).replace(/['()]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase())}`);
   res.send(sgf);
 });
+
+// "Negro (Equipo) vs Blanco (Equipo) - tablero N - <id>.sgf"
+function sgfFilename(match) {
+  const clean = (s) => String(s || '').replace(/[\\/:*?"<>|\x00-\x1F]/g, '').trim();
+  const label = (p) => {
+    if (!p) return 'sin-jugador';
+    const team = clean(p.teamName);
+    return team ? `${clean(p.nickname)} (${team})` : clean(p.nickname);
+  };
+  const black = match.players.find((p) => p.color === 'black');
+  const white = match.players.find((p) => p.color === 'white');
+  return `${label(black)} vs ${label(white)} - ${match._id}.sgf`;
+}
 
 module.exports = router;

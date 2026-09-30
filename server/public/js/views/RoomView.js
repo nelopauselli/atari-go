@@ -51,6 +51,7 @@ export default {
       state: null, // último board:state / snapshot
       sitError: '',
     });
+    const isPlaying = computed(() => active.boardNumber != null && active.role === 'player');
 
     let unsubs = [];
 
@@ -148,7 +149,7 @@ export default {
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
-      isTournament, roomTeams, myTeam, guest,
+      isTournament, roomTeams, myTeam, guest, isPlaying,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       goBack: () => (active.boardNumber ? closeActiveBoard() : navigate('/home')),
@@ -222,6 +223,8 @@ export default {
         </div>
       </div>
 
+      <!-- Mientras se juega, solo se muestra el tablero propio (sin otros tableros, historial ni ranking) -->
+      <template v-if="!isPlaying">
       <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
           <a class="nav-link" href="#" :class="{ active: tab==='boards' }" @click.prevent="tab='boards'">Tableros</a>
@@ -294,6 +297,7 @@ export default {
           </tbody>
         </table>
       </div>
+      </template>
     </main>
   `,
 };

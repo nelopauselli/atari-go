@@ -24,6 +24,9 @@ module.exports = {
   players: {
     label: 'Jugadores',
     model: Player,
+    // Se crean solos al iniciar sesión (la lista de habilitados está en cada institución):
+    // acá solo se consultan/eliminan.
+    readonly: true,
     fields: [
       { name: 'nickname', label: 'Apodo', type: 'string', required: true },
       { name: 'institution', label: 'Institución', type: 'ref', ref: 'institutions' },

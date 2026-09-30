@@ -11,6 +11,7 @@
 const goEngine = require('./goEngine');
 const Match = require('../../models/Match');
 const Room = require('../../models/Room');
+const Player = require('../../models/Player');
 
 const CLOCK_PRESETS = {
   'fischer-1-3': { baseMs: 1 * 60 * 1000, incrementMs: 3 * 1000 },
@@ -73,9 +74,15 @@ function registerRoom(roomDoc) {
   for (let n = 1; n <= roomDoc.boardCount; n++) {
     boards.set(n, makeEmptyBoardState(n));
   }
+  // assignments: Map<playerId, { institution, team }> con el equipo asignado a cada jugador (salas torneo).
+  const assignments = new Map();
+  for (const a of roomDoc.teamAssignments || []) {
+    assignments.set(String(a.player), { institution: a.institution ? String(a.institution) : null, team: String(a.team) });
+  }
   rooms.set(String(roomDoc._id), {
     config: buildRoomConfig(roomDoc),
     boards,
+    assignments,
   });
   return rooms.get(String(roomDoc._id));
 }
@@ -243,25 +250,97 @@ function getActiveRoomsSummary() {
   return list;
 }
 
+// ---------- Asignación de equipos (salas torneo) ----------
+
+/**
+ * Elige el equipo para un jugador nuevo: el que tenga menos jugadores de su misma
+ * institución y, a igualdad, el que tenga menos jugadores en total (desempate al azar).
+ * Así los compañeros de institución quedan repartidos en distintos equipos y los
+ * equipos se mantienen parejos.
+ */
+function pickBalancedTeam(room, institution) {
+  const stats = new Map(room.config.teams.map((t) => [t._id, { sameInstitution: 0, total: 0 }]));
+  for (const a of room.assignments.values()) {
+    const s = stats.get(a.team);
+    if (!s) continue;
+    s.total++;
+    if (a.institution === institution) s.sameInstitution++;
+  }
+  let best = [];
+  let bestStats = null;
+  for (const [teamId, s] of stats) {
+    const cmp = bestStats ? (s.sameInstitution - bestStats.sameInstitution) || (s.total - bestStats.total) : -1;
+    if (cmp < 0) {
+      best = [teamId];
+      bestStats = s;
+    } else if (cmp === 0) {
+      best.push(teamId);
+    }
+  }
+  return best.length ? best[Math.floor(Math.random() * best.length)] : null;
+}
+
+function persistAssignment(roomId, playerId, assignment) {
+  const filter = { _id: roomId };
+  return Room.updateOne(filter, { $pull: { teamAssignments: { player: playerId } } })
+    .then(() => Room.updateOne(filter, { $push: { teamAssignments: { player: playerId, ...assignment } } }));
+}
+
+/**
+ * Devuelve el equipo ({ _id, name, avatar }) del jugador en la sala torneo, asignándolo
+ * si todavía no tiene o si su equipo fue quitado de la sala desde el panel.
+ */
+function ensureAssignment(room, playerId, institution) {
+  if (room.config.type !== 'torneo') return null;
+  const pid = String(playerId);
+  const current = room.assignments.get(pid);
+  const currentTeam = current && room.config.teams.find((t) => t._id === current.team);
+  if (currentTeam) return currentTeam;
+
+  const inst = current ? current.institution : (institution ? String(institution) : null);
+  const teamId = pickBalancedTeam(room, inst);
+  if (!teamId) return null;
+  const assignment = { institution: inst, team: teamId };
+  room.assignments.set(pid, assignment);
+  persistAssignment(room.config.id, pid, assignment)
+    .catch((err) => console.error('[matchManager] error guardando asignación de equipo', err));
+  return room.config.teams.find((t) => t._id === teamId);
+}
+
+/**
+ * Al entrar a una sala torneo se le asigna automáticamente un equipo al jugador.
+ * Resuelve con el equipo asignado o null (amistosa / sala sin equipos).
+ */
+async function assignTeamOnJoin(roomId, playerId) {
+  const room = getRoom(roomId);
+  if (!room || room.config.type !== 'torneo' || !playerId) return null;
+  if (room.assignments.has(String(playerId))) return ensureAssignment(room, playerId);
+  // La institución se toma de la base, no de lo que manda el cliente.
+  const playerDoc = await Player.findById(playerId).select('institution').lean().catch(() => null);
+  const fresh = getRoom(roomId);
+  return fresh ? ensureAssignment(fresh, playerId, playerDoc ? playerDoc.institution : null) : null;
+}
+
 // ---------- Lógica de asiento (board:sit) ----------
 
 /**
  * Equipo con el que se sienta el jugador. En amistosas no hay equipos; en
- * torneo tiene que ser uno de los equipos de la sala (si no, devuelve null).
+ * torneo es el que se le asignó al entrar a la sala (si no tiene, devuelve null).
  */
-function resolveSeatTeam(room, teamId) {
+function resolveSeatTeam(room, playerId) {
   if (room.config.type !== 'torneo') return { team: null, teamName: '' };
-  const team = teamId && room.config.teams.find((t) => t._id === String(teamId));
+  if (!room.assignments.has(String(playerId))) return null;
+  const team = ensureAssignment(room, playerId);
   return team ? { team: team._id, teamName: team.name } : null;
 }
 
-const TEAM_REQUIRED_ERROR = 'Elegí uno de los equipos de la sala para poder jugar';
+const TEAM_REQUIRED_ERROR = 'No tenés equipo asignado en esta sala (todavía no tiene equipos)';
 
 /**
  * El frontend SIEMPRE llama a esto sin importar board.status; el backend decide
  * si el jugador entra como jugador (negro/blanco) o como espectador.
  */
-function handleSit({ roomId, boardNumber, player, teamId, socketId }) {
+function handleSit({ roomId, boardNumber, player, socketId }) {
   const room = getRoom(roomId);
   if (!room) return { ok: false, error: 'Sala inexistente' };
   const board = room.boards.get(Number(boardNumber));
@@ -269,7 +348,7 @@ function handleSit({ roomId, boardNumber, player, teamId, socketId }) {
 
   // Tablero vacío -> se crea partida en estado "waiting" con el primer jugador
   if (board.status === 'empty') {
-    const seat = resolveSeatTeam(room, teamId);
+    const seat = resolveSeatTeam(room, player.id);
     if (!seat) return { ok: false, error: TEAM_REQUIRED_ERROR };
     const size = room.config.boardSize;
     const preset = CLOCK_PRESETS[room.config.clockType];
@@ -306,7 +385,7 @@ function handleSit({ roomId, boardNumber, player, teamId, socketId }) {
     if (seated.playerId === player.id) {
       return { ok: true, role: 'player', color: seated.color };
     }
-    const seat = resolveSeatTeam(room, teamId);
+    const seat = resolveSeatTeam(room, player.id);
     if (!seat) return { ok: false, error: TEAM_REQUIRED_ERROR };
     if (room.config.type === 'torneo' && String(seated.team) === String(seat.team)) {
       board.spectators.add(socketId);
@@ -536,6 +615,7 @@ module.exports = {
   getRoom,
   getRoomBoardsSummary,
   getActiveRoomsSummary,
+  assignTeamOnJoin,
   handleSit,
   handleLeaveSpectator,
   handleMove,

@@ -29,7 +29,7 @@ Panel en `http://localhost:4000` (configurable con `ADMIN_PORT`). Permite listar
 
 ### Instituciones y login
 
-Cada institución tiene una lista de usuarios (nicknames) y una contraseña compartida, que se guarda hasheada (scrypt). Para ingresar al juego hay que elegir la institución, poner un usuario que figure en su lista, y la contraseña de la institución. El equipo no se elige en el login: solo las salas torneo tienen equipos (cada sala define desde el panel su lista de equipos, con nombre y avatar) y el jugador elige uno al entrar a la sala. Se administran desde el panel (al editar, dejar la contraseña vacía conserva la actual).
+Cada institución tiene una lista de usuarios (nicknames) y una contraseña compartida, que se guarda hasheada (scrypt). Para ingresar al juego hay que elegir la institución, poner un usuario que figure en su lista, y la contraseña de la institución. El equipo no se elige en el login: solo las salas torneo tienen equipos (cada sala define desde el panel su lista de equipos, con nombre y avatar) y al entrar a la sala se le asigna uno automáticamente, repartiendo a los jugadores de una misma institución entre los distintos equipos de forma equilibrada. Se administran desde el panel (al editar, dejar la contraseña vacía conserva la actual).
 - `services/goEngine.js` – reglas de Go (capturas, libertades, ko simple).
 - `services/matchManager.js` – **única fuente de verdad** del estado en memoria de salas/tableros/partidas. Toda mutación de partidas pasa por acá; los handlers de sockets nunca tocan Mongo directamente. Expone `setBroadcastHandler`.
 - `services/sgf.js` – exportación de partidas a formato SGF.
@@ -43,7 +43,7 @@ Cada institución tiene una lista de usuarios (nicknames) y una contraseña comp
 |---|---|
 | `room:join` | `{ roomId, player }` |
 | `room:leave` | `{ roomId }` |
-| `board:sit` | `{ roomId, boardNumber, player }` — siempre se emite, el backend decide jugador/espectador |
+| `board:sit` | `{ roomId, boardNumber, player }` — siempre se emite, el backend decide jugador/espectador (en torneo usa el equipo asignado en `room:join`) |
 | `board:move` | `{ roomId, boardNumber, playerId, x, y }` |
 | `board:resign` | `{ roomId, boardNumber, playerId }` |
 | `board:leaveSpectator` | `{ roomId, boardNumber }` |

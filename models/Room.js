@@ -29,6 +29,17 @@ const RoomSchema = new mongoose.Schema({
       message: 'Hay equipos con el mismo nombre en la sala',
     },
   },
+  // Equipo asignado automáticamente a cada jugador que entró a la sala torneo. Lo mantiene
+  // el servidor de juego (el panel admin no lo edita) para que la asignación sea estable.
+  teamAssignments: {
+    type: [{
+      _id: false,
+      player: { type: mongoose.Schema.Types.ObjectId, ref: 'Player', required: true },
+      institution: { type: mongoose.Schema.Types.ObjectId, ref: 'Institution', default: null },
+      team: { type: mongoose.Schema.Types.ObjectId, required: true },
+    }],
+    default: [],
+  },
   closed: { type: Boolean, default: false },
 }, { timestamps: true });
 

@@ -43,6 +43,7 @@ async function bootstrap() {
   // CORS (protege contra CSRF) y usa su propio límite de body para las imágenes.
   if (isAdminConfigured()) {
     app.use('/admin', adminRouter);
+    console.log("[server] panel admin habilitado");
   } else {
     console.warn('[server] ADMIN_USER / ADMIN_PASSWORD sin definir: panel admin deshabilitado');
   }

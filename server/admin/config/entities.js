@@ -49,7 +49,7 @@ module.exports = {
         name: 'clockType',
         label: 'Reloj',
         type: 'enum',
-        options: ['fischer-1-3', 'fischer-5-3', 'fischer-10-5'],
+        options: ['fischer-1-3', 'fischer-3-5', 'fischer-5-5', 'fischer-10-5'],
         required: true,
       },
       { name: 'koRuleEnabled', label: 'Regla de Ko', type: 'boolean', default: true },

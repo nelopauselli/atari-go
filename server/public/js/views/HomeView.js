@@ -7,7 +7,8 @@ import TutorialModal from '../components/TutorialModal.js';
 
 const CLOCK_LABELS = {
   'fischer-1-3': 'Fischer 1m + 3s',
-  'fischer-5-3': 'Fischer 5m + 3s',
+  'fischer-3-5': 'Fischer 3m + 5s',
+  'fischer-5-5': 'Fischer 5m + 5s',
   'fischer-10-5': 'Fischer 10m + 5s',
 };
 

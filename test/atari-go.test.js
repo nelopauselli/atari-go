@@ -481,7 +481,8 @@ describe('partida de Atari-Go', () => {
   describe('reloj Fischer', () => {
     for (const [clockType, baseMs, incrementMs] of [
       ['fischer-1-3', 60_000, 3_000],
-      ['fischer-5-3', 300_000, 3_000],
+      ['fischer-3-5', 180_000, 5_000],
+      ['fischer-5-5', 300_000, 5_000],
       ['fischer-10-5', 600_000, 5_000],
     ]) {
       it(`${clockType}: arranca con ${baseMs / 1000}s y suma ${incrementMs / 1000}s por jugada`, (t) => {

@@ -28,8 +28,8 @@ function sitBoard(roomId, boardNumber, player) {
   });
 }
 
-function leaveSpectator(roomId, boardNumber) {
-  socket.emit('board:leaveSpectator', { roomId, boardNumber });
+function leaveBoard(roomId, boardNumber) {
+  socket.emit('board:leave', { roomId, boardNumber });
 }
 
 function move(roomId, boardNumber, playerId, x, y) {
@@ -67,7 +67,7 @@ export const socketService = {
   joinRoom,
   leaveRoom,
   sitBoard,
-  leaveSpectator,
+  leaveBoard,
   move,
   resign,
   ping,

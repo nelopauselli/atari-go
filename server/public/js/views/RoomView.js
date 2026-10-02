@@ -80,7 +80,9 @@ export default {
         if (!guest && isTournament.value && roomTeams.value.length && !myTeam.value) joinLive();
         if (active.boardNumber != null) {
           const fresh = summary2.boards.find((b) => b.number === active.boardNumber);
-          if (fresh) active.state = fresh;
+          // Al liberarse el tablero (partida terminada o se fue quien esperaba rival), se vuelve a la sala.
+          if (fresh && fresh.status === 'empty' && active.state && active.state.status !== 'empty') closeActiveBoard();
+          else if (fresh) active.state = fresh;
         }
       }));
       unsubs.push(socketService.on('board:state', (payload) => {
@@ -98,6 +100,7 @@ export default {
     });
 
     onUnmounted(() => {
+      closeActiveBoard();
       setTeams([]);
       unsubs.forEach((u) => u());
       socketService.leaveRoom(props.roomId);
@@ -119,9 +122,7 @@ export default {
     }
 
     function closeActiveBoard() {
-      if (active.role === 'spectator' && active.boardNumber != null) {
-        socketService.leaveSpectator(props.roomId, active.boardNumber);
-      }
+      if (active.boardNumber != null) socketService.leaveBoard(props.roomId, active.boardNumber);
       active.boardNumber = null;
       active.role = null;
       active.color = null;

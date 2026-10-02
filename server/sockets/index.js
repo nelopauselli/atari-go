@@ -49,8 +49,8 @@ function initSockets(io) {
       if (typeof ack === 'function') ack(result);
     });
 
-    socket.on('board:leaveSpectator', ({ roomId, boardNumber }) => {
-      matchManager.handleLeaveSpectator({ roomId, boardNumber, socketId: socket.id });
+    socket.on('board:leave', ({ roomId, boardNumber }) => {
+      matchManager.handleLeaveBoard({ roomId, boardNumber, socketId: socket.id, playerId: socket.data.playerId });
     });
 
     socket.on('board:move', ({ roomId, boardNumber, playerId, x, y }, ack) => {

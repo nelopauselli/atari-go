@@ -430,12 +430,23 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
   return { ok: true, role: 'spectator' };
 }
 
-function handleLeaveSpectator({ roomId, boardNumber, socketId }) {
+// Quien sale del tablero deja de observarlo; si era el único jugador esperando rival, el tablero se libera.
+function handleLeaveBoard({ roomId, boardNumber, socketId, playerId }) {
   const room = getRoom(roomId);
   if (!room) return;
   const board = room.boards.get(Number(boardNumber));
   if (!board) return;
   board.spectators.delete(socketId);
+  if (playerId) releaseWaitingBoard(roomId, board, playerId);
+}
+
+function releaseWaitingBoard(roomId, board, playerId) {
+  if (board.status !== 'waiting' || !board.game) return;
+  const seated = board.game.players[0];
+  if (seated && seated.playerId === playerId) {
+    playerLocation.delete(playerId);
+    freeBoard(roomId, board.number);
+  }
 }
 
 // ---------- Jugadas ----------
@@ -609,14 +620,8 @@ function handleDisconnect({ socketId, playerId }) {
   const board = room.boards.get(Number(loc.boardNumber));
   if (!board || !board.game) return;
 
-  if (board.status === 'waiting') {
-    // Único jugador esperando rival abandona -> se anula y el tablero se libera
-    const seated = board.game.players[0];
-    if (seated && seated.playerId === playerId) {
-      playerLocation.delete(playerId);
-      freeBoard(loc.roomId, board.number);
-    }
-  }
+  // Único jugador esperando rival abandona -> se anula y el tablero se libera
+  releaseWaitingBoard(loc.roomId, board, playerId);
   // Si está "playing", no se aborta: se permite reconexión (por id de jugador)
   // y el reloj del jugador desconectado sigue corriendo con normalidad.
 }
@@ -631,7 +636,7 @@ module.exports = {
   getActiveRoomsSummary,
   assignTeamOnJoin,
   handleSit,
-  handleLeaveSpectator,
+  handleLeaveBoard,
   isGuest,
   handleMove,
   handleResign,

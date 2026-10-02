@@ -95,7 +95,7 @@ describe('asiento en tableros', () => {
     assert.equal(getBoard(roomId).game.players.length, 2);
     assert.equal(spectatorCount(roomId), 1);
 
-    matchManager.handleLeaveSpectator({ roomId, boardNumber: 1, socketId: 'socket-caro' });
+    matchManager.handleLeaveBoard({ roomId, boardNumber: 1, socketId: 'socket-caro', playerId: caro.id });
     assert.equal(spectatorCount(roomId), 0);
   });
 
@@ -214,6 +214,26 @@ describe('desconexiones', () => {
     matchManager.handleDisconnect({ socketId: `s-${ana.id}`, playerId: ana.id });
     assert.equal(getBoard(roomId).status, 'empty');
     assert.equal(getBoard(roomId).game, null);
+  });
+
+  it('si sale del tablero quien espera rival, el tablero se libera', (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc());
+    const ana = makePlayer('Ana');
+    sit(roomId, ana);
+
+    matchManager.handleLeaveBoard({ roomId, boardNumber: 1, socketId: `s-${ana.id}`, playerId: ana.id });
+    assert.equal(getBoard(roomId).status, 'empty');
+    assert.equal(getBoard(roomId).game, null);
+  });
+
+  it('si sale del tablero un jugador en plena partida, la partida sigue', (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc());
+    const { black } = startMatch(roomId);
+
+    matchManager.handleLeaveBoard({ roomId, boardNumber: 1, socketId: `s-${black.id}`, playerId: black.id });
+    assert.equal(getBoard(roomId).status, 'playing');
   });
 
   it('si se desconecta un jugador en plena partida, la partida sigue y su reloj corre', (t) => {

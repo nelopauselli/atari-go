@@ -8,6 +8,7 @@
     "start": "node --env-file=.env server/index.js",
     "dev": "nodemon server/index.js",
     "test": "node --test \"test/*.test.js\"",
+    "hash-password": "node scripts/hash-password.js",
     "test:atari-go": "node --test test/atari-go.test.js",
     "test:salas": "node --test test/salas.test.js",
     "test:equipos": "node --test test/equipos.test.js"

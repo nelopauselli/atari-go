@@ -1,5 +1,5 @@
-const crypto = require('crypto');
 const mongoose = require('mongoose');
+const { hashPassword, checkPassword } = require('../services/password');
 
 const InstitutionSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true, trim: true },
@@ -11,19 +11,12 @@ const InstitutionSchema = new mongoose.Schema({
   users: { type: [{ type: String, trim: true }], default: [] },
 }, { timestamps: true });
 
-InstitutionSchema.statics.hashPassword = function hashPassword(plain) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(String(plain), salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+InstitutionSchema.statics.hashPassword = function (plain) {
+  return hashPassword(plain);
 };
 
-InstitutionSchema.methods.checkPassword = function checkPassword(plain) {
-  if (!this.password || !plain) return false;
-  const [salt, hash] = this.password.split(':');
-  if (!salt || !hash) return false;
-  const expected = Buffer.from(hash, 'hex');
-  const actual = crypto.scryptSync(String(plain), salt, expected.length);
-  return crypto.timingSafeEqual(expected, actual);
+InstitutionSchema.methods.checkPassword = function (plain) {
+  return checkPassword(plain, this.password);
 };
 
 // Devuelve el nickname tal como figura en la lista (comparación sin distinguir mayúsculas), o null.

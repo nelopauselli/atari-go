@@ -14,11 +14,11 @@ Servidor en `http://localhost:3000`. Requiere una instancia de MongoDB accesible
 
 ### Panel de administración
 
-Lo sirve el mismo servidor en `http://localhost:3000/admin/`, protegido con HTTP Basic Auth. Las credenciales se definen en `.env`:
+Lo sirve el mismo servidor en `http://localhost:3000/admin/`, protegido con HTTP Basic Auth. Las credenciales se definen en `.env`; la contraseña no se guarda en claro sino su hash scrypt, que se genera con `npm run hash-password`:
 
 ```
 ADMIN_USER=admin
-ADMIN_PASSWORD=una-contraseña-larga
+ADMIN_PASSWORD_HASH=<salt>:<hash>
 ```
 
 Si alguna de las dos falta, el panel no se monta. En producción tiene que ir detrás de HTTPS (Basic Auth manda la contraseña en base64). Permite listar, crear, editar y borrar los registros de `server/models/` (instituciones, jugadores y salas —con sus equipos—; las partidas son de solo lectura). Los cambios en salas se reflejan al instante en las salas en memoria.

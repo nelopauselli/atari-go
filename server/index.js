@@ -45,7 +45,7 @@ async function bootstrap() {
     app.use('/admin', adminRouter);
     console.log("[server] panel admin habilitado");
   } else {
-    console.warn('[server] ADMIN_USER / ADMIN_PASSWORD sin definir: panel admin deshabilitado');
+    console.warn('[server] ADMIN_USER / ADMIN_PASSWORD_HASH sin definir: panel admin deshabilitado');
   }
 
   app.use(cors());

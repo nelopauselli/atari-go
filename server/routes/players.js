@@ -6,6 +6,10 @@ const presence = require('../services/presence');
 
 const router = express.Router();
 
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Login: institución + usuario (debe figurar en la lista de la institución) + contraseña
 // de la institución. Crea el jugador si no existe (regla A). El equipo no se elige acá:
 // solo las salas torneo tienen equipos y se asigna automáticamente al entrar a cada una.
@@ -26,10 +30,14 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
-    let player = await Player.findOne({ nickname: username, institution: institution._id }).sort({ lastSeenAt: -1 });
+    // El usuario no distingue mayúsculas: se reutiliza el jugador aunque haya cambiado cómo
+    // figura en la lista, y se le actualiza el nickname a la forma de la lista.
+    const nicknameRegex = new RegExp(`^${escapeRegExp(username)}$`, 'i');
+    let player = await Player.findOne({ nickname: nicknameRegex, institution: institution._id }).sort({ lastSeenAt: -1 });
     if (!player) {
       player = await Player.create({ nickname: username, institution: institution._id });
     } else {
+      player.nickname = username;
       player.lastSeenAt = new Date();
       await player.save();
     }

@@ -119,7 +119,10 @@ export default {
                 <p class="text-muted small mb-1">Tablero {{ r.boardSize }}x{{ r.boardSize }} · {{ CLOCK_LABELS[r.clockType] }}</p>
                 <p class="text-muted small mb-1">Tableros libres: {{ r.freeBoards }} / {{ r.totalBoards }}</p>
                 <p class="text-muted small mb-0">Jugadores conectados: {{ r.playersOnline }}<template v-if="r.type==='torneo'"> · Equipos jugando: {{ r.teamsPlaying }}</template></p>
-                <button type="button" class="btn btn-outline-info btn-sm mt-2" @click.stop="rulesRoom = r">Reglas</button>
+                <div class="d-flex gap-2 mt-2">
+                  <button type="button" class="btn btn-primary btn-sm" @click.stop="openRoom(r.id)">Unirse a la sala</button>
+                  <button type="button" class="btn btn-outline-info btn-sm" @click.stop="rulesRoom = r">Reglas</button>
+                </div>
               </div>
             </div>
           </div>

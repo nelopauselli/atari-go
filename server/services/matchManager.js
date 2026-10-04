@@ -322,6 +322,13 @@ async function assignTeamOnJoin(roomId, playerId) {
   return fresh ? ensureAssignment(fresh, playerId, playerDoc ? playerDoc.institution : null) : null;
 }
 
+/** Id del equipo que el jugador ya tiene asignado en la sala (o null si no tiene). */
+function getAssignedTeamId(roomId, playerId) {
+  const room = getRoom(roomId);
+  const current = room && playerId ? room.assignments.get(String(playerId)) : null;
+  return current ? current.team : null;
+}
+
 // ---------- Lógica de asiento (board:sit) ----------
 
 /**
@@ -635,6 +642,7 @@ module.exports = {
   getRoomBoardsSummary,
   getActiveRoomsSummary,
   assignTeamOnJoin,
+  getAssignedTeamId,
   handleSit,
   handleLeaveBoard,
   isGuest,

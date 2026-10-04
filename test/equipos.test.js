@@ -54,6 +54,16 @@ describe('asignación de equipos', () => {
       assert.deepEqual(matchManager.getRoom(roomId).assignments.get(ana.id), { institution: INST_X, team: team._id });
     });
 
+    it('getAssignedTeamId distingue el primer ingreso de los siguientes', async (t) => {
+      const env = setup(t);
+      const roomId = env.registerRoom(tournamentDoc(makeTeams('Rojo')));
+      const ana = makePlayer('Ana');
+      assert.equal(matchManager.getAssignedTeamId(roomId, ana.id), null);
+      const team = await matchManager.assignTeamOnJoin(roomId, ana.id);
+      assert.equal(matchManager.getAssignedTeamId(roomId, ana.id), team._id);
+      assert.equal(matchManager.getAssignedTeamId(roomId, null), null);
+    });
+
     it('el jugador se sienta con el equipo asignado', async (t) => {
       const env = setup(t);
       const roomId = env.registerRoom(tournamentDoc(makeTeams('Rojo')));

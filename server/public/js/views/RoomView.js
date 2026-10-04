@@ -8,13 +8,14 @@ import GoBoard from '../components/GoBoard.js';
 import ClockDisplay from '../components/ClockDisplay.js';
 import RulesModal from '../components/RulesModal.js';
 import TeamShield from '../components/TeamShield.js';
+import TeamAssignedModal from '../components/TeamAssignedModal.js';
 
 const STATUS_LABELS = { empty: 'Vacío', waiting: 'Esperando rival', playing: 'En curso', finished: 'Finalizado' };
 const STATUS_BADGE_CLASS = { empty: 'text-bg-secondary', waiting: 'text-bg-warning', playing: 'text-bg-success', finished: 'text-bg-info' };
 
 export default {
   name: 'RoomView',
-  components: { GoBoard, ClockDisplay, RulesModal, TeamShield },
+  components: { GoBoard, ClockDisplay, RulesModal, TeamShield, TeamAssignedModal },
   props: { roomId: { type: String, required: true } },
   setup(props) {
     const player = getPlayer();
@@ -34,6 +35,8 @@ export default {
     // TeamShield resuelve el avatar por id/nombre entre los equipos de esta sala.
     watch(roomTeams, setTeams, { immediate: true });
     const myTeam = computed(() => roomTeams.value.find((t) => t._id === myTeamId.value) || null);
+    // Se avisa con un modal cuando el servidor le asigna equipo en este ingreso (no al volver a entrar).
+    const showTeamAssigned = ref(false);
 
     async function joinLive() {
       const summary = await socketService.joinRoom(props.roomId, player);
@@ -41,6 +44,7 @@ export default {
       room.value = { ...room.value, ...summary.config };
       boards.value = summary.boards;
       myTeamId.value = summary.myTeam ? summary.myTeam._id : '';
+      if (summary.teamAssigned) showTeamAssigned.value = true;
       return true;
     }
 
@@ -150,7 +154,7 @@ export default {
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
-      isTournament, roomTeams, myTeam, guest, isPlaying,
+      isTournament, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       goBack: () => (active.boardNumber ? closeActiveBoard() : navigate('/home')),
@@ -184,6 +188,7 @@ export default {
       <div v-if="!active.boardNumber && active.sitError" class="alert alert-warning">{{ active.sitError }}</div>
 
       <RulesModal v-if="showRules" :room="room" @close="showRules = false" />
+      <TeamAssignedModal v-if="showTeamAssigned && myTeam" :team="myTeam" @close="showTeamAssigned = false" />
 
       <!-- Tablero activo (jugando o espectando) -->
       <div v-if="active.boardNumber && active.state" class="card shadow-sm mb-4">

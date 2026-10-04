@@ -25,14 +25,17 @@ function initSockets(io) {
     });
 
     // En salas torneo, al entrar se le asigna automáticamente un equipo al jugador (myTeam).
-    // Los invitados no tienen id: no se les asigna equipo.
+    // teamAssigned indica que el equipo se le asignó en este ingreso (primera vez o porque
+    // le quitaron el anterior), para que el cliente le avise. Los invitados no tienen id: no se les asigna equipo.
     socket.on('room:join', async ({ roomId, player }, ack) => {
       socket.join(roomChannel(roomId));
       socket.data.roomId = roomId;
       socket.data.playerId = matchManager.isGuest(player) ? null : player.id;
+      const previousTeamId = matchManager.getAssignedTeamId(roomId, socket.data.playerId);
       const myTeam = await matchManager.assignTeamOnJoin(roomId, socket.data.playerId);
+      const teamAssigned = !!myTeam && myTeam._id !== previousTeamId;
       const summary = matchManager.getRoomBoardsSummary(roomId);
-      if (typeof ack === 'function') ack(summary ? { ...summary, myTeam } : { error: 'Sala inexistente' });
+      if (typeof ack === 'function') ack(summary ? { ...summary, myTeam, teamAssigned } : { error: 'Sala inexistente' });
     });
 
     socket.on('room:leave', ({ roomId }) => {

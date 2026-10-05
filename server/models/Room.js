@@ -16,7 +16,7 @@ const RoomSchema = new mongoose.Schema({
   stonesToWin: { type: Number, required: true, min: 1 },
   clockType: {
     type: String,
-    enum: ['fischer-3-5', 'fischer-5-10', 'fischer-10-20'],
+    enum: ['fischer-1-3', 'fischer-3-5', 'fischer-5-10', 'fischer-10-20'],
     required: true,
   },
   koRuleEnabled: { type: Boolean, default: true },

@@ -45,6 +45,7 @@ Cada partida usa reloj tipo **Fischer** (tiempo base + incremento por jugada), s
 
 | Preset | Tiempo base | Incremento por jugada |
 |---|---|---|
+| fischer-1-3 | 1 minuto | +3 segundos |
 | fischer-3-5 | 3 minutos | +5 segundos |
 | fischer-5-10 | 5 minutos | +10 segundos |
 | fischer-10-20 | 10 minutos | +20 segundos |

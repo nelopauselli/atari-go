@@ -492,9 +492,8 @@ describe('validación del modelo de sala', () => {
   });
 
   it('solo admite los relojes Fischer configurados', () => {
-    for (const clockType of ['fischer-3-5', 'fischer-5-10', 'fischer-10-20']) assert.deepEqual(errorsOf({ clockType }), []);
+    for (const clockType of ['fischer-1-3', 'fischer-3-5', 'fischer-5-10', 'fischer-10-20']) assert.deepEqual(errorsOf({ clockType }), []);
     assert.deepEqual(errorsOf({ clockType: 'byoyomi' }), ['clockType']);
-    assert.deepEqual(errorsOf({ clockType: 'fischer-1-3' }), ['clockType']);
   });
 
   it('no admite equipos con el mismo nombre, sin distinguir mayúsculas', () => {

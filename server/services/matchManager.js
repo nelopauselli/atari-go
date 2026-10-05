@@ -14,6 +14,7 @@ const Room = require('../models/Room');
 const Player = require('../models/Player');
 
 const CLOCK_PRESETS = {
+  'fischer-1-3': { baseMs: 1 * 60 * 1000, incrementMs: 3 * 1000 },
   'fischer-3-5': { baseMs: 3 * 60 * 1000, incrementMs: 5 * 1000 },
   'fischer-5-10': { baseMs: 5 * 60 * 1000, incrementMs: 10 * 1000 },
   'fischer-10-20': { baseMs: 10 * 60 * 1000, incrementMs: 20 * 1000 }

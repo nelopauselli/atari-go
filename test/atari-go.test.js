@@ -480,6 +480,7 @@ describe('partida de Atari-Go', () => {
 
   describe('reloj Fischer', () => {
     for (const [clockType, baseMs, incrementMs] of [
+      ['fischer-1-3', 60_000, 3_000],
       ['fischer-3-5', 180_000, 5_000],
       ['fischer-5-10', 300_000, 10_000],
       ['fischer-10-20', 600_000, 20_000],

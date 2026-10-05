@@ -7,8 +7,8 @@ import TutorialModal from '../components/TutorialModal.js';
 
 const CLOCK_LABELS = {
   'fischer-3-5': 'Fischer 3m + 5s',
-  'fischer-5-5': 'Fischer 5m + 5s',
-  'fischer-10-5': 'Fischer 10m + 5s',
+  'fischer-5-10': 'Fischer 5m + 10s',
+  'fischer-10-20': 'Fischer 10m + 20s',
 };
 
 export default {
@@ -20,7 +20,7 @@ export default {
     const history = ref([]);
     const onlinePlayers = ref([]);
     const institutionNames = ref([]); // en el orden definido en el admin
-    const form = ref({ name: '', type: 'amistosas', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-10-5' });
+    const form = ref({ name: '', type: 'amistosas', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-10-20' });
     const createError = ref('');
     const rulesRoom = ref(null);
     const showTutorial = ref(false);

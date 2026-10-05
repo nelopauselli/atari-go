@@ -15,8 +15,8 @@ const Player = require('../models/Player');
 
 const CLOCK_PRESETS = {
   'fischer-3-5': { baseMs: 3 * 60 * 1000, incrementMs: 5 * 1000 },
-  'fischer-5-5': { baseMs: 5 * 60 * 1000, incrementMs: 5 * 1000 },
-  'fischer-10-5': { baseMs: 10 * 60 * 1000, incrementMs: 5 * 1000 }
+  'fischer-5-10': { baseMs: 5 * 60 * 1000, incrementMs: 10 * 1000 },
+  'fischer-10-20': { baseMs: 10 * 60 * 1000, incrementMs: 20 * 1000 }
 };
 
 /** rooms: Map<roomId, { config, boards: Map<boardNumber, BoardState> }> */

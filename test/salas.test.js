@@ -38,7 +38,7 @@ describe('asiento en tableros', () => {
 
   it('quien se sienta en un tablero vacío juega con negras y espera rival', (t) => {
     const env = setup(t);
-    const roomId = env.registerRoom(makeRoomDoc({ boardSize: 9, stonesToWin: 3, clockType: 'fischer-5-5' }));
+    const roomId = env.registerRoom(makeRoomDoc({ boardSize: 9, stonesToWin: 3, clockType: 'fischer-5-10' }));
     const ana = makePlayer('Ana');
 
     assert.deepEqual(sit(roomId, ana), { ok: true, role: 'player', color: 'black' });
@@ -47,7 +47,7 @@ describe('asiento en tableros', () => {
     assert.equal(board.game.size, 9);
     assert.equal(board.game.board.length, 81);
     assert.equal(board.game.stonesToWin, 3);
-    assert.equal(board.game.clockType, 'fischer-5-5');
+    assert.equal(board.game.clockType, 'fischer-5-10');
     assert.ok(env.events.some((e) => e.event === 'room:update' && e.roomId === roomId));
   });
 
@@ -383,7 +383,7 @@ describe('sincronización con la base (cambios desde el panel admin)', () => {
     startMatch(roomId, 1);
     sit(roomId, makePlayer('Solo'), 2);
 
-    env.db.openRooms = [{ ...doc, boardSize: 13, stonesToWin: 2, clockType: 'fischer-10-5', koRuleEnabled: false }];
+    env.db.openRooms = [{ ...doc, boardSize: 13, stonesToWin: 2, clockType: 'fischer-10-20', koRuleEnabled: false }];
     await matchManager.syncRoomsWithDB();
 
     const playing = getBoard(roomId, 1).game;
@@ -454,7 +454,7 @@ describe('sincronización con la base (cambios desde el panel admin)', () => {
 
 describe('validación del modelo de sala', () => {
   const valid = {
-    name: 'Sala', type: 'torneo', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-5-5',
+    name: 'Sala', type: 'torneo', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-5-10',
   };
 
   function errorsOf(fields) {
@@ -492,7 +492,7 @@ describe('validación del modelo de sala', () => {
   });
 
   it('solo admite los relojes Fischer configurados', () => {
-    for (const clockType of ['fischer-3-5', 'fischer-5-5', 'fischer-10-5']) assert.deepEqual(errorsOf({ clockType }), []);
+    for (const clockType of ['fischer-3-5', 'fischer-5-10', 'fischer-10-20']) assert.deepEqual(errorsOf({ clockType }), []);
     assert.deepEqual(errorsOf({ clockType: 'byoyomi' }), ['clockType']);
     assert.deepEqual(errorsOf({ clockType: 'fischer-1-3' }), ['clockType']);
   });

@@ -1,7 +1,6 @@
 import { computed, onMounted, onUnmounted } from 'vue';
 
 const CLOCK_PRESETS = {
-  'fischer-1-3': { base: '1 minuto', increment: '3 segundos' },
   'fischer-3-5': { base: '3 minutos', increment: '5 segundos' },
   'fischer-5-5': { base: '5 minutos', increment: '5 segundos' },
   'fischer-10-5': { base: '10 minutos', increment: '5 segundos' },

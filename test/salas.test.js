@@ -238,13 +238,13 @@ describe('desconexiones', () => {
 
   it('si se desconecta un jugador en plena partida, la partida sigue y su reloj corre', (t) => {
     const env = setup(t);
-    const roomId = env.registerRoom(makeRoomDoc({ clockType: 'fischer-1-3' }));
+    const roomId = env.registerRoom(makeRoomDoc({ clockType: 'fischer-3-5' }));
     const { black } = startMatch(roomId);
 
     matchManager.handleDisconnect({ socketId: `s-${black.id}`, playerId: black.id });
     assert.equal(getBoard(roomId).status, 'playing');
 
-    t.mock.timers.tick(60_000);
+    t.mock.timers.tick(180_000);
     assert.equal(getBoard(roomId).lastResult.reason, 'timeout');
     assert.equal(getBoard(roomId).lastResult.winnerColor, 'white');
   });
@@ -377,7 +377,7 @@ describe('sincronización con la base (cambios desde el panel admin)', () => {
   });
 
   it('los cambios de configuración aplican a tableros vacíos y esperando rival, no a partidas en curso', async (t) => {
-    const doc = makeRoomDoc({ boardSize: 7, stonesToWin: 5, clockType: 'fischer-1-3', koRuleEnabled: true });
+    const doc = makeRoomDoc({ boardSize: 7, stonesToWin: 5, clockType: 'fischer-3-5', koRuleEnabled: true });
     const env = setup(t, { openRooms: [doc] });
     const roomId = env.registerRoom(doc);
     startMatch(roomId, 1);
@@ -492,8 +492,9 @@ describe('validación del modelo de sala', () => {
   });
 
   it('solo admite los relojes Fischer configurados', () => {
-    for (const clockType of ['fischer-1-3', 'fischer-3-5', 'fischer-5-5', 'fischer-10-5']) assert.deepEqual(errorsOf({ clockType }), []);
+    for (const clockType of ['fischer-3-5', 'fischer-5-5', 'fischer-10-5']) assert.deepEqual(errorsOf({ clockType }), []);
     assert.deepEqual(errorsOf({ clockType: 'byoyomi' }), ['clockType']);
+    assert.deepEqual(errorsOf({ clockType: 'fischer-1-3' }), ['clockType']);
   });
 
   it('no admite equipos con el mismo nombre, sin distinguir mayúsculas', () => {

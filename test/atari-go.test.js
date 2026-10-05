@@ -480,7 +480,6 @@ describe('partida de Atari-Go', () => {
 
   describe('reloj Fischer', () => {
     for (const [clockType, baseMs, incrementMs] of [
-      ['fischer-1-3', 60_000, 3_000],
       ['fischer-3-5', 180_000, 5_000],
       ['fischer-5-5', 300_000, 5_000],
       ['fischer-10-5', 600_000, 5_000],
@@ -507,17 +506,17 @@ describe('partida de Atari-Go', () => {
       t.mock.timers.tick(3_000);
       const clockEvents = env.events.filter((e) => e.event === 'board:clock');
       assert.equal(clockEvents.length, 3);
-      assert.deepEqual(clockEvents[2].payload, { boardNumber: 1, turn: 'black', clocks: { black: 57_000, white: 60_000 } });
+      assert.deepEqual(clockEvents[2].payload, { boardNumber: 1, turn: 'black', clocks: { black: 177_000, white: 180_000 } });
     });
 
     it('pierde por tiempo quien agota su reloj', async (t) => {
       const env = setup(t);
-      const roomId = env.registerRoom(makeRoomDoc({ clockType: 'fischer-1-3' }));
+      const roomId = env.registerRoom(makeRoomDoc({ clockType: 'fischer-3-5' }));
       const players = startMatch(roomId);
       await flush();
 
       playMoves(roomId, players, [[0, 0]]);
-      t.mock.timers.tick(59_000);
+      t.mock.timers.tick(179_000);
       assert.equal(getBoard(roomId).status, 'playing');
       t.mock.timers.tick(1_000);
 
@@ -532,7 +531,7 @@ describe('partida de Atari-Go', () => {
 
     it('el reloj arranca recién cuando se sienta el segundo jugador', (t) => {
       const env = setup(t);
-      const roomId = env.registerRoom(makeRoomDoc({ clockType: 'fischer-1-3' }));
+      const roomId = env.registerRoom(makeRoomDoc({ clockType: 'fischer-3-5' }));
       matchManager.handleSit({ roomId, boardNumber: 1, player: makePlayer('A'), socketId: 's1' });
       t.mock.timers.tick(120_000);
       assert.equal(getBoard(roomId).status, 'waiting');
@@ -542,7 +541,7 @@ describe('partida de Atari-Go', () => {
       assert.equal(getBoard(roomId).game.lastMoveAt, START_TIME + 120_000);
       t.mock.timers.tick(1_000);
       const [clock] = env.events.filter((e) => e.event === 'board:clock');
-      assert.deepEqual(clock.payload.clocks, { black: 59_000, white: 60_000 });
+      assert.deepEqual(clock.payload.clocks, { black: 179_000, white: 180_000 });
     });
   });
 });

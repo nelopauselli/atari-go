@@ -30,7 +30,7 @@ function makeRoomDoc(overrides = {}) {
     boardCount: 3,
     boardSize: 7,
     stonesToWin: 5,
-    clockType: 'fischer-1-3',
+    clockType: 'fischer-3-5',
     koRuleEnabled: true,
     teams: [],
     teamAssignments: [],

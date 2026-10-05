@@ -66,6 +66,15 @@ async function buildRanking(room, matches) {
     }
   }
 
+  // Institución de cada jugador (los invitados no tienen)
+  const playerIds = [...teams.values()].flatMap((t) => [...t.players.keys()]);
+  const playerDocs = await Player.find({ _id: { $in: playerIds } })
+    .select('institution').populate('institution', 'name').lean();
+  const institutionNames = new Map(playerDocs.map((p) => [String(p._id), p.institution ? p.institution.name : '']));
+  for (const t of teams.values()) {
+    for (const p of t.players.values()) p.institutionName = institutionNames.get(p.player) || '';
+  }
+
   const byRecord = (a, b) => b.wins - a.wins || a.losses - b.losses;
   return [...teams.values()]
     .map((t) => ({

@@ -306,7 +306,7 @@ export default {
             </tr>
             <tr v-for="p in r.players" :key="p.player">
               <td></td>
-              <td class="ps-5">{{ p.nickname }}</td>
+              <td class="ps-5">{{ p.nickname }} <span v-if="p.institutionName" class="text-muted small">({{ p.institutionName }})</span></td>
               <td class="text-end">{{ p.played }}</td>
               <td class="text-end">{{ p.wins }}</td>
               <td class="text-end">{{ p.losses }}</td>

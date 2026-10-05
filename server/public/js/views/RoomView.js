@@ -25,6 +25,9 @@ export default {
     const tab = ref('boards');
     const roomHistory = ref([]);
     const ranking = ref([]);
+    // Equipos del ranking expandidos para ver sus integrantes (todos colapsados al inicio).
+    const expandedTeams = reactive({});
+    const toggleTeam = (teamId) => { expandedTeams[teamId] = !expandedTeams[teamId]; };
     const joinError = ref('');
     const showRules = ref(false);
 
@@ -153,7 +156,7 @@ export default {
     }
 
     return {
-      room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
+      room, boards, tab, roomHistory, ranking, expandedTeams, toggleTeam, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
       isTournament, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
@@ -297,13 +300,19 @@ export default {
         <table v-else class="table align-middle">
           <thead><tr><th>#</th><th>Equipo / Jugador</th><th class="text-end">Jugadas</th><th class="text-end">Ganadas</th><th class="text-end">Perdidas</th></tr></thead>
           <tbody v-for="(r, i) in ranking" :key="r.team">
-            <tr class="fw-semibold">
+            <tr class="fw-semibold" role="button" :aria-expanded="!!expandedTeams[r.team]" @click="toggleTeam(r.team)">
               <td>{{ i + 1 }}</td>
-              <td><span class="d-inline-flex align-items-center gap-2"><TeamShield :team="r.team" :name="r.teamName" :size="24" />{{ r.teamName }}</span></td>
+              <td>
+                <span class="d-inline-flex align-items-center gap-2">
+                  <span class="text-muted small" style="width: 1em">{{ expandedTeams[r.team] ? '▾' : '▸' }}</span>
+                  <TeamShield :team="r.team" :name="r.teamName" :size="24" />{{ r.teamName }}
+                </span>
+              </td>
               <td class="text-end">{{ r.played }}</td>
               <td class="text-end">{{ r.wins }}</td>
               <td class="text-end">{{ r.losses }}</td>
             </tr>
+            <template v-if="expandedTeams[r.team]">
             <tr v-for="p in r.players" :key="p.player">
               <td></td>
               <td class="ps-5">{{ p.nickname }} <span v-if="p.institutionName" class="text-muted small">({{ p.institutionName }})</span></td>
@@ -315,6 +324,7 @@ export default {
               <td></td>
               <td colspan="4" class="ps-5 text-muted small">Sin jugadores</td>
             </tr>
+            </template>
           </tbody>
         </table>
       </div>

@@ -19,6 +19,15 @@ const CLOCK_PRESETS = {
   'fischer-5-10': { baseMs: 5 * 60 * 1000, incrementMs: 10 * 1000 },
   'fischer-10-20': { baseMs: 10 * 60 * 1000, incrementMs: 20 * 1000 }
 };
+const DEFAULT_CLOCK_TYPE = 'fischer-3-5';
+
+/** Preset del reloj; si la sala guarda un clockType desconocido, cae al default en vez de romper. */
+function getClockPreset(clockType) {
+  const preset = CLOCK_PRESETS[clockType];
+  if (preset) return preset;
+  console.warn(`[matchManager] clockType desconocido "${clockType}", usando ${DEFAULT_CLOCK_TYPE}`);
+  return CLOCK_PRESETS[DEFAULT_CLOCK_TYPE];
+}
 
 /** rooms: Map<roomId, { config, boards: Map<boardNumber, BoardState> }> */
 const rooms = new Map();
@@ -102,7 +111,7 @@ function updateRoomConfig(room, roomDoc) {
 
   if (configChanged) {
     room.config = newConfig;
-    const preset = CLOCK_PRESETS[newConfig.clockType];
+    const preset = getClockPreset(newConfig.clockType);
     for (const board of room.boards.values()) {
       if (board.status !== 'waiting' || !board.game) continue;
       const g = board.game;
@@ -372,7 +381,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     const seat = resolveSeatTeam(room, player.id);
     if (!seat) return { ok: false, error: TEAM_REQUIRED_ERROR };
     const size = room.config.boardSize;
-    const preset = CLOCK_PRESETS[room.config.clockType];
+    const preset = getClockPreset(room.config.clockType);
     board.status = 'waiting';
     board.game = {
       players: [{

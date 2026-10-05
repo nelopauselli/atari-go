@@ -6,11 +6,12 @@ import { getTheme, toggleTheme } from './services/theme.js';
 import LoginView from './views/LoginView.js';
 import HomeView from './views/HomeView.js';
 import RoomView from './views/RoomView.js';
+import RankingView from './views/RankingView.js';
 import AppFooter from './components/AppFooter.js';
 
 const App = {
   name: 'App',
-  components: { LoginView, HomeView, RoomView, AppFooter },
+  components: { LoginView, HomeView, RoomView, RankingView, AppFooter },
   setup() {
     const player = computed(() => { route.name; return getPlayer(); });
     const theme = ref(getTheme());
@@ -56,6 +57,7 @@ const App = {
       <LoginView v-if="route.name==='login'" />
       <HomeView v-else-if="route.name==='home'" />
       <RoomView v-else-if="route.name==='room'" :key="route.params.roomId" :room-id="route.params.roomId" />
+      <RankingView v-else-if="route.name==='ranking'" :key="'ranking-' + route.params.roomId" :room-id="route.params.roomId" />
 
       <AppFooter />
     </div>

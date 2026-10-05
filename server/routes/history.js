@@ -35,7 +35,7 @@ async function buildRanking(room, matches) {
   };
   const ensurePlayer = (team, id, nickname) => {
     const key = String(id);
-    if (!team.players.has(key)) team.players.set(key, { player: key, nickname: '', played: 0, wins: 0, losses: 0 });
+    if (!team.players.has(key)) team.players.set(key, { player: key, nickname: '', played: 0, wins: 0, losses: 0, games: [] });
     const p = team.players.get(key);
     if (nickname) p.nickname = nickname;
     return p;
@@ -58,6 +58,17 @@ async function buildRanking(room, matches) {
       const team = ensureTeam(mp.team, mp.teamName);
       const p = ensurePlayer(team, mp.player);
       if (!p.nickname) p.nickname = mp.nickname;
+      // Historial del jugador: contra quién jugó y el resultado (las partidas vienen de la más reciente a la más vieja)
+      const opponent = m.players.find((o) => o.color !== mp.color);
+      p.games.push({
+        match: String(m._id),
+        boardNumber: m.boardNumber,
+        color: mp.color,
+        opponent: opponent ? { nickname: opponent.nickname, team: opponent.team ? String(opponent.team) : '', teamName: opponent.teamName || '' } : null,
+        won,
+        reason: m.result.reason || '',
+        endedAt: m.endedAt,
+      });
       for (const stats of [team, p]) {
         stats.played += 1;
         if (won) stats.wins += 1;

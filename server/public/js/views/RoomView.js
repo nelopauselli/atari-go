@@ -28,6 +28,9 @@ export default {
     // Equipos del ranking expandidos para ver sus integrantes (todos colapsados al inicio).
     const expandedTeams = reactive({});
     const toggleTeam = (teamId) => { expandedTeams[teamId] = !expandedTeams[teamId]; };
+    // Jugadores del ranking expandidos para ver su historial de partidas.
+    const expandedPlayers = reactive({});
+    const togglePlayer = (playerId) => { expandedPlayers[playerId] = !expandedPlayers[playerId]; };
     const joinError = ref('');
     const showRules = ref(false);
 
@@ -156,7 +159,7 @@ export default {
     }
 
     return {
-      room, boards, tab, roomHistory, ranking, expandedTeams, toggleTeam, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
+      room, boards, tab, roomHistory, ranking, expandedTeams, toggleTeam, expandedPlayers, togglePlayer, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
       isTournament, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
@@ -313,13 +316,36 @@ export default {
               <td class="text-end">{{ r.losses }}</td>
             </tr>
             <template v-if="expandedTeams[r.team]">
-            <tr v-for="p in r.players" :key="p.player">
+            <template v-for="p in r.players" :key="p.player">
+            <tr :role="p.games.length ? 'button' : null" :aria-expanded="p.games.length ? !!expandedPlayers[p.player] : null" @click="p.games.length && togglePlayer(p.player)">
               <td></td>
-              <td class="ps-5">{{ p.nickname }} <span v-if="p.institutionName" class="text-muted small">({{ p.institutionName }})</span></td>
+              <td class="ps-5">
+                <span class="text-muted small d-inline-block" style="width: 1em">{{ p.games.length ? (expandedPlayers[p.player] ? '▾' : '▸') : '' }}</span>
+                {{ p.nickname }} <span v-if="p.institutionName" class="text-muted small">({{ p.institutionName }})</span>
+              </td>
               <td class="text-end">{{ p.played }}</td>
               <td class="text-end">{{ p.wins }}</td>
               <td class="text-end">{{ p.losses }}</td>
             </tr>
+            <template v-if="expandedPlayers[p.player]">
+            <tr v-for="g in p.games" :key="p.player + g.match" class="small">
+              <td></td>
+              <td colspan="4" style="padding-left: 5rem">
+                <span class="d-inline-flex flex-wrap align-items-center gap-2">
+                  <span class="badge" :class="g.won ? 'text-bg-success' : 'text-bg-danger'">{{ g.won ? 'Ganó' : 'Perdió' }}</span>
+                  <span class="text-muted">{{ g.color==='black' ? '⚫' : '⚪' }} vs</span>
+                  <template v-if="g.opponent">
+                    <TeamShield v-if="g.opponent.team" :team="g.opponent.team" :name="g.opponent.teamName" :size="20" />
+                    <span>{{ playerLabel(g.opponent) }}</span>
+                  </template>
+                  <span v-else class="text-muted">sin rival</span>
+                  <span class="text-muted">· {{ g.reason }} · Tablero #{{ g.boardNumber }}<template v-if="g.endedAt"> · {{ new Date(g.endedAt).toLocaleString() }}</template></span>
+                  <a class="link-primary" :href="sgfUrl(g.match)" @click.stop>SGF</a>
+                </span>
+              </td>
+            </tr>
+            </template>
+            </template>
             <tr v-if="!r.players.length">
               <td></td>
               <td colspan="4" class="ps-5 text-muted small">Sin jugadores</td>

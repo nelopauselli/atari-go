@@ -1,4 +1,5 @@
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { playStone } from '../services/sound.js';
 
 const CELL = 44;
 const MARGIN = 32;
@@ -17,6 +18,14 @@ export default {
   setup(props, { emit }) {
     const hover = ref(null);
     const dim = computed(() => MARGIN * 2 + CELL * (props.size - 1));
+
+    // Sonar al aparecer una nueva última jugada (propia o del rival); no al montar el tablero.
+    watch(
+      () => (props.lastMove ? props.lastMove.x + ',' + props.lastMove.y : null),
+      (key, prev) => {
+        if (key && key !== prev) playStone();
+      },
+    );
 
     function pos(i) {
       return MARGIN + i * CELL;

@@ -293,12 +293,27 @@ export default {
       </div>
 
       <div v-else-if="tab==='ranking'" class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead><tr><th>Equipo</th><th>Victorias</th></tr></thead>
-          <tbody>
-            <tr v-for="r in ranking" :key="r.team">
+        <p v-if="!ranking.length" class="text-muted">Todavía no hay equipos ni partidas.</p>
+        <table v-else class="table align-middle">
+          <thead><tr><th>#</th><th>Equipo / Jugador</th><th class="text-end">Jugadas</th><th class="text-end">Ganadas</th><th class="text-end">Perdidas</th></tr></thead>
+          <tbody v-for="(r, i) in ranking" :key="r.team">
+            <tr class="fw-semibold">
+              <td>{{ i + 1 }}</td>
               <td><span class="d-inline-flex align-items-center gap-2"><TeamShield :team="r.team" :name="r.teamName" :size="24" />{{ r.teamName }}</span></td>
-              <td>{{ r.wins }}</td>
+              <td class="text-end">{{ r.played }}</td>
+              <td class="text-end">{{ r.wins }}</td>
+              <td class="text-end">{{ r.losses }}</td>
+            </tr>
+            <tr v-for="p in r.players" :key="p.player">
+              <td></td>
+              <td class="ps-5">{{ p.nickname }}</td>
+              <td class="text-end">{{ p.played }}</td>
+              <td class="text-end">{{ p.wins }}</td>
+              <td class="text-end">{{ p.losses }}</td>
+            </tr>
+            <tr v-if="!r.players.length">
+              <td></td>
+              <td colspan="4" class="ps-5 text-muted small">Sin jugadores</td>
             </tr>
           </tbody>
         </table>

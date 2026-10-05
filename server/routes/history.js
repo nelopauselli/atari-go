@@ -6,15 +6,6 @@ const { matchToSgf } = require('../services/sgf');
 
 const router = express.Router();
 
-// Historial global de partidas finalizadas (vista Home)
-router.get('/global', async (req, res) => {
-  const matches = await Match.find({ status: { $in: ['finished', 'aborted'] } })
-    .sort({ endedAt: -1 })
-    .limit(100)
-    .select('roomName boardNumber boardSize players result endedAt');
-  res.json(matches);
-});
-
 // Historial de una sala puntual + ranking acumulado (torneos)
 router.get('/room/:roomId', async (req, res) => {
   const matches = await Match.find({ room: req.params.roomId, status: { $in: ['finished', 'aborted'] } })

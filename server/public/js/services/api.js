@@ -16,8 +16,8 @@ export const api = {
   }),
   getOnlinePlayers: () => request('/players/online'),
   getRooms: () => request('/rooms'),
+  getClosedRooms: () => request('/rooms/closed'),
   getRoom: (roomId) => request(`/rooms/${roomId}`),
-  getGlobalHistory: () => request('/history/global'),
   getRoomHistory: (roomId) => request(`/history/room/${roomId}`),
   sgfDownloadUrl: (matchId) => `/api/history/${matchId}/sgf`,
 };

@@ -9,13 +9,14 @@ import ClockDisplay from '../components/ClockDisplay.js';
 import RulesModal from '../components/RulesModal.js';
 import TeamShield from '../components/TeamShield.js';
 import TeamAssignedModal from '../components/TeamAssignedModal.js';
+import RankingDetail from '../components/RankingDetail.js';
 
 const STATUS_LABELS = { empty: 'Vacío', waiting: 'Esperando rival', playing: 'En curso', finished: 'Finalizado' };
 const STATUS_BADGE_CLASS = { empty: 'text-bg-secondary', waiting: 'text-bg-warning', playing: 'text-bg-success', finished: 'text-bg-info' };
 
 export default {
   name: 'RoomView',
-  components: { GoBoard, ClockDisplay, RulesModal, TeamShield, TeamAssignedModal },
+  components: { GoBoard, ClockDisplay, RulesModal, TeamShield, TeamAssignedModal, RankingDetail },
   props: { roomId: { type: String, required: true } },
   setup(props) {
     const player = getPlayer();
@@ -31,6 +32,8 @@ export default {
     // Equipos: solo en salas torneo. El servidor le asigna uno al jugador al entrar a la sala.
     const myTeamId = ref('');
     const isTournament = computed(() => !!room.value && room.value.type === 'torneo');
+    // Sala cerrada: solo se consulta el ranking detallado y el historial (sin tableros ni conexión en vivo).
+    const isClosed = computed(() => !!room.value && !!room.value.closed);
     const roomTeams = computed(() => (isTournament.value ? room.value.teams || [] : []));
     // TeamShield resuelve el avatar por id/nombre entre los equipos de esta sala.
     watch(roomTeams, setTeams, { immediate: true });
@@ -73,7 +76,9 @@ export default {
 
     onMounted(async () => {
       await loadRoomAndBoards();
+      if (isClosed.value) tab.value = isTournament.value ? 'ranking' : 'history';
       await loadHistory();
+      if (isClosed.value) return;
 
       if (!(await joinLive())) joinError.value = 'No se pudo unir a la sala en vivo';
 
@@ -107,7 +112,7 @@ export default {
       closeActiveBoard();
       setTeams([]);
       unsubs.forEach((u) => u());
-      socketService.leaveRoom(props.roomId);
+      if (!isClosed.value) socketService.leaveRoom(props.roomId);
     });
 
     async function openBoard(boardNumber) {
@@ -154,7 +159,7 @@ export default {
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
-      isTournament, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
+      isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
       openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       openRankingDetail: () => navigate(`/room/${props.roomId}/ranking`),
@@ -167,7 +172,10 @@ export default {
         <a href="#" class="link-secondary text-decoration-none" @click.prevent="goBack">← {{ active.boardNumber ? room.name : 'Salas' }}</a>
         <div class="d-flex justify-content-between align-items-center gap-2 mt-1 mb-1">
           <h2 class="h4 mb-0">{{ room.name }}</h2>
-          <button type="button" class="btn btn-outline-info btn-sm" @click="showRules = true">Reglas</button>
+          <span class="d-flex align-items-center gap-2">
+            <span v-if="isClosed" class="badge text-bg-secondary">Cerrada</span>
+            <button type="button" class="btn btn-outline-info btn-sm" @click="showRules = true">Reglas</button>
+          </span>
         </div>
         <p class="text-muted mb-0">
           {{ room.type==='torneo' ? 'Torneo por equipos' : 'Amistosas' }} ·
@@ -175,7 +183,7 @@ export default {
           {{ room.stonesToWin }} piedra(s) para ganar ·
           Ko {{ room.koRuleEnabled === false ? 'deshabilitado' : 'habilitado' }}
         </p>
-        <p v-if="isTournament && myTeam" class="mb-0 mt-1 d-flex align-items-center gap-2">
+        <p v-if="!isClosed && isTournament && myTeam" class="mb-0 mt-1 d-flex align-items-center gap-2">
           <span class="text-muted">Tu equipo:</span>
           <TeamShield :team="myTeam._id" :name="myTeam.name" :size="24" />
           <strong>{{ myTeam.name }}</strong>
@@ -184,9 +192,11 @@ export default {
 
       <div v-if="joinError" class="alert alert-danger">{{ joinError }}</div>
 
+      <template v-if="!isClosed">
       <div v-if="guest" class="alert alert-info">Est&aacute;s como invitado: pod&eacute;s observar las partidas en curso, pero no jugar ni unirte a un equipo.</div>
       <div v-if="!guest && isTournament && !roomTeams.length" class="alert alert-secondary">Esta sala todav&iacute;a no tiene equipos asignados.</div>
       <div v-if="!active.boardNumber && active.sitError" class="alert alert-warning">{{ active.sitError }}</div>
+      </template>
 
       <RulesModal v-if="showRules" :room="room" @close="showRules = false" />
       <TeamAssignedModal v-if="showTeamAssigned && myTeam" :team="myTeam" @close="showTeamAssigned = false" />
@@ -232,7 +242,15 @@ export default {
 
       <!-- Mientras se juega, solo se muestra el tablero propio (sin otros tableros, historial ni ranking) -->
       <template v-if="!isPlaying">
-      <ul class="nav nav-tabs mb-3">
+      <ul v-if="isClosed" class="nav nav-tabs mb-3">
+        <li class="nav-item" v-if="isTournament">
+          <a class="nav-link" href="#" :class="{ active: tab==='ranking' }" @click.prevent="tab='ranking'">Ranking detallado</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" :class="{ active: tab==='history' }" @click.prevent="tab='history'">Historial</a>
+        </li>
+      </ul>
+      <ul v-else class="nav nav-tabs mb-3">
         <li class="nav-item">
           <a class="nav-link" href="#" :class="{ active: tab==='boards' }" @click.prevent="tab='boards'">Tableros</a>
         </li>
@@ -244,7 +262,9 @@ export default {
         </li>
       </ul>
 
-      <div v-if="tab==='boards'" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+      <RankingDetail v-if="isClosed && tab==='ranking'" :ranking="ranking" />
+
+      <div v-else-if="tab==='boards'" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
         <div class="col" v-for="b in boards" :key="b.number">
           <div class="card h-100 shadow-sm board-card" @click="openBoard(b.number)">
             <div class="card-body">

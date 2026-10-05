@@ -17,7 +17,7 @@ export default {
   setup() {
     const tab = ref('rooms');
     const rooms = ref([]);
-    const history = ref([]);
+    const closedRooms = ref([]);
     const onlinePlayers = ref([]);
     const institutionNames = ref([]); // en el orden definido en el admin
     const form = ref({ name: '', type: 'amistosas', boardCount: 4, boardSize: 9, stonesToWin: 3, clockType: 'fischer-10-20' });
@@ -30,8 +30,8 @@ export default {
     async function loadRooms() {
       rooms.value = await api.getRooms();
     }
-    async function loadHistory() {
-      history.value = await api.getGlobalHistory();
+    async function loadClosedRooms() {
+      closedRooms.value = await api.getClosedRooms();
     }
 
     async function loadOnlinePlayers() {
@@ -55,7 +55,7 @@ export default {
 
     onMounted(() => {
       loadRooms();
-      loadHistory();
+      loadClosedRooms();
       loadOnlinePlayers();
       api.getInstitutions()
         .then((list) => { institutionNames.value = list.map((i) => i.name); })
@@ -71,15 +71,9 @@ export default {
       navigate(`/room/${roomId}`);
     }
 
-    function resultLabel(m) {
-      if (!m.result || !m.result.winnerColor) return 'Sin definir';
-      const winner = m.players.find((p) => p.color === m.result.winnerColor);
-      return winner ? `Gana ${winner.nickname} (${m.result.reason})` : '-';
-    }
-
     return {
-      tab, rooms, history, onlinePlayers, institutionTotals, form, createError, rulesRoom, showTutorial, CLOCK_LABELS, myId,
-      openRoom, resultLabel, sgfUrl: api.sgfDownloadUrl,
+      tab, rooms, closedRooms, onlinePlayers, institutionTotals, form, createError, rulesRoom, showTutorial, CLOCK_LABELS, myId,
+      openRoom,
     };
   },
   template: `
@@ -89,7 +83,7 @@ export default {
           <a class="nav-link" href="#" :class="{ active: tab==='rooms' }" @click.prevent="tab='rooms'">Salas activas</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="#" :class="{ active: tab==='history' }" @click.prevent="tab='history'">Historial global</a>
+          <a class="nav-link" href="#" :class="{ active: tab==='closed' }" @click.prevent="tab='closed'">Salas cerradas</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="#" :class="{ active: tab==='online' }" @click.prevent="tab='online'">
@@ -145,24 +139,26 @@ export default {
         </ul>
       </div>
 
-      <div v-else>
-        <h2 class="h4 mb-3">Historial global</h2>
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead>
-              <tr><th>Sala</th><th>Tablero</th><th>Jugadores</th><th>Resultado</th><th>Fecha</th><th>SGF</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="m in history" :key="m._id">
-                <td>{{ m.roomName }}</td>
-                <td>#{{ m.boardNumber }} ({{ m.boardSize }}x{{ m.boardSize }})</td>
-                <td>{{ m.players.map(p => p.nickname).join(' vs ') }}</td>
-                <td>{{ resultLabel(m) }}</td>
-                <td>{{ m.endedAt ? new Date(m.endedAt).toLocaleString() : '-' }}</td>
-                <td><a class="link-primary" :href="sgfUrl(m._id)">Descargar</a></td>
-              </tr>
-            </tbody>
-          </table>
+      <div v-else-if="tab==='closed'">
+        <h2 class="h4 mb-3">Salas cerradas</h2>
+        <div v-if="closedRooms.length===0" class="text-center text-muted py-5">No hay salas cerradas.</div>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+          <div class="col" v-for="r in closedRooms" :key="r.id">
+            <div class="card h-100 shadow-sm room-card" @click="openRoom(r.id)">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h3 class="h6 mb-0">{{ r.name }}</h3>
+                  <span class="badge rounded-pill" :class="r.type==='torneo' ? 'text-bg-success' : 'text-bg-secondary'">
+                    {{ r.type==='torneo' ? 'Torneo' : 'Amistosas' }}
+                  </span>
+                </div>
+                <p class="text-muted small mb-0">Tablero {{ r.boardSize }}x{{ r.boardSize }} · {{ CLOCK_LABELS[r.clockType] }}</p>
+                <div class="d-flex gap-2 mt-2">
+                  <button type="button" class="btn btn-outline-primary btn-sm" @click.stop="openRoom(r.id)">{{ r.type==='torneo' ? 'Ver ranking e historial' : 'Ver historial' }}</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

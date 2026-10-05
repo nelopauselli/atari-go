@@ -9,6 +9,15 @@ router.get('/', async (req, res) => {
   res.json(matchManager.getActiveRoomsSummary());
 });
 
+// Home: salas cerradas (solo consulta de historial y ranking), las más recientes primero
+router.get('/closed', async (req, res) => {
+  const closed = await Room.find({ closed: true })
+    .sort({ updatedAt: -1 })
+    .select('name type boardCount boardSize stonesToWin clockType updatedAt')
+    .lean();
+  res.json(closed.map(({ _id, ...r }) => ({ id: String(_id), ...r })));
+});
+
 // Detalle de sala + estado en vivo de tableros
 router.get('/:id', async (req, res) => {
   const room = await Room.findById(req.params.id);

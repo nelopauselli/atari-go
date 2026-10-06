@@ -7,6 +7,9 @@ const SAMPLES = {
   stone: { urls: range(12, 'stone'), gain: 1 },
   capture: { urls: range(2, 'capture'), gain: 0.5 },
   tick: { urls: ['/sounds/tick.mp3'], gain: 0.4 },
+  gameStart: { urls: ['/sounds/la-partida-ha-comenzado.mp3'], gain: 1 },
+  blackWins: { urls: ['/sounds/partida-finalizada-ganan-las-negras.mp3'], gain: 1 },
+  whiteWins: { urls: ['/sounds/partida-finalizada-ganan-las-blancas.mp3'], gain: 1 },
 };
 
 let ctx = null;
@@ -80,6 +83,17 @@ export function playCapture() {
 /** Tic de tiempo por agotarse. */
 export function playTick() {
   playSample('tick', { detune: 0 });
+}
+
+/** Aviso hablado de inicio de partida. */
+export function playGameStart() {
+  playSample('gameStart', { detune: 0 });
+}
+
+/** Aviso hablado de fin de partida según el color ganador ('black' | 'white'). */
+export function playGameOver(winnerColor) {
+  if (winnerColor === 'black') playSample('blackWins', { detune: 0 });
+  else if (winnerColor === 'white') playSample('whiteWins', { detune: 0 });
 }
 
 // "Clack" corto: ráfaga de ruido filtrada + un golpe tonal grave, ambos con caída rápida.

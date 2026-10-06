@@ -4,7 +4,7 @@ import { socketService } from '../services/socket.js';
 import { getPlayer, isGuest } from '../services/auth.js';
 import { setTeams } from '../services/teams.js';
 import { navigate } from '../router.js';
-import { playCapture, playTick } from '../services/sound.js';
+import { playCapture, playTick, playGameStart, playGameOver } from '../services/sound.js';
 import GoBoard from '../components/GoBoard.js';
 import ClockDisplay from '../components/ClockDisplay.js';
 import RulesModal from '../components/RulesModal.js';
@@ -67,6 +67,19 @@ export default {
       () => [active.boardNumber, active.state ? (active.state.capturedByBlack || 0) + (active.state.capturedByWhite || 0) : null],
       ([board, total], [prevBoard, prevTotal]) => {
         if (board != null && board === prevBoard && prevTotal != null && total > prevTotal) playCapture();
+      },
+    );
+
+    // Avisos de inicio y fin de partida para los jugadores del tablero: se detectan por el cambio
+    // de estado en el mismo tablero (no al abrir uno ya en curso o terminado).
+    watch(
+      () => [active.boardNumber, active.state ? active.state.status : null],
+      ([board, status], [prevBoard, prevStatus]) => {
+        if (board == null || board !== prevBoard || active.role !== 'player') return;
+        if (status === 'playing' && (prevStatus === 'waiting' || prevStatus === 'empty')) playGameStart();
+        else if (status === 'finished' && prevStatus === 'playing' && active.state.lastResult) {
+          playGameOver(active.state.lastResult.winnerColor);
+        }
       },
     );
 
@@ -139,6 +152,8 @@ export default {
 
     async function openBoard(boardNumber) {
       active.sitError = '';
+      const before = boards.value.find((b) => b.number === boardNumber);
+      const statusBefore = before ? before.status : null;
       const result = await socketService.sitBoard(props.roomId, boardNumber, player);
       if (!result.ok) {
         active.sitError = result.error || 'No se pudo entrar al tablero';
@@ -150,6 +165,9 @@ export default {
       if (result.error) active.sitError = result.error; // espectador por conflicto de equipo
       const found = boards.value.find((b) => b.number === boardNumber);
       active.state = found || null;
+      // Quien se sienta como rival arranca la partida: el room:update con el tablero "playing"
+      // suele llegar antes que la respuesta, así que el watch no ve la transición.
+      if (result.role === 'player' && statusBefore === 'waiting' && found && found.status === 'playing') playGameStart();
     }
 
     function closeActiveBoard() {

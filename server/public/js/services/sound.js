@@ -1,5 +1,18 @@
-// Sonido de piedra sintetizado con Web Audio API (sin archivos de audio).
+// Sonidos de partida: grabaciones reales (CC0, ver /sounds/CREDITS.md) reproducidas con Web Audio API.
+// Si las piedras todavía no cargaron o fallaron, se usa un "clack" sintetizado.
+const range = (n, name) => Array.from({ length: n }, (_, i) => `/sounds/${name}-${i + 1}.mp3`);
+
+// gain: volumen relativo de cada sonido (las capturas y el tic suenan más fuertes que la piedra).
+const SAMPLES = {
+  stone: { urls: range(12, 'stone'), gain: 1 },
+  capture: { urls: range(2, 'capture'), gain: 0.5 },
+  tick: { urls: ['/sounds/tick.mp3'], gain: 0.4 },
+};
+
 let ctx = null;
+const buffers = {}; // nombre -> AudioBuffer[]
+const lastIndex = {};
+let loading = null;
 
 function getContext() {
   if (!ctx) {
@@ -11,10 +24,66 @@ function getContext() {
   return ctx;
 }
 
-// "Clack" corto: ráfaga de ruido filtrada + un golpe tonal grave, ambos con caída rápida.
-export function playStone() {
+/**
+ * Precarga las grabaciones. Decodifica con un OfflineAudioContext para no crear el
+ * AudioContext antes de una interacción del usuario (los AudioBuffer sirven en cualquier contexto).
+ */
+export function preloadSounds() {
+  if (!loading) {
+    const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OfflineCtx) return Promise.resolve();
+    const decoder = new OfflineCtx(1, 1, 44100);
+    loading = Promise.all(Object.entries(SAMPLES).map(async ([name, { urls }]) => {
+      buffers[name] = await Promise.all(urls.map(async (url) => {
+        const res = await fetch(url);
+        return decoder.decodeAudioData(await res.arrayBuffer());
+      }));
+    })).catch(() => { loading = null; });
+  }
+  return loading;
+}
+
+/** Reproduce una variante al azar (sin repetir la anterior). Devuelve false si todavía no cargó. */
+function playSample(name, { delay = 0, detune = 0.03 } = {}) {
   const ac = getContext();
-  if (!ac) return;
+  if (!ac) return true;
+  const list = buffers[name];
+  if (!list || !list.length) {
+    preloadSounds();
+    return false;
+  }
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && i === lastIndex[name]) i = (i + 1) % list.length;
+  lastIndex[name] = i;
+  const src = ac.createBufferSource();
+  src.buffer = list[i];
+  src.playbackRate.value = 1 - detune + Math.random() * detune * 2;
+  const gain = ac.createGain();
+  gain.gain.value = SAMPLES[name].gain;
+  src.connect(gain).connect(ac.destination);
+  src.start(ac.currentTime + delay);
+  return true;
+}
+
+export function playStone() {
+  if (!playSample('stone')) {
+    const ac = getContext();
+    if (ac) playSynthStone(ac);
+  }
+}
+
+/** Piedras capturadas: se demora un poco para que suene después del golpe de la piedra. */
+export function playCapture() {
+  playSample('capture', { delay: 0.12 });
+}
+
+/** Tic de tiempo por agotarse. */
+export function playTick() {
+  playSample('tick', { detune: 0 });
+}
+
+// "Clack" corto: ráfaga de ruido filtrada + un golpe tonal grave, ambos con caída rápida.
+function playSynthStone(ac) {
   const now = ac.currentTime;
 
   const length = Math.floor(ac.sampleRate * 0.08);

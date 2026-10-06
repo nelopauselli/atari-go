@@ -4,6 +4,7 @@ import { socketService } from '../services/socket.js';
 import { getPlayer, isGuest } from '../services/auth.js';
 import { setTeams } from '../services/teams.js';
 import { navigate } from '../router.js';
+import { playCapture, playTick } from '../services/sound.js';
 import GoBoard from '../components/GoBoard.js';
 import ClockDisplay from '../components/ClockDisplay.js';
 import RulesModal from '../components/RulesModal.js';
@@ -59,6 +60,27 @@ export default {
       sitError: '',
     });
     const isPlaying = computed(() => active.boardNumber != null && active.role === 'player');
+
+    // Sonido de captura: cuando sube el total de piedras capturadas en el mismo tablero
+    // (no al abrir un tablero ni al cambiar de uno a otro).
+    watch(
+      () => [active.boardNumber, active.state ? (active.state.capturedByBlack || 0) + (active.state.capturedByWhite || 0) : null],
+      ([board, total], [prevBoard, prevTotal]) => {
+        if (board != null && board === prevBoard && prevTotal != null && total > prevTotal) playCapture();
+      },
+    );
+
+    // Tiempo por agotarse: un tic por segundo cuando al jugador le quedan menos de 15 s en su turno.
+    const LOW_TIME_MS = 15000;
+    const myLowTimeSeconds = computed(() => {
+      const st = active.state;
+      if (active.role !== 'player' || !st || st.status !== 'playing' || st.turn !== active.color || !st.clocks) return null;
+      const ms = st.clocks[active.color];
+      return ms > 0 && ms < LOW_TIME_MS ? Math.ceil(ms / 1000) : null;
+    });
+    watch(myLowTimeSeconds, (secs) => {
+      if (secs != null) playTick();
+    });
 
     let unsubs = [];
 

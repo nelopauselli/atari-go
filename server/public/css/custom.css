@@ -34,7 +34,21 @@ body {
   box-shadow: 2px 3px 5px rgba(0,0,0,.45), inset -3px -4px 6px rgba(0,0,0,.6);
 }
 .clock__stone--white {
-  background: radial-gradient(circle at 30% 28%, #fff 0, #f7f7f5 30%, #dddcd8 70%, #b9b8b4 100%);
+  background:
+    /* brillo y volumen */
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,.95) 0, rgba(255,255,255,.35) 22%, rgba(255,255,255,0) 45%),
+    radial-gradient(circle at 30% 28%, rgba(0,0,0,0) 55%, rgba(120,115,105,.18) 80%, rgba(90,85,78,.38) 100%),
+    /* betas de concha (arcos finos e irregulares) */
+    repeating-radial-gradient(circle at 50% 170%,
+      rgba(255,255,255,0) 0, rgba(255,255,255,0) 3px,
+      rgba(226,222,212,.55) 3.6px, rgba(255,255,255,0) 4.6px,
+      rgba(255,255,255,0) 6.2px, rgba(236,233,225,.45) 6.8px,
+      rgba(255,255,255,0) 7.6px, rgba(255,255,255,0) 9px),
+    repeating-radial-gradient(circle at 46% 190%,
+      rgba(255,255,255,0) 0, rgba(255,255,255,0) 11px,
+      rgba(214,208,196,.35) 12px, rgba(255,255,255,0) 14px),
+    /* base nacarada */
+    linear-gradient(170deg, #fbfaf6 0%, #f3f1ea 45%, #ece9e0 100%);
   box-shadow: 2px 3px 5px rgba(0,0,0,.3), inset -3px -4px 6px rgba(0,0,0,.12);
 }
 

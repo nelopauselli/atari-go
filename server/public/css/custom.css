@@ -28,6 +28,9 @@ body {
 .clock--active { border-color: var(--bs-primary) !important; box-shadow: 0 0 0 .15rem rgba(13,110,253,.15); }
 .clock__time { font-family: 'Roboto Mono', monospace; font-size: 1.6rem; font-weight: 500; }
 .clock--low .clock__time { color: var(--bs-danger); }
+.clock__stone { flex: 0 0 auto; align-self: stretch; aspect-ratio: 1; min-height: 2.5rem; border-radius: 50%; }
+.clock__stone--black { background: #212121; }
+.clock__stone--white { background: #FAFAFA; border: 1px solid #B0AFB6; }
 
 .go-board .mark-liberty { fill: rgba(13,110,253,.25); stroke: #0d6efd; stroke-width: 2; }
 .go-board .mark-forbidden line { stroke: #dc3545; stroke-width: 3.5; stroke-linecap: round; }

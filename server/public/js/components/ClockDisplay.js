@@ -17,31 +17,34 @@ export default {
     capturedByBlack: { type: Number, default: 0 },
     capturedByWhite: { type: Number, default: 0 },
     stonesToWin: { type: Number, default: null },
+    myColor: { type: String, default: null }, // color del usuario conectado si juega en este tablero
   },
-  methods: { formatMs },
-  computed: {
-    blackPlayer() { return this.players.find((p) => p.color === 'black'); },
-    whitePlayer() { return this.players.find((p) => p.color === 'white'); },
+  methods: {
+    formatMs,
+    player(color) { return this.players.find((p) => p.color === color); },
+    captured(color) { return color === 'black' ? this.capturedByBlack : this.capturedByWhite; },
+    colorLabel(color) {
+      const verb = color === this.myColor ? 'Jugás' : 'Juega';
+      return `${verb} con ${color === 'black' ? 'negras' : 'blancas'}`;
+    },
   },
   template: `
     <div class="row g-3">
-      <div class="col-6">
-        <div class="card text-center" :class="{ 'clock--active': turn==='black', 'clock--low': clocks.black < 20000 }">
-          <div class="card-body py-2">
-            <div v-if="blackPlayer && blackPlayer.teamName" class="mb-1"><TeamShield :team="blackPlayer.team" :name="blackPlayer.teamName" :size="40" /></div>
-            <div class="text-muted small">⚫ {{ blackPlayer ? blackPlayer.nickname : 'Negro' }}<span v-if="blackPlayer && blackPlayer.teamName"> ({{ blackPlayer.teamName }})</span></div>
-            <div class="text-muted small">{{ capturedByBlack }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span> capturas</div>
-            <div class="clock__time">{{ formatMs(clocks.black) }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6">
-        <div class="card text-center" :class="{ 'clock--active': turn==='white', 'clock--low': clocks.white < 20000 }">
-          <div class="card-body py-2">
-            <div v-if="whitePlayer && whitePlayer.teamName" class="mb-1"><TeamShield :team="whitePlayer.team" :name="whitePlayer.teamName" :size="40" /></div>
-            <div class="text-muted small">⚪ {{ whitePlayer ? whitePlayer.nickname : 'Blanco' }}<span v-if="whitePlayer && whitePlayer.teamName"> ({{ whitePlayer.teamName }})</span></div>
-            <div class="text-muted small">{{ capturedByWhite }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span> capturas</div>
-            <div class="clock__time">{{ formatMs(clocks.white) }}</div>
+      <div class="col-12 col-md-6" v-for="color in ['black', 'white']" :key="color">
+        <div class="card h-100" :class="{ 'clock--active': turn===color, 'clock--low': clocks[color] < 20000 }">
+          <div class="card-body py-2 d-flex align-items-stretch gap-3">
+            <div class="clock__stone" :class="'clock__stone--' + color"></div>
+            <div class="flex-grow-1 d-flex flex-column justify-content-center text-truncate">
+              <div class="fw-semibold d-flex align-items-center gap-2 text-truncate">
+                <TeamShield v-if="player(color) && player(color).teamName" :team="player(color).team" :name="player(color).teamName" :size="24" />
+                <span class="text-truncate">{{ player(color) ? player(color).nickname : (color==='black' ? 'Negro' : 'Blanco') }}<span v-if="player(color) && player(color).teamName" class="text-muted fw-normal"> ({{ player(color).teamName }})</span></span>
+              </div>
+              <div class="text-muted small">{{ colorLabel(color) }}</div>
+            </div>
+            <div class="d-flex flex-column justify-content-center text-end">
+              <div class="text-muted small text-nowrap">{{ captured(color) }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span> capturas</div>
+              <div class="clock__time">{{ formatMs(clocks[color]) }}</div>
+            </div>
           </div>
         </div>
       </div>

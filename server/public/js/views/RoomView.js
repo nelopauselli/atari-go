@@ -267,7 +267,7 @@ export default {
 
           <div v-if="active.sitError" class="alert alert-secondary py-2">{{ active.sitError }}</div>
 
-          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" :stones-to-win="active.state.stonesToWin || room.stonesToWin" />
+          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" :stones-to-win="active.state.stonesToWin || room.stonesToWin" :my-color="active.role==='player' ? active.color : null" />
 
           <GoBoard
             class="mt-3"

@@ -16,6 +16,7 @@ export default {
     players: { type: Array, default: () => [] },
     capturedByBlack: { type: Number, default: 0 },
     capturedByWhite: { type: Number, default: 0 },
+    stonesToWin: { type: Number, default: null },
   },
   methods: { formatMs },
   computed: {
@@ -29,7 +30,7 @@ export default {
           <div class="card-body py-2">
             <div v-if="blackPlayer && blackPlayer.teamName" class="mb-1"><TeamShield :team="blackPlayer.team" :name="blackPlayer.teamName" :size="40" /></div>
             <div class="text-muted small">⚫ {{ blackPlayer ? blackPlayer.nickname : 'Negro' }}<span v-if="blackPlayer && blackPlayer.teamName"> ({{ blackPlayer.teamName }})</span></div>
-            <div class="text-muted small">{{ capturedByBlack }} capturas</div>
+            <div class="text-muted small">{{ capturedByBlack }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span> capturas</div>
             <div class="clock__time">{{ formatMs(clocks.black) }}</div>
           </div>
         </div>
@@ -39,7 +40,7 @@ export default {
           <div class="card-body py-2">
             <div v-if="whitePlayer && whitePlayer.teamName" class="mb-1"><TeamShield :team="whitePlayer.team" :name="whitePlayer.teamName" :size="40" /></div>
             <div class="text-muted small">⚪ {{ whitePlayer ? whitePlayer.nickname : 'Blanco' }}<span v-if="whitePlayer && whitePlayer.teamName"> ({{ whitePlayer.teamName }})</span></div>
-            <div class="text-muted small">{{ capturedByWhite }} capturas</div>
+            <div class="text-muted small">{{ capturedByWhite }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span> capturas</div>
             <div class="clock__time">{{ formatMs(clocks.white) }}</div>
           </div>
         </div>

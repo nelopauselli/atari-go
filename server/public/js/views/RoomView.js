@@ -170,6 +170,20 @@ export default {
       if (result.role === 'player' && statusBefore === 'waiting' && found && found.status === 'playing') playGameStart();
     }
 
+    // Tablero libre para sentarse: primero uno con rival esperando (en torneo, de otro equipo),
+    // así arranca la partida enseguida; si no hay, el primer tablero vacío.
+    const freeBoard = computed(() => {
+      const canFace = (b) => !isTournament.value || !myTeam.value
+        || !b.players.some((p) => String(p.team) === String(myTeam.value._id));
+      return boards.value.find((b) => b.status === 'waiting' && b.players && canFace(b))
+        || boards.value.find((b) => b.status === 'empty')
+        || null;
+    });
+
+    function sitAnyBoard() {
+      if (freeBoard.value) openBoard(freeBoard.value.number);
+    }
+
     function closeActiveBoard() {
       if (active.boardNumber != null) socketService.leaveBoard(props.roomId, active.boardNumber);
       active.boardNumber = null;
@@ -200,7 +214,7 @@ export default {
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
       isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
-      openBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
+      freeBoard, openBoard, sitAnyBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       openRankingDetail: () => navigate(`/room/${props.roomId}/ranking`),
       goBack: () => (active.boardNumber ? closeActiveBoard() : navigate('/home')),
@@ -301,6 +315,11 @@ export default {
           <a class="nav-link" href="#" :class="{ active: tab==='ranking' }" @click.prevent="tab='ranking'">Ranking</a>
         </li>
       </ul>
+
+      <div v-if="!isClosed && tab==='boards' && !guest" class="d-flex align-items-center gap-2 mb-3">
+        <button type="button" class="btn btn-primary" :disabled="!freeBoard" @click="sitAnyBoard">Sentarse a jugar</button>
+        <span v-if="!freeBoard" class="text-muted small">No hay tableros libres en este momento.</span>
+      </div>
 
       <RankingDetail v-if="isClosed && tab==='ranking'" :ranking="ranking" />
 

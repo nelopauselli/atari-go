@@ -29,8 +29,14 @@ body {
 .clock__time { font-family: 'Roboto Mono', monospace; font-size: 1.6rem; font-weight: 500; }
 .clock--low .clock__time { color: var(--bs-danger); }
 .clock__stone { flex: 0 0 auto; align-self: stretch; aspect-ratio: 1; min-height: 2.5rem; border-radius: 50%; }
-.clock__stone--black { background: #212121; }
-.clock__stone--white { background: #FAFAFA; border: 1px solid #B0AFB6; }
+.clock__stone--black {
+  background: radial-gradient(circle at 30% 28%, #6b6b6b 0, #2a2a2a 28%, #111 62%, #000 100%);
+  box-shadow: 2px 3px 5px rgba(0,0,0,.45), inset -3px -4px 6px rgba(0,0,0,.6);
+}
+.clock__stone--white {
+  background: radial-gradient(circle at 30% 28%, #fff 0, #f7f7f5 30%, #dddcd8 70%, #b9b8b4 100%);
+  box-shadow: 2px 3px 5px rgba(0,0,0,.3), inset -3px -4px 6px rgba(0,0,0,.12);
+}
 
 .go-board .mark-liberty { fill: rgba(13,110,253,.25); stroke: #0d6efd; stroke-width: 2; }
 .go-board .mark-forbidden line { stroke: #dc3545; stroke-width: 3.5; stroke-linecap: round; }

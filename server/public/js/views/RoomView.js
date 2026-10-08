@@ -231,7 +231,10 @@ export default {
             <button type="button" class="btn btn-outline-info btn-sm" @click="showRules = true">Reglas</button>
           </span>
         </div>
-        <p class="text-muted mb-0">
+        <p v-if="active.boardNumber" class="text-muted mb-0">
+          {{ room.stonesToWin }} piedra(s) para ganar
+        </p>
+        <p v-else class="text-muted mb-0">
           {{ room.type==='torneo' ? 'Torneo por equipos' : 'Amistosas' }} ·
           {{ room.boardSize }}x{{ room.boardSize }} ·
           {{ room.stonesToWin }} piedra(s) para ganar ·
@@ -267,7 +270,7 @@ export default {
 
           <div v-if="active.sitError" class="alert alert-secondary py-2">{{ active.sitError }}</div>
 
-          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" :stones-to-win="active.state.stonesToWin || room.stonesToWin" :my-color="active.role==='player' ? active.color : null" />
+          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" :stones-to-win="active.state.stonesToWin || room.stonesToWin" />
 
           <GoBoard
             class="mt-3"

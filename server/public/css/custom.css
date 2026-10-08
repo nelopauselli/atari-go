@@ -49,6 +49,17 @@ body {
     linear-gradient(170deg, #fbfaf6 0%, #f3f1ea 45%, #ece9e0 100%);
   box-shadow: 2px 3px 5px rgba(0,0,0,.3), inset -3px -4px 6px rgba(0,0,0,.12);
 }
+/* En celular y tablet los dos relojes comparten fila: piedra a la izquierda; a su lado, nombre arriba y capturas y tiempo abajo */
+@media (max-width: 991.98px) {
+  .clock__body { display: grid !important; grid-template-columns: auto minmax(0, 1fr); gap: .25rem .75rem !important; padding: .5rem .75rem !important; }
+  .clock__stone { grid-row: span 2; align-self: center; width: 3rem; height: 3rem; }
+  .clock__time { font-size: 1.25rem; }
+  .clock__info { flex-direction: row !important; justify-content: space-between !important; align-items: baseline; }
+}
+@media (max-width: 575.98px) {
+  .clock__body { column-gap: .5rem !important; padding: .5rem !important; }
+  .clock__stone { width: 2.25rem; height: 2.25rem; }
+}
 
 .go-board .mark-liberty { fill: rgba(13,110,253,.25); stroke: #0d6efd; stroke-width: 2; }
 .go-board .mark-forbidden line { stroke: #dc3545; stroke-width: 3.5; stroke-linecap: round; }

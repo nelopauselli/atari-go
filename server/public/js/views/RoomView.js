@@ -4,6 +4,7 @@ import { socketService } from '../services/socket.js';
 import { getPlayer, isGuest } from '../services/auth.js';
 import { setTeams } from '../services/teams.js';
 import { navigate } from '../router.js';
+import { CLOCK_LABELS } from '../services/clocks.js';
 import { playCapture, playTick, playGameStart, playGameOver } from '../services/sound.js';
 import GoBoard from '../components/GoBoard.js';
 import ClockDisplay from '../components/ClockDisplay.js';
@@ -212,7 +213,7 @@ export default {
     }
 
     return {
-      room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS,
+      room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS, CLOCK_LABELS,
       isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
       freeBoard, openBoard, sitAnyBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
@@ -232,12 +233,14 @@ export default {
           </span>
         </div>
         <p v-if="active.boardNumber" class="text-muted mb-0">
-          {{ room.stonesToWin }} piedra(s) para ganar
+          {{ room.stonesToWin }} piedra(s) para ganar ·
+          {{ CLOCK_LABELS[room.clockType] || room.clockType }}
         </p>
         <p v-else class="text-muted mb-0">
           {{ room.type==='torneo' ? 'Torneo por equipos' : 'Amistosas' }} ·
           {{ room.boardSize }}x{{ room.boardSize }} ·
           {{ room.stonesToWin }} piedra(s) para ganar ·
+          {{ CLOCK_LABELS[room.clockType] || room.clockType }} ·
           Ko {{ room.koRuleEnabled === false ? 'deshabilitado' : 'habilitado' }}
         </p>
         <p v-if="!isClosed && isTournament && myTeam" class="mb-0 mt-1 d-flex align-items-center gap-2">

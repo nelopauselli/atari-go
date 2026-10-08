@@ -64,17 +64,18 @@ body {
 .clock__name { grid-area: name; }
 .clock__caps-text { grid-area: caps; text-align: center; }
 .clock__clock { grid-area: time; display: flex; flex-direction: column; align-items: center; gap: .15rem; }
-/* En celular y tablet: el nombre ocupa todo el ancho junto a la piedra; abajo, capturas al centro y tiempo en el borde interior */
+/* En tablet: mismas 3 columnas, más compactas */
 @media (max-width: 991.98px) {
-  .clock__body { gap: .25rem .75rem; padding: .5rem .75rem !important; }
-  .clock__body--black { grid-template-areas: "stone name name" "stone caps time"; }
-  .clock__body--white { grid-template-areas: "name name stone" "time caps stone"; }
-  .clock__body .clock__stone { align-self: center; width: 3rem; height: 3rem; }
+  .clock__body { gap: .15rem .75rem; padding: .5rem .75rem !important; }
+  .clock__body .clock__stone { width: 3rem; height: 3rem; }
   .clock__time { font-size: 1.25rem; }
 }
+/* En celular: se quita la columna de la piedra (el color ya lo indica la tarjeta) */
 @media (max-width: 575.98px) {
   .clock__body { column-gap: .5rem; padding: .5rem !important; }
-  .clock__body .clock__stone { width: 2.25rem; height: 2.25rem; }
+  .clock__body .clock__stone { display: none; }
+  .clock__body--black { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name time" "caps time"; }
+  .clock__body--white { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "time name" "time caps"; }
 }
 
 .go-board .mark-liberty { fill: rgba(13,110,253,.25); stroke: #0d6efd; stroke-width: 2; }

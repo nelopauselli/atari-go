@@ -18,8 +18,13 @@ export default {
     capturedByWhite: { type: Number, default: 0 },
     stonesToWin: { type: Number, default: null },
   },
+  computed: {
+    // Con muchas capturas para ganar, las piedras no entran: se muestran números
+    showStones() { return !!this.stonesToWin && this.stonesToWin <= 10; },
+  },
   methods: {
     formatMs,
+    opponent(color) { return color === 'black' ? 'white' : 'black'; },
     player(color) { return this.players.find((p) => p.color === color); },
     captured(color) { return color === 'black' ? this.capturedByBlack : this.capturedByWhite; },
   },
@@ -36,7 +41,10 @@ export default {
               </div>
             </div>
             <div class="d-flex flex-column justify-content-center text-end clock__info">
-              <div class="text-muted small text-nowrap">{{ captured(color) }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span><span class="d-none d-md-inline"> capturas</span></div>
+              <div v-if="showStones" class="d-none d-lg-flex justify-content-end gap-1 clock__caps" :title="captured(color) + ' / ' + stonesToWin + ' capturas'">
+                <span v-for="i in stonesToWin" :key="i" class="clock__cap" :class="i <= captured(color) ? 'clock__stone--' + opponent(color) : 'clock__cap--empty'"></span>
+              </div>
+              <div class="text-muted small text-nowrap" :class="{ 'd-lg-none': showStones }">{{ captured(color) }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span><span class="d-none d-md-inline"> capturas</span></div>
               <div class="clock__time">{{ formatMs(clocks[color]) }}</div>
             </div>
           </div>

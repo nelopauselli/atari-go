@@ -23,6 +23,9 @@ body {
 .go-board .stone { cursor: pointer; }
 .go-board .hover-preview { opacity: .35; pointer-events: none; }
 
+/* Tarjeta del color del jugador, igual en modo claro y oscuro */
+.clock--black { --bs-card-bg: #3a3a3a; --bs-card-color: #f1f1f1; --bs-card-border-color: #2a2a2a; --bs-body-color: #f1f1f1; --bs-secondary-color: rgba(241,241,241,.7); }
+.clock--white { --bs-card-bg: #e4e4e4; --bs-card-color: #212529; --bs-card-border-color: #cfcfcf; --bs-body-color: #212529; --bs-secondary-color: rgba(33,37,41,.7); }
 .clock--active { border-color: var(--bs-primary) !important; box-shadow: 0 0 0 .15rem rgba(13,110,253,.15); }
 .clock__time { font-family: 'Roboto Mono', monospace; font-size: 1.6rem; font-weight: 500; }
 .clock--low .clock__time { color: var(--bs-danger); }
@@ -59,8 +62,8 @@ body {
 .clock__body--white { grid-template-areas: "time name stone" "time caps stone"; }
 .clock__body .clock__stone { grid-area: stone; width: 3.5rem; height: 3.5rem; }
 .clock__name { grid-area: name; }
-.clock__caps-wrap { grid-area: caps; text-align: center; }
-.clock__body .clock__time { grid-area: time; }
+.clock__caps-text { grid-area: caps; text-align: center; }
+.clock__clock { grid-area: time; display: flex; flex-direction: column; align-items: center; gap: .15rem; }
 /* En celular y tablet: el nombre ocupa todo el ancho junto a la piedra; abajo, capturas al centro y tiempo en el borde interior */
 @media (max-width: 991.98px) {
   .clock__body { gap: .25rem .75rem; padding: .5rem .75rem !important; }

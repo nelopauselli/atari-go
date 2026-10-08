@@ -21,5 +21,10 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify(payload),
   }),
+  exportAll: (entity) => request(`/entities/${entity}/export`),
+  importAll: (entity, payload) => request(`/entities/${entity}/import`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
   remove: (entity, id) => request(`/entities/${entity}/${id}`, { method: 'DELETE' }),
 };

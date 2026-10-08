@@ -88,8 +88,85 @@ router.get('/', (req, res) => {
 router.get('/:entity/meta', (req, res) => {
   const entity = getEntity(req, res);
   if (!entity) return;
-  res.json({ key: req.params.entity, label: entity.label, readonly: !!entity.readonly, fields: entity.fields });
+  res.json({
+    key: req.params.entity,
+    label: entity.label,
+    readonly: !!entity.readonly,
+    exportable: !!entity.exportKey,
+    fields: entity.fields,
+  });
 });
+
+function getExportable(req, res) {
+  const entity = getEntity(req, res);
+  if (!entity) return null;
+  if (!entity.exportKey) {
+    res.status(404).json({ error: 'La entidad no admite exportar/importar' });
+    return null;
+  }
+  return entity;
+}
+
+const HASH_RE = /^[0-9a-f]+:[0-9a-f]+$/;
+
+// Exporta los campos editables. Las contraseñas salen hasheadas (`<campo>Hash`) para poder
+// restaurarlas al importar sin conocer el texto plano.
+router.get('/:entity/export', asyncHandler(async (req, res) => {
+  const entity = getExportable(req, res);
+  if (!entity) return;
+  const fields = entity.fields.filter((f) => !f.readonly);
+  const select = fields.map((f) => (f.type === 'password' ? `+${f.name}` : f.name)).join(' ');
+  const docs = await entity.model.find().select(select).sort(entity.sort || { createdAt: -1 }).lean();
+  const items = docs.map((doc) => {
+    const item = {};
+    for (const f of fields) {
+      if (f.type === 'password') item[`${f.name}Hash`] = doc[f.name];
+      else if (f.type === 'items') item[f.name] = (doc[f.name] || []).map(({ _id, ...rest }) => rest);
+      else item[f.name] = doc[f.name];
+    }
+    return item;
+  });
+  res.json({ entity: req.params.entity, exportedAt: new Date().toISOString(), items });
+}));
+
+// Importa un export (o un array de registros): actualiza los que coinciden por `exportKey` y crea
+// el resto; nunca borra. Las contraseñas pueden venir hasheadas (`<campo>Hash`) o en texto plano.
+router.post('/:entity/import', asyncHandler(async (req, res) => {
+  const entity = getExportable(req, res);
+  if (!entity) return;
+  const items = Array.isArray(req.body) ? req.body : req.body && req.body.items;
+  if (!Array.isArray(items)) return res.status(400).json({ error: 'Formato inválido: se esperaba una lista de registros' });
+
+  const key = entity.exportKey;
+  const passwordFields = entity.fields.filter((f) => f.type === 'password' && !f.readonly);
+  const result = { created: 0, updated: 0, errors: [] };
+  for (const [index, item] of items.entries()) {
+    const label = (item && item[key]) || `#${index + 1}`;
+    try {
+      if (!item || typeof item !== 'object' || !item[key]) throw new Error(`Falta el campo "${key}"`);
+      const data = pickBody(item, entity);
+      for (const f of passwordFields) {
+        const hash = item[`${f.name}Hash`];
+        if (!hash) continue;
+        if (!HASH_RE.test(hash)) throw new Error(`"${f.name}Hash" no tiene un formato válido`);
+        data[f.name] = hash;
+      }
+      const keyValue = typeof data[key] === 'string' ? data[key].trim() : data[key];
+      const existing = await entity.model.findOne({ [key]: keyValue });
+      if (existing) {
+        await entity.model.findByIdAndUpdate(existing._id, data, { runValidators: true });
+        result.updated += 1;
+      } else {
+        await entity.model.create(data);
+        result.created += 1;
+      }
+    } catch (err) {
+      result.errors.push(`${label}: ${err.message}`);
+    }
+  }
+  if (result.created || result.updated) afterWrite(req);
+  res.json(result);
+}));
 
 router.get('/:entity', asyncHandler(async (req, res) => {
   const entity = getEntity(req, res);

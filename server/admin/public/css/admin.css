@@ -124,6 +124,8 @@ td.actions { display: flex; gap: 8px; white-space: nowrap; }
 
 .empty-state { text-align: center; padding: 48px 24px; color: var(--md-on-surface-variant); }
 .error-text { color: var(--md-error); font-size: 14px; margin: 0 0 12px; }
+.notice-text { color: var(--md-primary); font-size: 14px; margin: 0 0 12px; }
+.toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .muted { color: var(--md-on-surface-variant); font-size: 13px; }
 
 @media (max-width: 720px) {
@@ -140,7 +142,8 @@ td.actions { display: flex; gap: 8px; white-space: nowrap; }
 .items-field { display: flex; flex-direction: column; gap: 8px; }
 .item-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .item-row > input[type=text] { flex: 1; min-width: 140px; }
-.field .file-btn { position: relative; overflow: hidden; color: var(--md-primary); font-weight: 500; }
+.file-btn { position: relative; overflow: hidden; }
+.field .file-btn { color: var(--md-primary); font-weight: 500; }
 .file-btn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .checkbox-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
 .field .checkbox-list label { display: flex; align-items: center; gap: 8px; font-size: 14px; color: inherit; font-weight: 400; }

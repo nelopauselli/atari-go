@@ -71,11 +71,13 @@ export default {
     const editingId = ref(null);
     const form = ref({});
     const error = ref('');
+    const notice = ref('');
     const loading = ref(false);
 
     async function load() {
       loading.value = true;
       error.value = '';
+      notice.value = '';
       try {
         meta.value = await api.getMeta(props.entityKey);
         rows.value = await api.getList(props.entityKey);
@@ -159,6 +161,43 @@ export default {
       form.value[field.name].splice(index, 1);
     }
 
+    async function exportJson() {
+      error.value = '';
+      try {
+        const data = await api.exportAll(props.entityKey);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${props.entityKey}-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        error.value = err.message;
+      }
+    }
+
+    async function importJson(event) {
+      const file = event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+      error.value = '';
+      try {
+        let payload;
+        try {
+          payload = JSON.parse(await file.text());
+        } catch {
+          throw new Error('El archivo no es un JSON válido');
+        }
+        const result = await api.importAll(props.entityKey, payload);
+        await load();
+        notice.value = `Importación: ${result.created} creados, ${result.updated} actualizados.`;
+        if (result.errors.length) error.value = `Errores: ${result.errors.join(' · ')}`;
+      } catch (err) {
+        error.value = err.message;
+      }
+    }
+
     async function remove(row) {
       if (!window.confirm('¿Eliminar este registro?')) return;
       try {
@@ -170,17 +209,27 @@ export default {
     }
 
     return {
-      meta, listFields, rows, refOptions, showForm, editingId, form, error, loading,
-      formatValue, isApplicable, openCreate, openEdit, save, remove, onImageSelected, addItem, removeItem,
+      meta, listFields, rows, refOptions, showForm, editingId, form, error, notice, loading,
+      exportJson, importJson, formatValue, isApplicable, openCreate, openEdit, save, remove, onImageSelected, addItem, removeItem,
     };
   },
   template: `
     <main v-if="meta">
       <div class="toolbar">
         <h2>{{ meta.label }}</h2>
-        <button v-if="!meta.readonly" class="btn" @click="openCreate">+ Nuevo</button>
+        <div class="toolbar-actions">
+          <template v-if="meta.exportable">
+            <button class="btn btn--outline" @click="exportJson">Exportar JSON</button>
+            <label class="btn btn--outline file-btn">
+              Importar JSON
+              <input type="file" accept="application/json,.json" @change="importJson" />
+            </label>
+          </template>
+          <button v-if="!meta.readonly" class="btn" @click="openCreate">+ Nuevo</button>
+        </div>
       </div>
 
+      <p v-if="notice" class="notice-text">{{ notice }}</p>
       <p v-if="error" class="error-text">{{ error }}</p>
 
       <div class="card" v-if="!loading && rows.length===0">

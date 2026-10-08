@@ -11,11 +11,14 @@ const Institution = require('../../models/Institution');
 // `model.hashPassword` y si se deja vacío al editar se conserva la actual).
 // `showIf` = { campo: valor } muestra el campo solo en ese caso.
 // `sort` (opcional) = orden del listado; por defecto, los más nuevos primero.
+// `exportKey` (opcional) habilita exportar/importar en JSON; es el campo único con el que el import
+// decide si actualizar un registro existente o crear uno nuevo.
 module.exports = {
   institutions: {
     label: 'Instituciones',
     model: Institution,
     sort: { order: 1, name: 1 },
+    exportKey: 'name',
     fields: [
       { name: 'name', label: 'Nombre', type: 'string', required: true },
       { name: 'order', label: 'Orden', type: 'number', default: 0 },

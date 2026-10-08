@@ -36,7 +36,7 @@ export default {
             <div class="clock__stone" :class="'clock__stone--' + color"></div>
             <div class="fw-semibold d-flex align-items-center justify-content-center gap-2 text-truncate clock__name">
               <TeamShield v-if="player(color) && player(color).teamName" :team="player(color).team" :name="player(color).teamName" :size="24" />
-              <span class="text-truncate">{{ player(color) ? player(color).nickname : (color==='black' ? 'Negro' : 'Blanco') }}<span v-if="player(color) && player(color).teamName" class="text-muted fw-normal"> ({{ player(color).teamName }})</span></span>
+              <span class="text-truncate">{{ player(color) ? player(color).nickname : (color==='black' ? 'Negro' : 'Blanco') }}<span v-if="player(color) && player(color).teamName" class="text-muted fw-normal d-none d-sm-inline"> ({{ player(color).teamName }})</span></span>
             </div>
             <div class="text-muted small text-nowrap clock__caps-text">{{ captured(color) }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span><span class="d-none d-md-inline"> capturas</span></div>
             <div class="clock__clock">

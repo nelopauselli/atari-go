@@ -111,6 +111,7 @@ export default {
                   </span>
                 </div>
                 <p class="text-muted small mb-1">Tablero {{ r.boardSize }}x{{ r.boardSize }} · {{ CLOCK_LABELS[r.clockType] }}</p>
+                <p class="text-muted small mb-1">Capturas para ganar: {{ r.stonesToWin }}</p>
                 <p class="text-muted small mb-1">Tableros libres: {{ r.freeBoards }} / {{ r.totalBoards }}</p>
                 <p class="text-muted small mb-0">Jugadores conectados: {{ r.playersOnline }}<template v-if="r.type==='torneo'"> · Equipos jugando: {{ r.teamsPlaying }}</template></p>
                 <div class="d-flex gap-2 mt-2">
@@ -153,7 +154,8 @@ export default {
                     {{ r.type==='torneo' ? 'Torneo' : 'Amistosas' }}
                   </span>
                 </div>
-                <p class="text-muted small mb-0">Tablero {{ r.boardSize }}x{{ r.boardSize }} · {{ CLOCK_LABELS[r.clockType] }}</p>
+                <p class="text-muted small mb-1">Tablero {{ r.boardSize }}x{{ r.boardSize }} · {{ CLOCK_LABELS[r.clockType] }}</p>
+                <p class="text-muted small mb-0">Capturas para ganar: {{ r.stonesToWin }}</p>
                 <div class="d-flex gap-2 mt-2">
                   <button type="button" class="btn btn-outline-primary btn-sm" @click.stop="openRoom(r.id)">{{ r.type==='torneo' ? 'Ver ranking e historial' : 'Ver historial' }}</button>
                 </div>

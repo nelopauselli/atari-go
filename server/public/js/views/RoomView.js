@@ -224,7 +224,7 @@ export default {
   template: `
     <main class="container py-4" v-if="room">
       <div class="mb-3">
-        <a href="#" class="link-secondary text-decoration-none" @click.prevent="goBack">← {{ active.boardNumber ? room.name : 'Salas' }}</a>
+        <a href="#" class="link-secondary text-decoration-none" @click.prevent="goBack">← {{ active.boardNumber ? 'Volver a la sala' : 'Salas' }}</a>
         <div class="d-flex justify-content-between align-items-center gap-2 mt-1 mb-1">
           <h2 class="h4 mb-0">{{ room.name }}</h2>
           <span class="d-flex align-items-center gap-2">

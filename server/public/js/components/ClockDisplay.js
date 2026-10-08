@@ -32,21 +32,19 @@ export default {
     <div class="row g-2 g-sm-3">
       <div class="col-6" v-for="color in ['black', 'white']" :key="color">
         <div class="card h-100" :class="{ 'clock--active': turn===color, 'clock--low': clocks[color] < 20000 }">
-          <div class="card-body py-2 d-flex align-items-stretch gap-3 clock__body">
+          <div class="card-body py-2 clock__body" :class="'clock__body--' + color">
             <div class="clock__stone" :class="'clock__stone--' + color"></div>
-            <div class="flex-grow-1 d-flex flex-column justify-content-center text-truncate">
-              <div class="fw-semibold d-flex align-items-center gap-2 text-truncate">
-                <TeamShield v-if="player(color) && player(color).teamName" :team="player(color).team" :name="player(color).teamName" :size="24" />
-                <span class="text-truncate">{{ player(color) ? player(color).nickname : (color==='black' ? 'Negro' : 'Blanco') }}<span v-if="player(color) && player(color).teamName" class="text-muted fw-normal"> ({{ player(color).teamName }})</span></span>
-              </div>
+            <div class="fw-semibold d-flex align-items-center justify-content-center gap-2 text-truncate clock__name">
+              <TeamShield v-if="player(color) && player(color).teamName" :team="player(color).team" :name="player(color).teamName" :size="24" />
+              <span class="text-truncate">{{ player(color) ? player(color).nickname : (color==='black' ? 'Negro' : 'Blanco') }}<span v-if="player(color) && player(color).teamName" class="text-muted fw-normal"> ({{ player(color).teamName }})</span></span>
             </div>
-            <div class="d-flex flex-column justify-content-center text-end clock__info">
-              <div v-if="showStones" class="d-none d-lg-flex justify-content-end gap-1 clock__caps" :title="captured(color) + ' / ' + stonesToWin + ' capturas'">
+            <div class="clock__caps-wrap">
+              <div v-if="showStones" class="d-none d-lg-flex justify-content-center gap-1 clock__caps" :title="captured(color) + ' / ' + stonesToWin + ' capturas'">
                 <span v-for="i in stonesToWin" :key="i" class="clock__cap" :class="i <= captured(color) ? 'clock__stone--' + opponent(color) : 'clock__cap--empty'"></span>
               </div>
               <div class="text-muted small text-nowrap" :class="{ 'd-lg-none': showStones }">{{ captured(color) }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span><span class="d-none d-md-inline"> capturas</span></div>
-              <div class="clock__time">{{ formatMs(clocks[color]) }}</div>
             </div>
+            <div class="clock__time">{{ formatMs(clocks[color]) }}</div>
           </div>
         </div>
       </div>

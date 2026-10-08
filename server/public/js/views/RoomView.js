@@ -31,7 +31,7 @@ export default {
     const ranking = ref([]);
     const joinError = ref('');
     const showRules = ref(false);
-    // Al ingresar se muestra la configuración del reloj y las piedras a capturar, hasta que se acepte.
+    // Al ingresar se muestra la configuración del reloj y las piedras a capturar, hasta que se acepte (no a los invitados).
     const showRoomSettings = ref(false);
 
     // Equipos: solo en salas torneo. El servidor le asigna uno al jugador al entrar a la sala.
@@ -116,7 +116,7 @@ export default {
     onMounted(async () => {
       await loadRoomAndBoards();
       if (isClosed.value) tab.value = isTournament.value ? 'ranking' : 'history';
-      else showRoomSettings.value = true;
+      else if (!guest) showRoomSettings.value = true;
       await loadHistory();
       if (isClosed.value) return;
 

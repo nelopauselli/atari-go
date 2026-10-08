@@ -11,6 +11,7 @@ import ClockDisplay from '../components/ClockDisplay.js';
 import RulesModal from '../components/RulesModal.js';
 import TeamShield from '../components/TeamShield.js';
 import TeamAssignedModal from '../components/TeamAssignedModal.js';
+import RoomSettingsModal from '../components/RoomSettingsModal.js';
 import RankingDetail from '../components/RankingDetail.js';
 
 const STATUS_LABELS = { empty: 'Vacío', waiting: 'Esperando rival', playing: 'En curso', finished: 'Finalizado' };
@@ -18,7 +19,7 @@ const STATUS_BADGE_CLASS = { empty: 'text-bg-secondary', waiting: 'text-bg-warni
 
 export default {
   name: 'RoomView',
-  components: { GoBoard, ClockDisplay, RulesModal, TeamShield, TeamAssignedModal, RankingDetail },
+  components: { GoBoard, ClockDisplay, RulesModal, TeamShield, TeamAssignedModal, RoomSettingsModal, RankingDetail },
   props: { roomId: { type: String, required: true } },
   setup(props) {
     const player = getPlayer();
@@ -30,6 +31,8 @@ export default {
     const ranking = ref([]);
     const joinError = ref('');
     const showRules = ref(false);
+    // Al ingresar se muestra la configuración del reloj y las piedras a capturar, hasta que se acepte.
+    const showRoomSettings = ref(false);
 
     // Equipos: solo en salas torneo. El servidor le asigna uno al jugador al entrar a la sala.
     const myTeamId = ref('');
@@ -113,6 +116,7 @@ export default {
     onMounted(async () => {
       await loadRoomAndBoards();
       if (isClosed.value) tab.value = isTournament.value ? 'ranking' : 'history';
+      else showRoomSettings.value = true;
       await loadHistory();
       if (isClosed.value) return;
 
@@ -213,7 +217,7 @@ export default {
     }
 
     return {
-      room, boards, tab, roomHistory, ranking, active, joinError, showRules, STATUS_LABELS, STATUS_BADGE_CLASS, CLOCK_LABELS,
+      room, boards, tab, roomHistory, ranking, active, joinError, showRules, showRoomSettings, STATUS_LABELS, STATUS_BADGE_CLASS, CLOCK_LABELS,
       isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
       freeBoard, openBoard, sitAnyBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
@@ -259,7 +263,8 @@ export default {
       </template>
 
       <RulesModal v-if="showRules" :room="room" @close="showRules = false" />
-      <TeamAssignedModal v-if="showTeamAssigned && myTeam" :team="myTeam" @close="showTeamAssigned = false" />
+      <RoomSettingsModal v-if="showRoomSettings" :room="room" @close="showRoomSettings = false" />
+      <TeamAssignedModal v-if="showTeamAssigned && myTeam && !showRoomSettings" :team="myTeam" @close="showTeamAssigned = false" />
 
       <!-- Tablero activo (jugando o espectando) -->
       <div v-if="active.boardNumber && active.state" class="card shadow-sm mb-4">

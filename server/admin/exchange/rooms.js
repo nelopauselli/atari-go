@@ -66,15 +66,11 @@ async function exportOne(id) {
 }
 
 // Devuelve un Map id exportado -> id en esta base, creando los jugadores que falten.
-async function resolvePlayers(players, institutionIds, warnings) {
+async function resolvePlayers(players, institutionIds) {
   const map = new Map();
   for (const p of players || []) {
     if (!p || !p._id || !p.nickname) continue;
-    let institution = null;
-    if (p.institution) {
-      institution = institutionIds.get(p.institution) || null;
-      if (!institution) warnings.add(`Institución "${p.institution}" inexistente: ${p.nickname} queda sin institución`);
-    }
+    const institution = p.institution ? institutionIds.get(p.institution) : null;
     const valid = mongoose.isValidObjectId(p._id);
     let doc = valid ? await Player.findById(p._id).select('_id').lean() : null;
     if (!doc) doc = await Player.findOne({ nickname: p.nickname, institution }).select('_id').lean();
@@ -99,9 +95,34 @@ async function importAll(payload) {
   const items = Array.isArray(payload) ? payload : payload && payload.items;
   if (!Array.isArray(items)) throw new Error('Formato inválido: se esperaba una lista de salas');
 
-  const institutionIds = new Map((await Institution.find().select('name').lean()).map((i) => [i.name, i._id]));
-  const warnings = new Set();
-  const players = await resolvePlayers(payload.players, institutionIds, warnings);
+  // Las instituciones (y sus usuarios habilitados) no se crean acá: si falta alguna, o algún jugador
+  // no figura en la lista de usuarios de su institución, se rechaza el archivo entero antes de escribir
+  // nada. Importarlas después no corregiría a los jugadores ya creados.
+  const institutions = await Institution.find().select('name users');
+  const institutionIds = new Map(institutions.map((i) => [i.name, i._id]));
+  const institutionsByName = new Map(institutions.map((i) => [i.name, i]));
+  const referenced = [
+    ...(payload.players || []).map((p) => p && p.institution),
+    ...items.flatMap((item) => ((item && item.teamAssignments) || []).map((a) => a && a.institution)),
+  ];
+  const missing = [...new Set(referenced.filter((name) => name && !institutionIds.has(name)))];
+  if (missing.length) {
+    throw new Error(`Faltan instituciones en esta base: ${missing.map((n) => `"${n}"`).join(', ')}. `
+      + 'Importalas primero (sección Instituciones) y volvé a importar el archivo.');
+  }
+  const notEnabled = new Map();
+  for (const p of payload.players || []) {
+    if (!p || !p.institution || !p.nickname) continue;
+    if (institutionsByName.get(p.institution).findUser(p.nickname)) continue;
+    if (!notEnabled.has(p.institution)) notEnabled.set(p.institution, []);
+    notEnabled.get(p.institution).push(p.nickname);
+  }
+  if (notEnabled.size) {
+    const detail = [...notEnabled].map(([name, nicks]) => `"${name}": ${nicks.join(', ')}`).join('; ');
+    throw new Error(`Hay jugadores que no figuran en los usuarios de su institución (${detail}). `
+      + 'Agregalos en la sección Instituciones (o importalas actualizadas) y volvé a importar el archivo.');
+  }
+  const players = await resolvePlayers(payload.players, institutionIds);
   const playerId = (id) => {
     const mapped = players.get(String(id));
     if (!mapped) throw new Error(`Jugador ${id} no incluido en el archivo`);
@@ -118,7 +139,7 @@ async function importAll(payload) {
         teams: item.teams || [],
         teamAssignments: (item.teamAssignments || []).map((a) => ({
           player: playerId(a.player),
-          institution: a.institution ? institutionIds.get(a.institution) || null : null,
+          institution: a.institution ? institutionIds.get(a.institution) : null,
           team: a.team,
         })),
       };
@@ -142,7 +163,6 @@ async function importAll(payload) {
       result.errors.push(`${label}: ${err.message}`);
     }
   }
-  result.errors.push(...warnings);
   return result;
 }
 

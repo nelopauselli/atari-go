@@ -22,6 +22,7 @@ export const api = {
     body: JSON.stringify(payload),
   }),
   exportAll: (entity) => request(`/entities/${entity}/export`),
+  exportOne: (entity, id) => request(`/entities/${entity}/${id}/export`),
   importAll: (entity, payload) => request(`/entities/${entity}/import`, {
     method: 'POST',
     body: JSON.stringify(payload),

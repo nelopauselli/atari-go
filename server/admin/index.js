@@ -19,6 +19,8 @@ router.use('/api', (req, res, next) => {
   next();
 });
 
+// Los imports de salas traen todo el historial de partidas (jugadas incluidas): más holgura.
+router.use('/api/entities/:entity/import', express.json({ limit: '50mb' }));
 router.use('/api', express.json({ limit: '2mb' })); // holgura para imágenes (escudos) en data URL
 router.use('/api/entities', entitiesRouter);
 router.use(express.static(path.join(__dirname, 'public')));

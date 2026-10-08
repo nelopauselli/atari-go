@@ -92,7 +92,9 @@ router.get('/:entity/meta', (req, res) => {
     key: req.params.entity,
     label: entity.label,
     readonly: !!entity.readonly,
-    exportable: !!entity.exportKey,
+    exportable: !!(entity.exportKey || entity.exchange),
+    // 'item': se exporta cada registro por separado; 'all': todos juntos.
+    exportScope: entity.exchange ? 'item' : 'all',
     fields: entity.fields,
   });
 });
@@ -100,7 +102,7 @@ router.get('/:entity/meta', (req, res) => {
 function getExportable(req, res) {
   const entity = getEntity(req, res);
   if (!entity) return null;
-  if (!entity.exportKey) {
+  if (!entity.exportKey && !entity.exchange) {
     res.status(404).json({ error: 'La entidad no admite exportar/importar' });
     return null;
   }
@@ -114,6 +116,7 @@ const HASH_RE = /^[0-9a-f]+:[0-9a-f]+$/;
 router.get('/:entity/export', asyncHandler(async (req, res) => {
   const entity = getExportable(req, res);
   if (!entity) return;
+  if (entity.exchange) return res.status(400).json({ error: 'Esta entidad se exporta de a un registro' });
   const fields = entity.fields.filter((f) => !f.readonly);
   const select = fields.map((f) => (f.type === 'password' ? `+${f.name}` : f.name)).join(' ');
   const docs = await entity.model.find().select(select).sort(entity.sort || { createdAt: -1 }).lean();
@@ -129,11 +132,31 @@ router.get('/:entity/export', asyncHandler(async (req, res) => {
   res.json({ entity: req.params.entity, exportedAt: new Date().toISOString(), items });
 }));
 
+// Exporta un único registro, para las entidades con `exchange`.
+router.get('/:entity/:id/export', asyncHandler(async (req, res) => {
+  const entity = getExportable(req, res);
+  if (!entity) return;
+  if (!entity.exchange) return res.status(400).json({ error: 'Esta entidad se exporta completa' });
+  const data = await entity.exchange.exportOne(req.params.id);
+  if (!data) return res.status(404).json({ error: 'No encontrado' });
+  res.json({ entity: req.params.entity, exportedAt: new Date().toISOString(), ...data });
+}));
+
 // Importa un export (o un array de registros): actualiza los que coinciden por `exportKey` y crea
 // el resto; nunca borra. Las contraseñas pueden venir hasheadas (`<campo>Hash`) o en texto plano.
 router.post('/:entity/import', asyncHandler(async (req, res) => {
   const entity = getExportable(req, res);
   if (!entity) return;
+  if (entity.exchange) {
+    let result;
+    try {
+      result = await entity.exchange.importAll(req.body);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (result.created || result.updated) afterWrite(req);
+    return res.json(result);
+  }
   const items = Array.isArray(req.body) ? req.body : req.body && req.body.items;
   if (!Array.isArray(items)) return res.status(400).json({ error: 'Formato inválido: se esperaba una lista de registros' });
 

@@ -161,15 +161,17 @@ export default {
       form.value[field.name].splice(index, 1);
     }
 
-    async function exportJson() {
+    // Sin `row` exporta toda la entidad; con `row`, solo ese registro.
+    async function exportJson(row) {
       error.value = '';
       try {
-        const data = await api.exportAll(props.entityKey);
+        const data = row ? await api.exportOne(props.entityKey, row._id) : await api.exportAll(props.entityKey);
+        const slug = row ? `-${String(row.name || row._id).replace(/[\\/:*?"<>|\s]+/g, '_')}` : '';
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${props.entityKey}-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `${props.entityKey}${slug}-${new Date().toISOString().slice(0, 10)}.json`;
         a.click();
         URL.revokeObjectURL(url);
       } catch (err) {
@@ -191,7 +193,8 @@ export default {
         }
         const result = await api.importAll(props.entityKey, payload);
         await load();
-        notice.value = `Importación: ${result.created} creados, ${result.updated} actualizados.`;
+        notice.value = `Importación: ${result.created} creados, ${result.updated} actualizados`
+          + (result.matches !== undefined ? `, ${result.matches} partidas.` : '.');
         if (result.errors.length) error.value = `Errores: ${result.errors.join(' · ')}`;
       } catch (err) {
         error.value = err.message;
@@ -219,7 +222,7 @@ export default {
         <h2>{{ meta.label }}</h2>
         <div class="toolbar-actions">
           <template v-if="meta.exportable">
-            <button class="btn btn--outline" @click="exportJson">Exportar JSON</button>
+            <button v-if="meta.exportScope==='all'" class="btn btn--outline" @click="exportJson()">Exportar JSON</button>
             <label class="btn btn--outline file-btn">
               Importar JSON
               <input type="file" accept="application/json,.json" @change="importJson" />
@@ -251,6 +254,7 @@ export default {
                 <template v-else>{{ formatValue(f, row) }}</template>
               </td>
               <td class="actions">
+                <button v-if="meta.exportScope==='item'" class="btn btn--outline btn--sm" @click="exportJson(row)">Exportar</button>
                 <button v-if="!meta.readonly" class="btn btn--outline btn--sm" @click="openEdit(row)">Editar</button>
                 <button class="btn btn--danger btn--sm" @click="remove(row)">Eliminar</button>
               </td>

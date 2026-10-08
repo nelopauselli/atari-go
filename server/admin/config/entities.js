@@ -2,6 +2,7 @@ const Player = require('../../models/Player');
 const Room = require('../../models/Room');
 const Match = require('../../models/Match');
 const Institution = require('../../models/Institution');
+const roomsExchange = require('../exchange/rooms');
 
 // Metadata que describe cómo listar/editar cada modelo desde el panel admin.
 // `type` de cada campo controla el input generado en el frontend: string, number,
@@ -13,6 +14,8 @@ const Institution = require('../../models/Institution');
 // `sort` (opcional) = orden del listado; por defecto, los más nuevos primero.
 // `exportKey` (opcional) habilita exportar/importar en JSON; es el campo único con el que el import
 // decide si actualizar un registro existente o crear uno nuevo.
+// `exchange` (opcional) = módulo { exportOne(id), importAll(payload) } para entidades que se exportan
+// de a un registro y con más que sus propios campos (p. ej. una sala con su historial de partidas).
 module.exports = {
   institutions: {
     label: 'Instituciones',
@@ -42,6 +45,7 @@ module.exports = {
   rooms: {
     label: 'Salas',
     model: Room,
+    exchange: roomsExchange,
     fields: [
       { name: 'name', label: 'Nombre', type: 'string', required: true },
       { name: 'type', label: 'Tipo', type: 'enum', options: ['torneo', 'amistosas'], required: true },

@@ -1,6 +1,6 @@
 import { reactive } from 'vue';
 
-// Rutas soportadas: #/login, #/home, #/room/:id, #/room/:id/ranking
+// Rutas soportadas: #/login, #/home, #/room/:id, #/room/:id/ranking, #/match/:id
 export const route = reactive({ name: 'login', params: {} });
 
 function parseHash() {
@@ -16,6 +16,9 @@ function parseHash() {
   } else if (name === 'room' && rest[0] && rest[1] === 'ranking') {
     route.name = 'ranking';
     route.params = { roomId: rest[0] };
+  } else if (name === 'match' && rest[0]) {
+    route.name = 'replay';
+    route.params = { matchId: rest[0] };
   } else if (name === 'room' && rest[0]) {
     route.name = 'room';
     route.params = { roomId: rest[0] };

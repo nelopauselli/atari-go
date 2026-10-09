@@ -21,6 +21,7 @@ export default {
     interactive: { type: Boolean, default: false },
     myColor: { type: String, default: null },
     marks: { type: Array, default: () => [] }, // [{ x, y, type: 'liberty' | 'forbidden' }]
+    muted: { type: Boolean, default: false }, // sin sonido de piedra (el reproductor maneja el suyo)
   },
   emits: ['play'],
   setup(props, { emit }) {
@@ -34,7 +35,7 @@ export default {
     watch(
       () => (props.lastMove ? props.lastMove.x + ',' + props.lastMove.y : null),
       (key, prev) => {
-        if (key && key !== prev) playStone();
+        if (key && key !== prev && !props.muted) playStone();
       },
     );
 

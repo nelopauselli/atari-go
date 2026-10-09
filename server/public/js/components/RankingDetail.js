@@ -68,6 +68,7 @@ export default {
               </template>
               <span v-else class="text-muted">sin rival</span>
               <span class="text-muted">· {{ g.reason }} · Tablero #{{ g.boardNumber }}<template v-if="g.endedAt"> · {{ new Date(g.endedAt).toLocaleString() }}</template></span>
+              <a class="link-primary" :href="'#/match/' + g.match" @click.stop>Ver</a>
               <a class="link-primary" :href="sgfUrl(g.match)" @click.stop>SGF</a>
             </span>
           </td>

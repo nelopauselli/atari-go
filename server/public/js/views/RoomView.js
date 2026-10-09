@@ -360,7 +360,7 @@ export default {
 
       <div v-else-if="tab==='history'" class="table-responsive">
         <table class="table table-hover align-middle">
-          <thead><tr><th>Tablero</th><th>Jugadores</th><th>Resultado</th><th>Fecha</th><th>SGF</th></tr></thead>
+          <thead><tr><th>Tablero</th><th>Jugadores</th><th>Resultado</th><th>Fecha</th><th>Partida</th></tr></thead>
           <tbody>
             <tr v-for="m in roomHistory" :key="m._id">
               <td>#{{ m.boardNumber }}</td>
@@ -377,7 +377,10 @@ export default {
               </td>
               <td>{{ resultLabel(m) }}</td>
               <td>{{ m.endedAt ? new Date(m.endedAt).toLocaleString() : '-' }}</td>
-              <td><a class="link-primary" :href="sgfUrl(m._id)">Descargar</a></td>
+              <td class="text-nowrap">
+                <a class="link-primary" :href="'#/match/' + m._id">Ver</a> ·
+                <a class="link-primary" :href="sgfUrl(m._id)">SGF</a>
+              </td>
             </tr>
           </tbody>
         </table>

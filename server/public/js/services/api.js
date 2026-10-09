@@ -19,5 +19,6 @@ export const api = {
   getClosedRooms: () => request('/rooms/closed'),
   getRoom: (roomId) => request(`/rooms/${roomId}`),
   getRoomHistory: (roomId) => request(`/history/room/${roomId}`),
+  getMatchReplay: (matchId) => request(`/history/${matchId}/replay`),
   sgfDownloadUrl: (matchId) => `/api/history/${matchId}/sgf`,
 };

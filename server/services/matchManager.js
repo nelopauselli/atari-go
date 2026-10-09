@@ -659,4 +659,5 @@ module.exports = {
   handleResign,
   handleDisconnect,
   CLOCK_PRESETS,
+  getClockPreset,
 };

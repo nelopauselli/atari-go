@@ -7,11 +7,12 @@ import LoginView from './views/LoginView.js';
 import HomeView from './views/HomeView.js';
 import RoomView from './views/RoomView.js';
 import RankingView from './views/RankingView.js';
+import ReplayView from './views/ReplayView.js';
 import AppFooter from './components/AppFooter.js';
 
 const App = {
   name: 'App',
-  components: { LoginView, HomeView, RoomView, RankingView, AppFooter },
+  components: { LoginView, HomeView, RoomView, RankingView, ReplayView, AppFooter },
   setup() {
     const player = computed(() => { route.name; return getPlayer(); });
     const theme = ref(getTheme());
@@ -58,6 +59,7 @@ const App = {
       <HomeView v-else-if="route.name==='home'" />
       <RoomView v-else-if="route.name==='room'" :key="route.params.roomId" :room-id="route.params.roomId" />
       <RankingView v-else-if="route.name==='ranking'" :key="'ranking-' + route.params.roomId" :room-id="route.params.roomId" />
+      <ReplayView v-else-if="route.name==='replay'" :key="'replay-' + route.params.matchId" :match-id="route.params.matchId" />
 
       <AppFooter />
     </div>

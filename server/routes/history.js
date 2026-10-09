@@ -2,7 +2,9 @@ const express = require('express');
 const Match = require('../models/Match');
 const Room = require('../models/Room');
 const Player = require('../models/Player');
+const mongoose = require('mongoose');
 const { matchToSgf } = require('../services/sgf');
+const { buildReplayFrames } = require('../services/replay');
 
 const router = express.Router();
 
@@ -85,6 +87,15 @@ async function buildRanking(room, matches) {
     }))
     .sort((a, b) => byRecord(a, b) || a.teamName.localeCompare(b.teamName));
 }
+
+// Partida finalizada reconstruida jugada a jugada para el reproductor
+router.get('/:matchId/replay', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.matchId)) return res.status(404).json({ error: 'Partida no encontrada' });
+  const match = await Match.findById(req.params.matchId).lean();
+  if (!match || !['finished', 'aborted'].includes(match.status)) return res.status(404).json({ error: 'Partida no encontrada' });
+  const { moves, ...info } = match;
+  res.json({ match: info, frames: buildReplayFrames(match) });
+});
 
 // Descarga de SGF de una partida
 router.get('/:matchId/sgf', async (req, res) => {

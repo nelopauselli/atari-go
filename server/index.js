@@ -29,6 +29,8 @@ async function bootstrap() {
   
   // Registrar en matchManager las salas no cerradas ya existentes en Mongo
   await matchManager.syncRoomsWithDB();
+  // Retomar las partidas que estaban en curso antes del reinicio (antes de aceptar conexiones)
+  await matchManager.restoreActiveMatches();
 
   // El panel admin resincroniza al instante cada vez que toca una sala. Este ciclo
   // queda como respaldo: completa las bajas pospuestas (salas cerradas o tableros

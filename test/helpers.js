@@ -50,8 +50,9 @@ function makePlayer(nickname) {
 /**
  * Prepara el entorno de un test: stubs de Mongo, timers simulados y captura de eventos.
  * `playerInstitutions` mapea playerId -> institución (lo que devuelve Player.findById).
+ * `activeMatches` son los Match "playing" que devuelve Match.find (restauración tras reinicio).
  */
-function setup(t, { playerInstitutions = {}, openRooms = [] } = {}) {
+function setup(t, { playerInstitutions = {}, openRooms = [], activeMatches = [] } = {}) {
   t.mock.timers.enable({ apis: ['setInterval', 'setTimeout', 'Date'], now: START_TIME });
   // Los avisos de sincronización de salas ensucian la salida de los tests.
   t.mock.method(console, 'log', () => {});
@@ -60,6 +61,8 @@ function setup(t, { playerInstitutions = {}, openRooms = [] } = {}) {
   const db = {
     matchesCreated: [],
     matchUpdates: [],
+    matchWrites: [],
+    activeMatches,
     roomUpdates: [],
     playerLookups: [],
     openRooms,
@@ -74,6 +77,11 @@ function setup(t, { playerInstitutions = {}, openRooms = [] } = {}) {
     db.matchUpdates.push({ id, update });
     return null;
   });
+  t.mock.method(Match, 'updateOne', async (filter, update) => {
+    db.matchWrites.push({ filter, update });
+    return { acknowledged: true };
+  });
+  t.mock.method(Match, 'find', async () => db.activeMatches);
   t.mock.method(Room, 'updateOne', async (filter, update) => {
     db.roomUpdates.push({ filter, update });
     return { acknowledged: true };

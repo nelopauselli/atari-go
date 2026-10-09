@@ -61,6 +61,13 @@ function on(event, handler) {
   return () => socket.off(event, handler);
 }
 
+// Tras una reconexión (corte de red o reinicio del servidor) el socket es nuevo y ya no
+// está en el canal de la sala: quien escuche esto tiene que volver a unirse.
+function onReconnect(handler) {
+  socket.io.on('reconnect', handler);
+  return () => socket.io.off('reconnect', handler);
+}
+
 export const socketService = {
   raw: socket,
   identify,
@@ -72,4 +79,5 @@ export const socketService = {
   resign,
   ping,
   on,
+  onReconnect,
 };

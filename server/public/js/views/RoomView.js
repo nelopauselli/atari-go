@@ -146,7 +146,31 @@ export default {
         if (payload.boardNumber === active.boardNumber) active.state = payload;
         loadHistory();
       }));
+      unsubs.push(socketService.onReconnect(rejoinAfterReconnect));
     });
+
+    // Al reconectar se vuelve a entrar a la sala y, si había un tablero abierto, a ese tablero
+    // (el servidor retoma las partidas en curso tras un reinicio). Si el tablero quedó libre
+    // (la partida terminó o se perdió la espera de rival) se vuelve a la sala sin sentarse.
+    async function rejoinAfterReconnect() {
+      if (!(await joinLive())) return;
+      const boardNumber = active.boardNumber;
+      if (boardNumber == null) return;
+      const fresh = boards.value.find((b) => b.number === boardNumber);
+      if (!fresh || fresh.status === 'empty') {
+        closeActiveBoard();
+        return;
+      }
+      const result = await socketService.sitBoard(props.roomId, boardNumber, player);
+      if (active.boardNumber !== boardNumber) return;
+      if (!result.ok) {
+        closeActiveBoard();
+        return;
+      }
+      active.role = result.role;
+      active.color = result.color || null;
+      active.state = boards.value.find((b) => b.number === boardNumber) || fresh;
+    }
 
     onUnmounted(() => {
       closeActiveBoard();

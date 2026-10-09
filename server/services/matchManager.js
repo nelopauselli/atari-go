@@ -5,7 +5,8 @@
  * por fuera de las funciones exportadas aquí.
  *
  * Persistencia a Mongo (creación/actualización de Match) ocurre solo dentro
- * de este módulo, al iniciar y al finalizar una partida.
+ * de este módulo: al iniciar la partida, en cada jugada y al finalizarla. Así,
+ * si el servidor se reinicia, restoreActiveMatches() retoma las partidas en curso.
  */
 
 const goEngine = require('./goEngine');
@@ -428,7 +429,8 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     board.game.lastMoveAt = Date.now();
     playerLocation.set(player.id, { roomId: String(roomId), boardNumber: board.number });
     startClockTimer(roomId, board);
-    persistMatchStart(roomId, board).catch((err) => console.error('[matchManager] error persistMatchStart', err));
+    board.game.persistQueue = persistMatchStart(roomId, board)
+      .catch((err) => console.error('[matchManager] error persistMatchStart', err));
     emit('room:update', roomId, getRoomBoardsSummary(roomId));
     return { ok: true, role: 'player', color: 'white' };
   }
@@ -490,12 +492,19 @@ function handleMove({ roomId, boardNumber, playerId, x, y }) {
   const captured = result.captured;
   if (mover.color === 'black') g.capturedByBlack += captured;
   else g.capturedByWhite += captured;
-  g.moves.push({ color: mover.color, x, y, pass: false, captured, timestamp: Date.now() });
+  const move = { color: mover.color, x, y, pass: false, captured, timestamp: Date.now() };
+  g.moves.push(move);
   g.lastMove = { x, y };
 
   applyClockIncrement(g, mover.color);
   g.turn = mover.color === 'black' ? 'white' : 'black';
   g.lastMoveAt = Date.now();
+
+  const update = {
+    $push: { moves: move },
+    $set: { clocks: { ...g.clocks }, capturedByBlack: g.capturedByBlack, capturedByWhite: g.capturedByWhite },
+  };
+  queuePersist(g, () => Match.updateOne({ _id: g.mongoMatchId }, update));
 
   emit('board:state', roomId, { boardNumber: board.number, ...serializeBoard(board) });
 
@@ -556,6 +565,18 @@ function startClockTimer(roomId, board) {
 
 // ---------- Ciclo de vida de partida + persistencia ----------
 
+/**
+ * Encola una escritura a Mongo de la partida. Las escrituras de una misma partida se
+ * hacen en orden (creación, jugadas, cierre): así ninguna jugada se guarda antes de que
+ * exista el Match ni después de que finishMatch haya guardado la lista completa.
+ */
+function queuePersist(g, op) {
+  g.persistQueue = (g.persistQueue || Promise.resolve())
+    .then(() => (g.mongoMatchId ? op() : null))
+    .catch((err) => console.error('[matchManager] error guardando partida', err));
+  return g.persistQueue;
+}
+
 async function persistMatchStart(roomId, board) {
   const room = getRoom(roomId);
   const g = board.game;
@@ -571,6 +592,7 @@ async function persistMatchStart(roomId, board) {
       player: p.playerId, nickname: p.nickname, team: p.team, teamName: p.teamName, color: p.color,
     })),
     status: 'playing',
+    clocks: { ...g.clocks },
     startedAt: new Date(),
   });
   g.mongoMatchId = doc._id;
@@ -587,16 +609,16 @@ async function finishMatch(roomId, board, winnerColor, reason) {
     players: g.players.map((p) => ({ nickname: p.nickname, color: p.color, team: p.team, teamName: p.teamName })),
   };
 
-  if (g.mongoMatchId) {
-    await Match.findByIdAndUpdate(g.mongoMatchId, {
-      moves: g.moves,
-      status: reason === 'abandoned' ? 'aborted' : 'finished',
-      result: { winnerColor, reason },
-      capturedByBlack: g.capturedByBlack,
-      capturedByWhite: g.capturedByWhite,
-      endedAt: new Date(),
-    });
-  }
+  const final = {
+    moves: g.moves,
+    status: reason === 'abandoned' ? 'aborted' : 'finished',
+    result: { winnerColor, reason },
+    capturedByBlack: g.capturedByBlack,
+    capturedByWhite: g.capturedByWhite,
+    clocks: { ...g.clocks },
+    endedAt: new Date(),
+  };
+  await queuePersist(g, () => Match.findByIdAndUpdate(g.mongoMatchId, final));
 
   for (const p of g.players) playerLocation.delete(p.playerId);
 
@@ -625,6 +647,113 @@ function freeBoard(roomId, boardNumber) {
   emit('room:update', roomId, getRoomBoardsSummary(roomId));
 }
 
+// ---------- Restauración tras un reinicio ----------
+
+/** Reconstruye en memoria el estado de juego de un Match en curso volviendo a jugar sus jugadas. */
+function rebuildGame(matchDoc) {
+  const size = matchDoc.boardSize;
+  let board = goEngine.createEmptyBoard(size);
+  let previousBoardKey = null;
+  let capturedByBlack = 0;
+  let capturedByWhite = 0;
+  let lastMove = null;
+  const moves = [];
+  for (const m of matchDoc.moves) {
+    const result = goEngine.playMove(board, size, m.x, m.y, m.color);
+    if (!result.ok) throw new Error(`jugada inválida al restaurar (${m.color} ${m.x},${m.y}): ${result.error}`);
+    previousBoardKey = goEngine.boardKey(board);
+    board = result.board;
+    if (m.color === 'black') capturedByBlack += result.captured;
+    else capturedByWhite += result.captured;
+    lastMove = { x: m.x, y: m.y };
+    moves.push({
+      color: m.color, x: m.x, y: m.y, pass: false, captured: result.captured, timestamp: new Date(m.timestamp).getTime(),
+    });
+  }
+  const last = moves[moves.length - 1];
+  return {
+    players: matchDoc.players.map((p) => ({
+      playerId: String(p.player),
+      socketId: null,
+      nickname: p.nickname,
+      team: p.team ? String(p.team) : null,
+      teamName: p.teamName || '',
+      color: p.color,
+    })),
+    board,
+    size,
+    stonesToWin: matchDoc.stonesToWin,
+    clockType: matchDoc.clockType,
+    koRuleEnabled: matchDoc.koRuleEnabled,
+    turn: last && last.color === 'black' ? 'white' : 'black',
+    clocks: { black: matchDoc.clocks.black, white: matchDoc.clocks.white },
+    preset: getClockPreset(matchDoc.clockType),
+    moves,
+    capturedByBlack,
+    capturedByWhite,
+    previousBoardKey,
+    lastMove,
+    // El tiempo que el servidor estuvo caído no se le descuenta a nadie: el reloj de
+    // quien tiene el turno vuelve a correr desde ahora con lo que tenía tras la última jugada.
+    lastMoveAt: Date.now(),
+    timer: null,
+    mongoMatchId: matchDoc._id,
+    persistQueue: Promise.resolve(),
+  };
+}
+
+function abortUnrestorableMatch(matchDoc, why) {
+  console.warn(`[matchManager] partida ${matchDoc._id} no se puede restaurar (${why}); se marca como abortada`);
+  return Match.updateOne({ _id: matchDoc._id }, { status: 'aborted', endedAt: new Date() })
+    .catch((err) => console.error('[matchManager] error abortando partida', err));
+}
+
+/**
+ * Retoma las partidas que estaban en curso cuando se detuvo el servidor (Match con
+ * status "playing"). Se llama al arrancar, después de registrar las salas. Las que no
+ * se pueden retomar (sala cerrada, tablero inexistente, partidas guardadas antes de
+ * que se persistieran las jugadas) se marcan como abortadas para que no queden colgadas.
+ */
+async function restoreActiveMatches() {
+  const matches = await Match.find({ status: 'playing' });
+  let restored = 0;
+  for (const m of matches) {
+    const roomId = String(m.room);
+    const room = getRoom(roomId);
+    const board = room && room.boards.get(Number(m.boardNumber));
+    if (!room) { await abortUnrestorableMatch(m, 'sala cerrada o inexistente'); continue; }
+    if (!board) { await abortUnrestorableMatch(m, `tablero ${m.boardNumber} inexistente`); continue; }
+    if (board.status !== 'empty') { await abortUnrestorableMatch(m, `tablero ${m.boardNumber} ocupado`); continue; }
+    if (!m.clocks || m.players.length !== 2) { await abortUnrestorableMatch(m, 'sin estado guardado'); continue; }
+
+    let game;
+    try {
+      game = rebuildGame(m);
+    } catch (err) {
+      await abortUnrestorableMatch(m, err.message);
+      continue;
+    }
+    board.status = 'playing';
+    board.matchId = m._id;
+    board.game = game;
+    for (const p of game.players) playerLocation.set(p.playerId, { roomId, boardNumber: board.number });
+    restored++;
+
+    // Si se cayó justo después de la jugada decisiva y antes de cerrar la partida, se cierra ahora.
+    const lastColor = game.turn === 'black' ? 'white' : 'black';
+    const lastCaptures = lastColor === 'black' ? game.capturedByBlack : game.capturedByWhite;
+    if (game.moves.length && lastCaptures >= game.stonesToWin) {
+      await finishMatch(roomId, board, lastColor, 'capture');
+    } else if (game.moves.length && !goEngine.hasLegalMove(game.board, game.size, game.turn, game.previousBoardKey, game.koRuleEnabled)) {
+      await finishMatch(roomId, board, lastColor, 'no-moves');
+    } else {
+      startClockTimer(roomId, board);
+    }
+  }
+  if (restored) console.log(`[matchManager] ${restored} partida(s) en curso restaurada(s)`);
+  return restored;
+}
+
 // ---------- Desconexión (regla E) ----------
 
 function handleDisconnect({ socketId, playerId }) {
@@ -647,6 +776,7 @@ module.exports = {
   registerRoom,
   unregisterRoom,
   syncRoomsWithDB,
+  restoreActiveMatches,
   getRoom,
   getRoomBoardsSummary,
   getActiveRoomsSummary,

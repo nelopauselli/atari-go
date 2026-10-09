@@ -35,6 +35,12 @@ const MatchSchema = new mongoose.Schema({
   },
   capturedByBlack: { type: Number, default: 0 },
   capturedByWhite: { type: Number, default: 0 },
+  // Relojes (ms restantes) tal como quedaron tras la última jugada; se guardan en cada jugada
+  // para poder restaurar la partida si se reinicia el servidor. null en partidas anteriores a esto.
+  clocks: {
+    type: new mongoose.Schema({ black: Number, white: Number }, { _id: false }),
+    default: null,
+  },
   startedAt: { type: Date, default: null },
   endedAt: { type: Date, default: null },
 }, { timestamps: true });

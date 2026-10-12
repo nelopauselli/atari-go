@@ -5,7 +5,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  oid, makeRoomDoc, makeTeams, makePlayer, setup, flush, startMatch, getBoard,
+  oid, makeRoomDoc, makeTeams, makePlayer, setup, flush, startMatch, withColorDraw, getBoard,
 } = require('./helpers');
 const matchManager = require('../server/services/matchManager');
 const Room = require('../server/models/Room');
@@ -36,12 +36,12 @@ describe('asiento en tableros', () => {
     assert.deepEqual(boards.map((b) => [b.number, b.status]), [[1, 'empty'], [2, 'empty'], [3, 'empty'], [4, 'empty']]);
   });
 
-  it('quien se sienta en un tablero vacío juega con negras y espera rival', (t) => {
+  it('quien se sienta en un tablero vacío espera rival, todavía sin color', (t) => {
     const env = setup(t);
     const roomId = env.registerRoom(makeRoomDoc({ boardSize: 9, stonesToWin: 3, clockType: 'fischer-5-10' }));
     const ana = makePlayer('Ana');
 
-    assert.deepEqual(sit(roomId, ana), { ok: true, role: 'player', color: 'black' });
+    assert.deepEqual(sit(roomId, ana), { ok: true, role: 'player', color: null });
     const board = getBoard(roomId);
     assert.equal(board.status, 'waiting');
     assert.equal(board.game.size, 9);
@@ -56,12 +56,12 @@ describe('asiento en tableros', () => {
     const roomId = env.registerRoom(makeRoomDoc());
     const ana = makePlayer('Ana');
     sit(roomId, ana);
-    assert.deepEqual(sit(roomId, ana), { ok: true, role: 'player', color: 'black' });
+    assert.deepEqual(sit(roomId, ana), { ok: true, role: 'player', color: null });
     assert.equal(getBoard(roomId).status, 'waiting');
     assert.equal(getBoard(roomId).game.players.length, 1);
   });
 
-  it('el segundo jugador juega con blancas, empieza la partida y se guarda en la base', async (t) => {
+  it('al llegar el rival se sortean los colores, empieza la partida y se guarda en la base', async (t) => {
     const env = setup(t);
     const roomDoc = makeRoomDoc({ name: 'Amistosa', stonesToWin: 3, koRuleEnabled: false });
     const roomId = env.registerRoom(roomDoc);
@@ -69,8 +69,9 @@ describe('asiento en tableros', () => {
     const beto = makePlayer('Beto');
     sit(roomId, ana);
 
-    assert.deepEqual(sit(roomId, beto), { ok: true, role: 'player', color: 'white' });
+    assert.deepEqual(withColorDraw('white', () => sit(roomId, beto)), { ok: true, role: 'player', color: 'black' });
     assert.equal(getBoard(roomId).status, 'playing');
+    assert.deepEqual(sit(roomId, ana), { ok: true, role: 'player', color: 'white' });
 
     await flush();
     assert.equal(env.db.matchesCreated.length, 1);
@@ -81,7 +82,7 @@ describe('asiento en tableros', () => {
     assert.equal(match.stonesToWin, 3);
     assert.equal(match.koRuleEnabled, false);
     assert.deepEqual(match.players.map((p) => [p.nickname, p.color, p.team, p.teamName]),
-      [['Ana', 'black', null, ''], ['Beto', 'white', null, '']]);
+      [['Beto', 'black', null, ''], ['Ana', 'white', null, '']]);
     assert.equal(String(getBoard(roomId).matchId), String(match._id));
   });
 
@@ -115,7 +116,7 @@ describe('asiento en tableros', () => {
     const roomId = env.registerRoom(makeRoomDoc({ boardCount: 2 }));
     startMatch(roomId, 1);
     const dani = makePlayer('Dani');
-    assert.deepEqual(sit(roomId, dani, 2), { ok: true, role: 'player', color: 'black' });
+    assert.deepEqual(sit(roomId, dani, 2), { ok: true, role: 'player', color: null });
     assert.equal(getBoard(roomId, 1).status, 'playing');
     assert.equal(getBoard(roomId, 2).status, 'waiting');
   });
@@ -184,7 +185,7 @@ describe('fin de partida y liberación del tablero', () => {
     assert.equal(board.matchId, null);
     assert.equal(board.spectators.size, 0);
 
-    assert.deepEqual(sit(roomId, makePlayer('Fede')), { ok: true, role: 'player', color: 'black' });
+    assert.deepEqual(sit(roomId, makePlayer('Fede')), { ok: true, role: 'player', color: null });
   });
 
   it('una partida finalizada no se puede volver a terminar ni seguir jugando', async (t) => {
@@ -294,7 +295,7 @@ describe('salas torneo: enfrentamientos', () => {
     const beto = withTeam(roomId, makePlayer('Beto'), teams[1]);
 
     sit(roomId, ana);
-    assert.deepEqual(sit(roomId, beto), { ok: true, role: 'player', color: 'white' });
+    assert.deepEqual(withColorDraw('black', () => sit(roomId, beto)), { ok: true, role: 'player', color: 'white' });
     await flush();
     assert.deepEqual(env.db.matchesCreated[0].players.map((p) => [p.nickname, String(p.team), p.teamName]),
       [['Ana', String(teams[0]._id), 'Rojo'], ['Beto', String(teams[1]._id), 'Azul']]);

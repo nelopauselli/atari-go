@@ -122,11 +122,22 @@ function flush() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
-/** Sienta a dos jugadores en un tablero y deja la partida en curso. */
+/** Ejecuta `fn` con el sorteo de colores fijo: quien ya esperaba juega con `firstColor`. */
+function withColorDraw(firstColor, fn) {
+  const original = Math.random;
+  Math.random = () => (firstColor === 'black' ? 0 : 0.99);
+  try {
+    return fn();
+  } finally {
+    Math.random = original;
+  }
+}
+
+/** Sienta a dos jugadores en un tablero y deja la partida en curso (el primero, con negras). */
 function startMatch(roomId, boardNumber = 1, black = makePlayer('Negro'), white = makePlayer('Blanco')) {
-  const r1 = matchManager.handleSit({ roomId, boardNumber, player: black, socketId: `s-${black.id}` });
-  const r2 = matchManager.handleSit({ roomId, boardNumber, player: white, socketId: `s-${white.id}` });
-  if (r1.color !== 'black' || r2.color !== 'white') throw new Error('No se pudo iniciar la partida');
+  matchManager.handleSit({ roomId, boardNumber, player: black, socketId: `s-${black.id}` });
+  const r2 = withColorDraw('black', () => matchManager.handleSit({ roomId, boardNumber, player: white, socketId: `s-${white.id}` }));
+  if (r2.color !== 'white') throw new Error('No se pudo iniciar la partida');
   return { black, white };
 }
 
@@ -159,6 +170,7 @@ module.exports = {
   setup,
   flush,
   startMatch,
+  withColorDraw,
   getBoard,
   boardFromRows,
   rowsFromBoard,

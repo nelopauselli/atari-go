@@ -377,7 +377,8 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     return { ok: true, role: 'spectator' };
   }
 
-  // Tablero vacío -> se crea partida en estado "waiting" con el primer jugador
+  // Tablero vacío -> se crea partida en estado "waiting" con el primer jugador. Todavía sin
+  // color: se sortea cuando llega el rival.
   if (board.status === 'empty') {
     const seat = resolveSeatTeam(room, player.id);
     if (!seat) return { ok: false, error: TEAM_REQUIRED_ERROR };
@@ -386,7 +387,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     board.status = 'waiting';
     board.game = {
       players: [{
-        playerId: player.id, socketId, nickname: player.nickname, ...seat, color: 'black',
+        playerId: player.id, socketId, nickname: player.nickname, ...seat, color: null,
       }],
       board: goEngine.createEmptyBoard(size),
       size,
@@ -407,7 +408,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     };
     playerLocation.set(player.id, { roomId: String(roomId), boardNumber: board.number });
     emit('room:update', roomId, getRoomBoardsSummary(roomId));
-    return { ok: true, role: 'player', color: 'black' };
+    return { ok: true, role: 'player', color: null };
   }
 
   // Tablero esperando rival -> segundo jugador se suma si cumple reglas
@@ -422,9 +423,12 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
       board.spectators.add(socketId);
       return { ok: true, role: 'spectator', error: 'No pueden enfrentarse jugadores del mismo equipo' };
     }
-    board.game.players.push({
-      playerId: player.id, socketId, nickname: player.nickname, ...seat, color: 'white',
-    });
+    // Colores al azar; negro queda primero en la lista de jugadores.
+    const rival = { playerId: player.id, socketId, nickname: player.nickname, ...seat };
+    const [black, white] = Math.random() < 0.5 ? [seated, rival] : [rival, seated];
+    black.color = 'black';
+    white.color = 'white';
+    board.game.players = [black, white];
     board.status = 'playing';
     board.game.lastMoveAt = Date.now();
     playerLocation.set(player.id, { roomId: String(roomId), boardNumber: board.number });
@@ -432,7 +436,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     board.game.persistQueue = persistMatchStart(roomId, board)
       .catch((err) => console.error('[matchManager] error persistMatchStart', err));
     emit('room:update', roomId, getRoomBoardsSummary(roomId));
-    return { ok: true, role: 'player', color: 'white' };
+    return { ok: true, role: 'player', color: rival.color };
   }
 
   // Jugando o finalizado -> si es uno de los jugadores, reconecta; si no, espectador

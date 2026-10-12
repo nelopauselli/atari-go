@@ -131,7 +131,10 @@ export default {
           const fresh = summary2.boards.find((b) => b.number === active.boardNumber);
           // Al liberarse el tablero (partida terminada o se fue quien esperaba rival), se vuelve a la sala.
           if (fresh && fresh.status === 'empty' && active.state && active.state.status !== 'empty') closeActiveBoard();
-          else if (fresh) active.state = fresh;
+          else if (fresh) {
+            active.state = fresh;
+            if (fresh.status === 'playing' && active.role === 'player' && !active.color) fetchMyColor(active.boardNumber);
+          }
         }
       }));
       unsubs.push(socketService.on('board:state', (payload) => {
@@ -170,6 +173,12 @@ export default {
       active.role = result.role;
       active.color = result.color || null;
       active.state = boards.value.find((b) => b.number === boardNumber) || fresh;
+    }
+
+    // El color se sortea recién cuando llega el rival: quien esperaba lo pide al empezar la partida.
+    async function fetchMyColor(boardNumber) {
+      const result = await socketService.sitBoard(props.roomId, boardNumber, player);
+      if (active.boardNumber === boardNumber && result.ok && result.role === 'player') active.color = result.color || null;
     }
 
     onUnmounted(() => {
@@ -296,7 +305,7 @@ export default {
           <div class="d-flex justify-content-between align-items-center mb-2">
             <h3 class="h5 mb-0">Tablero #{{ active.boardNumber }}</h3>
             <span class="badge" :class="active.role==='spectator' ? 'text-bg-light' : 'text-bg-primary'">
-              {{ active.role==='spectator' ? 'Observando' : ('Jugás con ' + (active.color==='black' ? 'negras ⚫' : 'blancas ⚪')) }}
+              {{ active.role==='spectator' ? 'Observando' : (!active.color ? 'Esperando rival' : 'Jugás con ' + (active.color==='black' ? 'negras ⚫' : 'blancas ⚪')) }}
             </span>
           </div>
 

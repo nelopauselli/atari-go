@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const matchManager = require('../services/matchManager');
 const presence = require('../services/presence');
+const Player = require('../models/Player');
 
 function roomChannel(roomId) {
   return `room:${roomId}`;
@@ -17,6 +19,11 @@ function initSockets(io) {
 
     socket.on('presence:identify', ({ player } = {}) => {
       presence.identify(socket.id, player);
+      // Un jugador con la sesión guardada no pasa por el login: su última conexión se registra acá.
+      if (player && mongoose.isValidObjectId(player.id)) {
+        Player.updateOne({ _id: player.id }, { lastSeenAt: new Date() })
+          .catch((err) => console.error('[sockets] error al actualizar lastSeenAt', err));
+      }
     });
 
     // El cliente mide la latencia con el round-trip de este ack.

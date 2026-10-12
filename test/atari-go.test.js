@@ -223,6 +223,14 @@ describe('motor de Go', () => {
       assert.equal(goEngine.violatesSimpleKo(goEngine.boardKey(recapture.board), goEngine.boardKey(before)), true);
     });
 
+    it('ubica el punto donde no se puede jugar por Ko', () => {
+      const before = boardFromRows(koRows);
+      const afterBlack = goEngine.playMove(before, 7, 2, 1, 'black');
+      const previousKey = goEngine.boardKey(before);
+      assert.deepEqual(goEngine.findKoPoint(afterBlack.board, 7, 'white', previousKey), { x: 1, y: 1 });
+      assert.equal(goEngine.findKoPoint(afterBlack.board, 7, 'white', null), null);
+    });
+
     it('sin posición previa no hay Ko', () => {
       assert.equal(goEngine.violatesSimpleKo(goEngine.boardKey(goEngine.createEmptyBoard(7)), null), false);
     });

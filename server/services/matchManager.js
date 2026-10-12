@@ -213,6 +213,9 @@ function serializeBoard(board) {
     koRuleEnabled: g.koRuleEnabled,
     board: g.board,
     lastMove: g.lastMove,
+    koPoint: board.status === 'playing' && g.koRuleEnabled
+      ? goEngine.findKoPoint(g.board, g.size, g.turn, g.previousBoardKey)
+      : null,
     turn: g.turn,
     clocks: g.clocks,
     capturedByBlack: g.capturedByBlack,

@@ -115,6 +115,21 @@ function hasLegalMove(board, size, color, previousBoardKey, koRuleEnabled) {
   return false;
 }
 
+/**
+ * Punto donde `color` no puede jugar por Ko simple (la jugada repetiría la posición previa), o null.
+ */
+function findKoPoint(board, size, color, previousBoardKey) {
+  if (previousBoardKey === null) return null;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (board[idx(size, x, y)] !== null) continue;
+      const result = playMove(board, size, x, y, color);
+      if (result.ok && violatesSimpleKo(boardKey(result.board), previousBoardKey)) return { x, y };
+    }
+  }
+  return null;
+}
+
 module.exports = {
   createEmptyBoard,
   idx,
@@ -124,4 +139,5 @@ module.exports = {
   violatesSimpleKo,
   boardKey,
   hasLegalMove,
+  findKoPoint,
 };

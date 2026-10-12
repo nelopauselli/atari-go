@@ -18,12 +18,13 @@ export default {
     size: { type: Number, required: true },
     board: { type: Array, required: true }, // array plano size*size: 'black' | 'white' | null
     lastMove: { type: Object, default: null }, // { x, y } | null
+    koPoint: { type: Object, default: null }, // { x, y } | null: donde no se puede jugar este turno por Ko
     interactive: { type: Boolean, default: false },
     myColor: { type: String, default: null },
     marks: { type: Array, default: () => [] }, // [{ x, y, type: 'liberty' | 'forbidden' }]
     muted: { type: Boolean, default: false }, // sin sonido de piedra (el reproductor maneja el suyo)
   },
-  emits: ['play'],
+  emits: ['play', 'ko'],
   setup(props, { emit }) {
     const hover = ref(null);
     // Prefijo único para los ids de <defs>: puede haber varios tableros en la misma página.
@@ -51,9 +52,21 @@ export default {
       return !!props.lastMove && props.lastMove.x === x && props.lastMove.y === y;
     }
 
+    function isKoPoint(x, y) {
+      return !!props.koPoint && props.koPoint.x === x && props.koPoint.y === y;
+    }
+
+    // Intersección donde se puede apoyar una piedra ahora mismo.
+    function isPlayable(x, y) {
+      return props.interactive && !cellAt(x, y) && !isKoPoint(x, y);
+    }
+
     function onCellClick(x, y) {
-      if (!props.interactive) return;
-      if (cellAt(x, y)) return;
+      if (!props.interactive || cellAt(x, y)) return;
+      if (isKoPoint(x, y)) {
+        emit('ko', { x, y });
+        return;
+      }
       emit('play', { x, y });
     }
 
@@ -68,7 +81,7 @@ export default {
     function stoneAt(x, y) {
       const c = cellAt(x, y);
       if (c) return c;
-      if (props.interactive && props.myColor && hover.value === x + ',' + y) return props.myColor;
+      if (isPlayable(x, y) && props.myColor && hover.value === x + ',' + y) return props.myColor;
       return null;
     }
 
@@ -76,7 +89,7 @@ export default {
       return `url(#${uid}-${name})`;
     }
 
-    return { hover, dim, pos, cellAt, stoneAt, paint, uid, isLastMove, onCellClick, starPoints, CELL, MARGIN, WHITE_LAYERS, SHADOWS };
+    return { hover, dim, pos, cellAt, stoneAt, paint, uid, isLastMove, isKoPoint, isPlayable, onCellClick, starPoints, CELL, MARGIN, WHITE_LAYERS, SHADOWS };
   },
   template: `
     <div class="go-board-wrap">
@@ -154,7 +167,7 @@ export default {
               @click="onCellClick(x-1, y-1)"
               @mouseenter="interactive && !cellAt(x-1,y-1) ? hover = x-1+','+(y-1) : null"
               @mouseleave="hover = null"
-              :style="interactive && !cellAt(x-1,y-1) ? 'cursor:pointer' : ''"
+              :style="isPlayable(x-1,y-1) ? 'cursor:pointer' : interactive && isKoPoint(x-1,y-1) ? 'cursor:not-allowed' : ''"
             />
             <g v-if="stoneAt(x-1,y-1)"
                :class="cellAt(x-1,y-1) ? 'stone' : 'hover-preview'"
@@ -170,6 +183,11 @@ export default {
                   style="pointer-events:none"
                   :x="pos(x-1) - 5" :y="pos(y-1) - 5" width="10" height="10" />
           </g>
+        </g>
+        <!-- punto prohibido por Ko para quien tiene el turno -->
+        <g v-if="koPoint && !cellAt(koPoint.x, koPoint.y)" class="mark-ko" style="pointer-events:none">
+          <title>Ko: no se puede jugar acá en este turno</title>
+          <rect :x="pos(koPoint.x) - 7" :y="pos(koPoint.y) - 7" width="14" height="14" />
         </g>
         <!-- marcas ilustrativas (tutorial) -->
         <g v-for="(m,idx) in marks" :key="'mark'+idx" style="pointer-events:none">

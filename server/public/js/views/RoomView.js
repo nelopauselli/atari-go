@@ -65,6 +65,12 @@ export default {
     });
     const isPlaying = computed(() => active.boardNumber != null && active.role === 'player');
 
+    // Hay un punto prohibido por Ko y me toca jugar; koWarning se activa si intenté jugar ahí.
+    const myKoTurn = computed(() => isPlaying.value && !!active.state && active.state.status === 'playing'
+      && active.state.turn === active.color && !!active.state.koPoint);
+    const koWarning = ref(false);
+    watch(() => active.state && active.state.koPoint, () => { koWarning.value = false; });
+
     // Sonido de captura: cuando sube el total de piedras capturadas en el mismo tablero
     // (no al abrir un tablero ni al cambiar de uno a otro).
     watch(
@@ -251,7 +257,7 @@ export default {
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, showRoomSettings, STATUS_LABELS, STATUS_BADGE_CLASS, CLOCK_LABELS,
-      isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying,
+      isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying, myKoTurn, koWarning,
       freeBoard, openBoard, sitAnyBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       openRankingDetail: () => navigate(`/room/${props.roomId}/ranking`),
@@ -321,16 +327,35 @@ export default {
             :size="active.state.boardSize || room.boardSize"
             :board="active.state.board || []"
             :last-move="active.state.lastMove"
+            :ko-point="active.state.koPoint"
             :interactive="active.role==='player' && active.state.status==='playing' && active.state.turn===active.color"
             :my-color="active.color"
             @play="playAt"
+            @ko="koWarning = true"
           />
 
-          <div v-if="active.state.status==='finished' && active.state.lastResult" class="alert alert-info text-center mt-3 mb-0">
-            <strong>Partida finalizada.</strong>
-            Gana {{ active.state.lastResult.winnerColor==='black' ? '⚫' : '⚪' }}
-            ({{ active.state.lastResult.reason }})
+          <!-- Aviso al intentar jugar en el punto prohibido por Ko -->
+          <div v-if="myKoTurn && koWarning" class="alert alert-danger py-2 mt-3 mb-0 text-center" role="status">
+            No podés jugar ahí en este turno, es ko
           </div>
+
+          <!-- Fin de partida: popup con el ganador y la vuelta a la sala -->
+          <template v-if="active.state.status==='finished' && active.state.lastResult">
+            <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="game-over-title">
+              <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content text-center">
+                  <div class="modal-body py-4">
+                    <h5 class="text-info fs-3 fw-normal mb-3" id="game-over-title">
+                      Gana {{ active.state.lastResult.winnerColor==='black' ? 'Negro' : 'Blanco' }}
+                    </h5>
+                    <p class="mb-4">¡Gracias por la partida!</p>
+                    <button type="button" class="btn btn-outline-secondary" @click="closeActiveBoard">← Volver a la Sala</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-backdrop show"></div>
+          </template>
 
           <div class="d-flex justify-content-between align-items-center mt-3">
             <div class="d-flex gap-2">

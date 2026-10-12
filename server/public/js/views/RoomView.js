@@ -332,8 +332,8 @@ export default {
           <div class="d-flex justify-content-between align-items-center mt-3">
             <div class="d-flex gap-2">
               <button v-if="active.role==='player' && active.state.status==='playing'" class="btn btn-danger btn-sm" @click="doResign">Abandonar</button>
+              <button v-if="active.state.status==='empty' || active.state.status==='waiting'" class="btn btn-outline-secondary btn-sm" @click="closeActiveBoard">Volver a la Sala</button>
             </div>
-            <button class="btn btn-outline-secondary btn-sm" @click="closeActiveBoard">Volver a la Sala</button>
           </div>
         </div>
       </div>

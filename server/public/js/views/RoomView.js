@@ -263,17 +263,16 @@ export default {
       <div class="mb-3">
         <a href="#" class="link-secondary text-decoration-none" @click.prevent="goBack">← {{ active.boardNumber ? 'Volver a la sala' : 'Salas' }}</a>
         <div class="d-flex justify-content-between align-items-center gap-2 mt-1 mb-1">
-          <h2 class="h4 mb-0">{{ room.name }}</h2>
+          <h2 class="h4 mb-0">
+            {{ room.name }}
+            <span v-if="active.boardNumber" class="text-muted fw-normal">· Tablero #{{ active.boardNumber }}</span>
+          </h2>
           <span class="d-flex align-items-center gap-2">
             <span v-if="isClosed" class="badge text-bg-secondary">Cerrada</span>
-            <button type="button" class="btn btn-outline-info btn-sm" @click="showRules = true">Reglas</button>
+            <button v-if="!active.state || active.state.status==='empty' || active.state.status==='waiting'" type="button" class="btn btn-outline-info btn-sm" @click="showRules = true">Reglas</button>
           </span>
         </div>
-        <p v-if="active.boardNumber" class="text-muted mb-0">
-          {{ room.stonesToWin }} piedra(s) para ganar ·
-          {{ CLOCK_LABELS[room.clockType] || room.clockType }}
-        </p>
-        <p v-else class="text-muted mb-0">
+        <p v-if="!active.boardNumber" class="text-muted mb-0">
           {{ room.type==='torneo' ? 'Torneo por equipos' : 'Amistosas' }} ·
           {{ room.boardSize }}x{{ room.boardSize }} ·
           {{ room.stonesToWin }} piedra(s) para ganar ·
@@ -302,8 +301,12 @@ export default {
       <!-- Tablero activo (jugando o espectando) -->
       <div v-if="active.boardNumber && active.state" class="card shadow-sm mb-4">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h3 class="h5 mb-0">Tablero #{{ active.boardNumber }}</h3>
+          <h3 class="h5 mb-2 text-center">
+            Capturá {{ room.stonesToWin }} {{ room.stonesToWin === 1 ? 'piedra' : 'piedras' }} para ganar ·
+            {{ CLOCK_LABELS[room.clockType] || room.clockType }}
+          </h3>
+          <!-- El aviso de color queda sobre el reloj correspondiente: negras a la izquierda, blancas a la derecha. -->
+          <div class="d-flex mb-2" :class="active.role==='player' && active.color==='black' ? 'justify-content-start' : active.role==='player' && active.color==='white' ? 'justify-content-end' : 'justify-content-center'">
             <span class="badge" :class="active.role==='spectator' ? 'text-bg-light' : 'text-bg-primary'">
               {{ active.role==='spectator' ? 'Observando' : (!active.color ? 'Esperando rival' : 'Jugás con ' + (active.color==='black' ? 'negras ⚫' : 'blancas ⚪')) }}
             </span>

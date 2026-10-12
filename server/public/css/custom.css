@@ -28,6 +28,7 @@ body {
 .clock--white { --bs-card-bg: #e4e4e4; --bs-card-color: #212529; --bs-card-border-color: #cfcfcf; --bs-body-color: #212529; --bs-secondary-color: rgba(33,37,41,.7); }
 .clock--active { border-color: var(--bs-primary) !important; box-shadow: 0 0 0 .15rem rgba(13,110,253,.15); }
 .clock__time { font-family: 'Roboto Mono', monospace; font-size: 1.6rem; font-weight: 500; }
+.clock__name { font-size: 1.6rem; }
 .clock--low .clock__time { color: var(--bs-danger); }
 .clock__stone { flex: 0 0 auto; align-self: stretch; aspect-ratio: 1; min-height: 2.5rem; border-radius: 50%; }
 .clock__stone--black {
@@ -56,26 +57,27 @@ body {
 .clock__cap { width: .9rem; height: .9rem; border-radius: 50%; flex: 0 0 auto; }
 .clock__cap.clock__stone--black, .clock__cap.clock__stone--white { box-shadow: 1px 1px 2px rgba(0,0,0,.35); }
 .clock__cap--empty { border: 1.5px dashed var(--bs-secondary-color); opacity: .6; }
-/* Relojes espejados: piedra en la punta exterior, tiempo en el borde interior (junto al otro reloj), nombre y capturas al centro */
+/* Relojes espejados: piedra en la punta exterior, tiempo (con el gráfico de capturas debajo) en el borde interior, nombre y capturas al centro */
 .clock__body { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .15rem 1rem; }
-.clock__body--black { grid-template-areas: "stone name time" "stone caps time"; }
-.clock__body--white { grid-template-areas: "time name stone" "time caps stone"; }
+.clock__body--black { grid-template-areas: "stone name time" "stone caps graph"; }
+.clock__body--white { grid-template-areas: "time name stone" "graph caps stone"; }
 .clock__body .clock__stone { grid-area: stone; width: 3.5rem; height: 3.5rem; }
 .clock__name { grid-area: name; }
 .clock__caps-text { grid-area: caps; text-align: center; }
-.clock__clock { grid-area: time; display: flex; flex-direction: column; align-items: center; gap: .15rem; }
+.clock__time { grid-area: time; text-align: center; }
+.clock__caps { grid-area: graph; }
 /* En tablet: mismas 3 columnas, más compactas */
 @media (max-width: 991.98px) {
   .clock__body { gap: .15rem .75rem; padding: .5rem .75rem !important; }
   .clock__body .clock__stone { width: 3rem; height: 3rem; }
-  .clock__time { font-size: 1.25rem; }
+  .clock__time, .clock__name { font-size: 1.25rem; }
 }
 /* En celular: se quita la columna de la piedra (el color ya lo indica la tarjeta) */
 @media (max-width: 575.98px) {
   .clock__body { column-gap: .5rem; padding: .5rem !important; }
   .clock__body .clock__stone { display: none; }
-  .clock__body--black { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name time" "caps time"; }
-  .clock__body--white { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "time name" "time caps"; }
+  .clock__body--black { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name time" "caps graph"; }
+  .clock__body--white { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "time name" "graph caps"; }
 }
 
 .go-board .mark-liberty { fill: rgba(13,110,253,.25); stroke: #0d6efd; stroke-width: 2; }

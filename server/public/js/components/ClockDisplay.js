@@ -39,11 +39,9 @@ export default {
               <span class="text-truncate">{{ player(color) ? player(color).nickname : (color==='black' ? 'Negro' : 'Blanco') }}<span v-if="player(color) && player(color).teamName" class="text-muted fw-normal d-none d-sm-inline"> ({{ player(color).teamName }})</span></span>
             </div>
             <div class="text-muted small text-nowrap clock__caps-text">{{ captured(color) }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span><span class="d-none d-md-inline"> capturas</span></div>
-            <div class="clock__clock">
-              <div v-if="showStones" class="d-none d-lg-flex justify-content-center gap-1 clock__caps" :title="captured(color) + ' / ' + stonesToWin + ' capturas'">
-                <span v-for="i in stonesToWin" :key="i" class="clock__cap" :class="i <= captured(color) ? 'clock__stone--' + opponent(color) : 'clock__cap--empty'"></span>
-              </div>
-              <div class="clock__time">{{ formatMs(clocks[color]) }}</div>
+            <div class="clock__time">{{ formatMs(clocks[color]) }}</div>
+            <div v-if="showStones" class="d-none d-lg-flex justify-content-center gap-1 clock__caps" :title="captured(color) + ' / ' + stonesToWin + ' capturas'">
+              <span v-for="i in stonesToWin" :key="i" class="clock__cap" :class="i <= captured(color) ? 'clock__stone--' + opponent(color) : 'clock__cap--empty'"></span>
             </div>
           </div>
         </div>

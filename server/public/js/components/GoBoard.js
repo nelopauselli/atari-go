@@ -12,6 +12,9 @@ const SHADOWS = [
 ];
 let boardSeq = 0;
 
+// Ancho/alto en px del tablero dibujado para un tamaño dado.
+export function boardDim(size) { return MARGIN * 2 + CELL * (size - 1); }
+
 export default {
   name: 'GoBoard',
   props: {
@@ -30,7 +33,7 @@ export default {
     // Prefijo único para los ids de <defs>: puede haber varios tableros en la misma página.
     const uid = 'gb' + ++boardSeq;
     preloadSounds();
-    const dim = computed(() => MARGIN * 2 + CELL * (props.size - 1));
+    const dim = computed(() => boardDim(props.size));
 
     // Sonar al aparecer una nueva última jugada (propia o del rival); no al montar el tablero.
     watch(

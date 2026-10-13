@@ -1,4 +1,10 @@
 import TeamShield from './TeamShield.js';
+import { boardDim } from './GoBoard.js';
+
+// Ancho mínimo del reloj en pantallas grandes: con tableros chicos las tarjetas no entrarían.
+const MIN_WIDTH = 800;
+// Cuánto más ancho que el tablero puede ser el reloj.
+const EXTRA_WIDTH = 160;
 
 function formatMs(ms) {
   const total = Math.max(0, Math.round(ms / 1000));
@@ -17,10 +23,13 @@ export default {
     capturedByBlack: { type: Number, default: 0 },
     capturedByWhite: { type: Number, default: 0 },
     stonesToWin: { type: Number, default: null },
+    boardSize: { type: Number, default: null }, // si se indica, el reloj no supera el ancho del tablero
+    labelColor: { type: String, default: null }, // color del reloj sobre el que se centra el slot "label" (si no, al centro)
   },
   computed: {
     // Con muchas capturas para ganar, las piedras no entran: se muestran números
     showStones() { return !!this.stonesToWin && this.stonesToWin <= 10; },
+    maxWidth() { return this.boardSize ? Math.max(boardDim(this.boardSize) + EXTRA_WIDTH, MIN_WIDTH) + 'px' : null; },
   },
   methods: {
     formatMs,
@@ -29,19 +38,26 @@ export default {
     captured(color) { return color === 'black' ? this.capturedByBlack : this.capturedByWhite; },
   },
   template: `
-    <div class="row g-2 g-sm-3">
-      <div class="col-6" v-for="color in ['black', 'white']" :key="color">
-        <div class="card h-100" :class="['clock--' + color, { 'clock--active': turn===color, 'clock--low': clocks[color] < 20000 }]">
-          <div class="card-body py-2 clock__body" :class="'clock__body--' + color">
-            <div class="clock__stone" :class="'clock__stone--' + color"></div>
-            <div class="fw-semibold d-flex align-items-center justify-content-center gap-2 text-truncate clock__name">
-              <TeamShield v-if="player(color) && player(color).teamName" :team="player(color).team" :name="player(color).teamName" :size="24" />
-              <span class="text-truncate">{{ player(color) ? player(color).nickname : (color==='black' ? 'Negro' : 'Blanco') }}<span v-if="player(color) && player(color).teamName" class="text-muted fw-normal d-none d-sm-inline"> ({{ player(color).teamName }})</span></span>
-            </div>
-            <div class="text-muted small text-nowrap clock__caps-text">{{ captured(color) }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span><span class="d-none d-md-inline"> capturas</span></div>
-            <div class="clock__time">{{ formatMs(clocks[color]) }}</div>
-            <div v-if="showStones" class="d-none d-lg-flex justify-content-center gap-1 clock__caps" :title="captured(color) + ' / ' + stonesToWin + ' capturas'">
-              <span v-for="i in stonesToWin" :key="i" class="clock__cap" :class="i <= captured(color) ? 'clock__stone--' + opponent(color) : 'clock__cap--empty'"></span>
+    <div class="mx-auto" :style="{ maxWidth }">
+      <div v-if="$slots.label" class="row g-2 g-sm-3 mb-2">
+        <div class="text-center" :class="labelColor==='white' ? 'col-6 offset-6' : labelColor ? 'col-6' : 'col-12'">
+          <slot name="label" />
+        </div>
+      </div>
+      <div class="row g-2 g-sm-3">
+        <div class="col-6" v-for="color in ['black', 'white']" :key="color">
+          <div class="card h-100" :class="['clock--' + color, { 'clock--active': turn===color, 'clock--low': clocks[color] < 20000 }]">
+            <div class="card-body py-2 clock__body" :class="'clock__body--' + color">
+              <div class="clock__stone" :class="'clock__stone--' + color"></div>
+              <div class="fw-semibold d-flex align-items-center justify-content-center gap-2 text-truncate clock__name">
+                <TeamShield v-if="player(color) && player(color).teamName" :team="player(color).team" :name="player(color).teamName" :size="24" />
+                <span class="text-truncate">{{ player(color) ? player(color).nickname : (color==='black' ? 'Negro' : 'Blanco') }}<span v-if="player(color) && player(color).teamName" class="text-muted fw-normal d-none d-sm-inline"> ({{ player(color).teamName }})</span></span>
+              </div>
+              <div class="text-muted small text-nowrap clock__caps-text">{{ captured(color) }}<span v-if="stonesToWin"> / {{ stonesToWin }}</span><span class="d-none d-md-inline"> capturas</span></div>
+              <div class="clock__time">{{ formatMs(clocks[color]) }}</div>
+              <div v-if="showStones" class="d-none d-lg-flex justify-content-center gap-1 clock__caps" :title="captured(color) + ' / ' + stonesToWin + ' capturas'">
+                <span v-for="i in stonesToWin" :key="i" class="clock__cap" :class="i <= captured(color) ? 'clock__stone--' + opponent(color) : 'clock__cap--empty'"></span>
+              </div>
             </div>
           </div>
         </div>

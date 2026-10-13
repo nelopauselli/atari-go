@@ -189,7 +189,7 @@ export default {
 
       <div v-if="match && frame" class="card shadow-sm">
         <div class="card-body">
-          <ClockDisplay :clocks="clocks" :turn="atEnd ? '' : frame.turn" :players="match.players" :captured-by-black="frame.capturedByBlack" :captured-by-white="frame.capturedByWhite" :stones-to-win="match.stonesToWin" />
+          <ClockDisplay :clocks="clocks" :turn="atEnd ? '' : frame.turn" :players="match.players" :captured-by-black="frame.capturedByBlack" :captured-by-white="frame.capturedByWhite" :stones-to-win="match.stonesToWin" :board-size="match.boardSize" />
 
           <GoBoard class="mt-3" :size="match.boardSize" :board="frame.board" :last-move="frame.lastMove" muted />
 

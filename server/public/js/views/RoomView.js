@@ -311,16 +311,17 @@ export default {
             Capturá {{ room.stonesToWin }} {{ room.stonesToWin === 1 ? 'piedra' : 'piedras' }} para ganar ·
             {{ CLOCK_LABELS[room.clockType] || room.clockType }}
           </h3>
-          <!-- El aviso de color queda sobre el reloj correspondiente: negras a la izquierda, blancas a la derecha. -->
-          <div class="d-flex mb-2" :class="active.role==='player' && active.color==='black' ? 'justify-content-start' : active.role==='player' && active.color==='white' ? 'justify-content-end' : 'justify-content-center'">
-            <span class="badge" :class="active.role==='spectator' ? 'text-bg-light' : 'text-bg-primary'">
-              {{ active.role==='spectator' ? 'Observando' : (!active.color ? 'Esperando rival' : 'Jugás con ' + (active.color==='black' ? 'negras ⚫' : 'blancas ⚪')) }}
-            </span>
-          </div>
-
           <div v-if="active.sitError" class="alert alert-secondary py-2">{{ active.sitError }}</div>
 
-          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" :stones-to-win="active.state.stonesToWin || room.stonesToWin" />
+          <!-- El aviso de color queda centrado sobre el reloj correspondiente: negras a la izquierda, blancas a la derecha. -->
+          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" :stones-to-win="active.state.stonesToWin || room.stonesToWin" :board-size="active.state.boardSize || room.boardSize"
+            :label-color="active.role==='player' ? active.color : null">
+            <template #label>
+              <span class="badge" :class="active.role==='spectator' ? 'text-bg-light' : 'text-bg-primary'">
+                {{ active.role==='spectator' ? 'Observando' : (!active.color ? 'Esperando rival' : 'Jugás con ' + (active.color==='black' ? 'negras ⚫' : 'blancas ⚪')) }}
+              </span>
+            </template>
+          </ClockDisplay>
 
           <GoBoard
             class="mt-3"

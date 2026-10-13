@@ -1,1 +1,0 @@
-Si un jugador se conecta, se sienta en un tablero y luego cierra el navegador, el mismo queda ocupado esperando rival.

@@ -25,6 +25,64 @@ function formatValue(field, row) {
   return value;
 }
 
+function download(content, type, filename) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const COLOR_LABELS = { black: 'Negras', white: 'Blancas' };
+const STATUS_LABELS = { finished: 'Terminada', aborted: 'Abortada' };
+const REASON_LABELS = {
+  capture: 'Captura', resign: 'Abandono', timeout: 'Tiempo', abandoned: 'Desconexión', 'no-moves': 'Sin jugadas',
+};
+
+// Fecha en hora local, en un formato que las planillas reconocen como fecha.
+function csvDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
+    + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function csvCell(value) {
+  const text = value === null || value === undefined ? '' : String(value);
+  return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+// CSV con ';' (lo que espera Excel en configuración regional en español) y BOM para que respete los acentos.
+function matchesToCsv(room, players) {
+  const institutionOf = new Map((players || []).map((p) => [p._id, p.institution || '']));
+  const header = [
+    'Sala', 'Tablero', 'Tamaño', 'Piedras para ganar', 'Reloj', 'Regla de Ko', 'Estado',
+    'Negras', 'Institución negras', 'Equipo negras', 'Blancas', 'Institución blancas', 'Equipo blancas',
+    'Ganador', 'Jugador ganador', 'Institución ganador', 'Equipo ganador', 'Motivo',
+    'Capturadas por negras', 'Capturadas por blancas', 'Jugadas', 'Inicio', 'Fin',
+  ];
+  const lines = [header];
+  for (const m of room.matches) {
+    const byColor = Object.fromEntries((m.players || []).map((p) => [p.color, p]));
+    const black = byColor.black || {};
+    const white = byColor.white || {};
+    const winnerColor = m.result && m.result.winnerColor;
+    const winner = winnerColor ? byColor[winnerColor] || {} : {};
+    lines.push([
+      room.name, m.boardNumber, m.boardSize, m.stonesToWin, m.clockType, m.koRuleEnabled ? 'Sí' : 'No',
+      STATUS_LABELS[m.status] || m.status,
+      black.nickname, institutionOf.get(black.player), black.teamName,
+      white.nickname, institutionOf.get(white.player), white.teamName,
+      COLOR_LABELS[winnerColor] || '', winner.nickname, institutionOf.get(winner.player), winner.teamName,
+      REASON_LABELS[m.result && m.result.reason] || (m.result && m.result.reason) || '',
+      m.capturedByBlack, m.capturedByWhite, (m.moves || []).length, csvDate(m.startedAt), csvDate(m.endedAt),
+    ]);
+  }
+  return `﻿${lines.map((cols) => cols.map(csvCell).join(';')).join('\r\n')}\r\n`;
+}
+
 const IMAGE_MAX_SIZE = 128;
 
 // Lee un archivo de imagen y lo reduce (manteniendo proporción) para guardarlo como data URL liviana.
@@ -167,13 +225,22 @@ export default {
       try {
         const data = row ? await api.exportOne(props.entityKey, row._id) : await api.exportAll(props.entityKey);
         const slug = row ? `-${String(row.name || row._id).replace(/[\\/:*?"<>|\s]+/g, '_')}` : '';
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${props.entityKey}${slug}-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        download(JSON.stringify(data, null, 2), 'application/json',
+          `${props.entityKey}${slug}-${new Date().toISOString().slice(0, 10)}.json`);
+      } catch (err) {
+        error.value = err.message;
+      }
+    }
+
+    // Historial de partidas (terminadas/abortadas) de una sala, en CSV separado por ';'.
+    async function exportMatchesCsv(row) {
+      error.value = '';
+      try {
+        const data = await api.exportOne(props.entityKey, row._id);
+        const room = data.items[0];
+        const slug = String(row.name || row._id).replace(/[\\/:*?"<>|\s]+/g, '_');
+        download(matchesToCsv(room, data.players), 'text/csv;charset=utf-8',
+          `partidas-${slug}-${new Date().toISOString().slice(0, 10)}.csv`);
       } catch (err) {
         error.value = err.message;
       }
@@ -213,7 +280,7 @@ export default {
 
     return {
       meta, listFields, rows, refOptions, showForm, editingId, form, error, notice, loading,
-      exportJson, importJson, formatValue, isApplicable, openCreate, openEdit, save, remove, onImageSelected, addItem, removeItem,
+      exportJson, exportMatchesCsv, importJson, formatValue, isApplicable, openCreate, openEdit, save, remove, onImageSelected, addItem, removeItem,
     };
   },
   template: `
@@ -255,6 +322,7 @@ export default {
               </td>
               <td class="actions">
                 <button v-if="meta.exportScope==='item'" class="btn btn--outline btn--sm" @click="exportJson(row)">Exportar</button>
+                <button v-if="entityKey==='rooms'" class="btn btn--outline btn--sm" @click="exportMatchesCsv(row)">Partidas CSV</button>
                 <button v-if="!meta.readonly" class="btn btn--outline btn--sm" @click="openEdit(row)">Editar</button>
                 <button class="btn btn--danger btn--sm" @click="remove(row)">Eliminar</button>
               </td>

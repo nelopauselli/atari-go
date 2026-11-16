@@ -113,18 +113,45 @@ export default {
       boards.value = data.boards;
     }
 
+    // El historial/ranking solo se pide cuando está a la vista. Cada partida terminada lo marca
+    // como desactualizado; si la pestaña está abierta se recarga con una demora al azar, para
+    // que no lo pidan todos los clientes de la sala en el mismo instante.
+    let historyStale = true;
+    let historyTimer = null;
+    const historyVisible = computed(() => !isPlaying.value && (tab.value === 'history' || tab.value === 'ranking'));
+
     async function loadHistory() {
-      const data = await api.getRoomHistory(props.roomId);
-      roomHistory.value = data.matches;
-      ranking.value = data.ranking;
+      historyStale = false;
+      try {
+        const data = await api.getRoomHistory(props.roomId);
+        roomHistory.value = data.matches;
+        ranking.value = data.ranking;
+      } catch (err) {
+        historyStale = true;
+        console.warn('No se pudo cargar el historial', err);
+      }
     }
+
+    function scheduleHistoryReload() {
+      if (historyTimer) return;
+      historyTimer = setTimeout(() => {
+        historyTimer = null;
+        if (historyVisible.value && historyStale) loadHistory();
+      }, 1000 + Math.random() * 4000);
+    }
+
+    watch(historyVisible, (visible) => {
+      if (visible && historyStale) loadHistory();
+    });
 
     onMounted(async () => {
       await loadRoomAndBoards();
       if (isClosed.value) tab.value = isTournament.value ? 'ranking' : 'history';
       else if (!guest) showRoomSettings.value = true;
-      await loadHistory();
-      if (isClosed.value) return;
+      if (isClosed.value) {
+        await loadHistory();
+        return;
+      }
 
       if (!(await joinLive())) joinError.value = 'No se pudo unir a la sala en vivo';
 
@@ -153,7 +180,8 @@ export default {
       }));
       unsubs.push(socketService.on('board:finished', (payload) => {
         if (payload.boardNumber === active.boardNumber) active.state = payload;
-        loadHistory();
+        historyStale = true;
+        if (historyVisible.value) scheduleHistoryReload();
       }));
       unsubs.push(socketService.onReconnect(rejoinAfterReconnect));
     });
@@ -191,6 +219,7 @@ export default {
       closeActiveBoard();
       setTeams([]);
       unsubs.forEach((u) => u());
+      if (historyTimer) clearTimeout(historyTimer);
       if (!isClosed.value) socketService.leaveRoom(props.roomId);
     });
 

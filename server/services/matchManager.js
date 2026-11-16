@@ -13,6 +13,7 @@ const goEngine = require('./goEngine');
 const Match = require('../models/Match');
 const Room = require('../models/Room');
 const Player = require('../models/Player');
+const { invalidateRoomHistory } = require('./roomHistory');
 
 const CLOCK_PRESETS = {
   'fischer-1-3': { baseMs: 1 * 60 * 1000, incrementMs: 3 * 1000 },
@@ -626,6 +627,8 @@ async function finishMatch(roomId, board, winnerColor, reason) {
     endedAt: new Date(),
   };
   await queuePersist(g, () => Match.findByIdAndUpdate(g.mongoMatchId, final));
+  // La partida ya quedó guardada: quienes reciban board:finished tienen que ver el historial nuevo.
+  invalidateRoomHistory(roomId);
 
   for (const p of g.players) playerLocation.delete(p.playerId);
 

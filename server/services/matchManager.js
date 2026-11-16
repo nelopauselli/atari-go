@@ -14,6 +14,7 @@ const Match = require('../models/Match');
 const Room = require('../models/Room');
 const Player = require('../models/Player');
 const { invalidateRoomHistory } = require('./roomHistory');
+const log = require('./logger');
 
 const CLOCK_PRESETS = {
   'fischer-1-3': { baseMs: 1 * 60 * 1000, incrementMs: 3 * 1000 },
@@ -422,8 +423,12 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
       lastMoveAt: null,
       timer: null,
       mongoMatchId: null,
+      waitingSince: Date.now(),
     };
     playerLocation.set(player.id, { roomId: String(roomId), boardNumber: board.number });
+    log.info('board.wait', {
+      roomId, room: room.config.name, board: board.number, playerId: player.id, nickname: player.nickname, team: seat.teamName || undefined,
+    });
     emit('room:update', roomId, getRoomBoardsUpdate(roomId));
     return { ok: true, role: 'player', color: null };
   }
@@ -437,6 +442,9 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     const seat = resolveSeatTeam(room, player.id);
     if (!seat) return { ok: false, error: TEAM_REQUIRED_ERROR };
     if (room.config.type === 'torneo' && String(seated.team) === String(seat.team)) {
+      log.info('board.same_team', {
+        roomId, board: board.number, playerId: player.id, nickname: player.nickname, rival: seated.nickname, team: seat.teamName,
+      });
       board.spectators.add(socketId);
       return { ok: true, role: 'spectator', error: 'No pueden enfrentarse jugadores del mismo equipo' };
     }
@@ -448,6 +456,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     board.game.players = [black, white];
     board.status = 'playing';
     board.game.lastMoveAt = Date.now();
+    board.game.startedAt = board.game.lastMoveAt;
     playerLocation.set(player.id, { roomId: String(roomId), boardNumber: board.number });
     startClockTimer(roomId, board);
     board.game.persistQueue = persistMatchStart(roomId, board)
@@ -461,6 +470,13 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     const asPlayer = board.game.players.find((p) => p.playerId === player.id);
     if (asPlayer) {
       asPlayer.socketId = socketId;
+      if (asPlayer.disconnectedAt) {
+        log.info('match.player_reconnected', {
+          matchId: board.matchId, roomId, board: board.number, playerId: player.id, nickname: player.nickname,
+          offlineMs: Date.now() - asPlayer.disconnectedAt,
+        });
+        asPlayer.disconnectedAt = null;
+      }
       playerLocation.set(player.id, { roomId: String(roomId), boardNumber: board.number });
       return { ok: true, role: 'player', color: asPlayer.color };
     }
@@ -476,13 +492,17 @@ function handleLeaveBoard({ roomId, boardNumber, socketId, playerId }) {
   const board = room.boards.get(Number(boardNumber));
   if (!board) return;
   board.spectators.delete(socketId);
-  if (playerId) releaseWaitingBoard(roomId, board, playerId);
+  if (playerId) releaseWaitingBoard(roomId, board, playerId, 'leave');
 }
 
-function releaseWaitingBoard(roomId, board, playerId) {
+function releaseWaitingBoard(roomId, board, playerId, reason) {
   if (board.status !== 'waiting' || !board.game) return;
   const seated = board.game.players[0];
   if (seated && seated.playerId === playerId) {
+    log.info('board.released', {
+      roomId, board: board.number, playerId, nickname: seated.nickname, reason,
+      waitedMs: Date.now() - board.game.waitingSince,
+    });
     playerLocation.delete(playerId);
     freeBoard(roomId, board.number);
   }
@@ -490,23 +510,35 @@ function releaseWaitingBoard(roomId, board, playerId) {
 
 // ---------- Jugadas ----------
 
-function handleMove({ roomId, boardNumber, playerId, x, y }) {
-  const room = getRoom(roomId);
-  if (!room) return { ok: false, error: 'Sala inexistente' };
-  const board = room.boards.get(Number(boardNumber));
-  if (!board || board.status !== 'playing') return { ok: false, error: 'La partida no está en curso' };
-  const g = board.game;
-  const mover = g.players.find((p) => p.playerId === playerId);
-  if (!mover) return { ok: false, error: 'No participás de esta partida' };
-  if (mover.color !== g.turn) return { ok: false, error: 'No es tu turno' };
+/**
+ * Rechazo de una jugada o abandono. Los que indican que cliente y servidor no coinciden
+ * (partida inexistente, no es tu turno...) van como warn; las jugadas ilegales según las
+ * reglas (ocupado, suicidio, ko) son errores normales del jugador y van como debug.
+ */
+function reject(event, fields, error, level = 'warn') {
+  log[level](event, { ...fields, error });
+  return { ok: false, error };
+}
 
-  if (!Number.isInteger(x) || !Number.isInteger(y)) return { ok: false, error: 'Jugada inválida' };
+function handleMove({ roomId, boardNumber, playerId, x, y }) {
+  const ctx = { roomId, board: boardNumber, playerId, x, y };
+  const room = getRoom(roomId);
+  if (!room) return reject('move.rejected', ctx, 'Sala inexistente');
+  const board = room.boards.get(Number(boardNumber));
+  if (!board || board.status !== 'playing') return reject('move.rejected', ctx, 'La partida no está en curso');
+  const g = board.game;
+  ctx.matchId = board.matchId;
+  const mover = g.players.find((p) => p.playerId === playerId);
+  if (!mover) return reject('move.rejected', ctx, 'No participás de esta partida');
+  if (mover.color !== g.turn) return reject('move.rejected', ctx, 'No es tu turno');
+
+  if (!Number.isInteger(x) || !Number.isInteger(y)) return reject('move.rejected', ctx, 'Jugada inválida');
 
   const result = goEngine.playMove(g.board, g.size, x, y, mover.color);
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) return reject('move.rejected', ctx, result.error, 'debug');
   const newKey = goEngine.boardKey(result.board);
   if (g.koRuleEnabled && goEngine.violatesSimpleKo(newKey, g.previousBoardKey)) {
-    return { ok: false, error: 'Jugada inválida: regla de Ko' };
+    return reject('move.rejected', ctx, 'Jugada inválida: regla de Ko', 'debug');
   }
   g.previousBoardKey = goEngine.boardKey(g.board);
   g.board = result.board;
@@ -541,12 +573,13 @@ function handleMove({ roomId, boardNumber, playerId, x, y }) {
 }
 
 function handleResign({ roomId, boardNumber, playerId }) {
+  const ctx = { roomId, board: boardNumber, playerId };
   const room = getRoom(roomId);
-  if (!room) return { ok: false, error: 'Sala inexistente' };
+  if (!room) return reject('resign.rejected', ctx, 'Sala inexistente');
   const board = room.boards.get(Number(boardNumber));
-  if (!board || board.status !== 'playing') return { ok: false, error: 'La partida no está en curso' };
+  if (!board || board.status !== 'playing') return reject('resign.rejected', ctx, 'La partida no está en curso');
   const mover = board.game.players.find((p) => p.playerId === playerId);
-  if (!mover) return { ok: false, error: 'No participás de esta partida' };
+  if (!mover) return reject('resign.rejected', { ...ctx, matchId: board.matchId }, 'No participás de esta partida');
   const winnerColor = mover.color === 'black' ? 'white' : 'black';
   finishMatch(roomId, board, winnerColor, 'resign').catch((err) => console.error('[matchManager]', err));
   return { ok: true };
@@ -622,6 +655,14 @@ async function persistMatchStart(roomId, board) {
   });
   g.mongoMatchId = doc._id;
   board.matchId = doc._id;
+  const [black, white] = g.players;
+  log.info('match.start', {
+    matchId: doc._id, roomId, room: room.config.name, board: board.number,
+    black: black.nickname, blackTeam: black.teamName || undefined,
+    white: white.nickname, whiteTeam: white.teamName || undefined,
+    blackId: black.playerId, whiteId: white.playerId,
+    waitedMs: g.startedAt - g.waitingSince,
+  });
 }
 
 async function finishMatch(roomId, board, winnerColor, reason) {
@@ -643,6 +684,15 @@ async function finishMatch(roomId, board, winnerColor, reason) {
     clocks: { ...g.clocks },
     endedAt: new Date(),
   };
+  const winner = g.players.find((p) => p.color === winnerColor);
+  const loser = g.players.find((p) => p.color !== winnerColor);
+  log.info('match.end', {
+    matchId: g.mongoMatchId, roomId, board: board.number, reason,
+    winner: winner && winner.nickname, winnerColor, winnerTeam: (winner && winner.teamName) || undefined,
+    loser: loser && loser.nickname,
+    moves: g.moves.length, durationMs: g.startedAt ? Date.now() - g.startedAt : undefined,
+    capturedByBlack: g.capturedByBlack, capturedByWhite: g.capturedByWhite,
+  });
   await queuePersist(g, () => Match.findByIdAndUpdate(g.mongoMatchId, final));
   // La partida ya quedó guardada: quienes reciban board:finished tienen que ver el historial nuevo.
   invalidateRoomHistory(roomId);
@@ -723,6 +773,7 @@ function rebuildGame(matchDoc) {
     // El tiempo que el servidor estuvo caído no se le descuenta a nadie: el reloj de
     // quien tiene el turno vuelve a correr desde ahora con lo que tenía tras la última jugada.
     lastMoveAt: Date.now(),
+    startedAt: matchDoc.startedAt ? new Date(matchDoc.startedAt).getTime() : null,
     timer: null,
     mongoMatchId: matchDoc._id,
     persistQueue: Promise.resolve(),
@@ -765,6 +816,7 @@ async function restoreActiveMatches() {
     board.game = game;
     for (const p of game.players) playerLocation.set(p.playerId, { roomId, boardNumber: board.number });
     restored++;
+    log.info('match.restored', { matchId: m._id, roomId, board: board.number, moves: game.moves.length });
 
     // Si se cayó justo después de la jugada decisiva y antes de cerrar la partida, se cierra ahora.
     const lastColor = game.turn === 'black' ? 'white' : 'black';
@@ -793,9 +845,33 @@ function handleDisconnect({ socketId, playerId }) {
   if (!board || !board.game) return;
 
   // Único jugador esperando rival abandona -> se anula y el tablero se libera
-  releaseWaitingBoard(loc.roomId, board, playerId);
+  releaseWaitingBoard(loc.roomId, board, playerId, 'disconnect');
   // Si está "playing", no se aborta: se permite reconexión (por id de jugador)
   // y el reloj del jugador desconectado sigue corriendo con normalidad.
+  if (board.status === 'playing') {
+    const p = board.game.players.find((pl) => pl.playerId === playerId);
+    // Solo cuenta si se cayó el socket con el que juega (no otra pestaña del mismo jugador).
+    if (p && p.socketId === socketId && !p.disconnectedAt) {
+      p.disconnectedAt = Date.now();
+      log.info('match.player_disconnected', {
+        matchId: board.matchId, roomId: loc.roomId, board: board.number, playerId, nickname: p.nickname,
+        onTurn: board.game.turn === p.color, clockMs: liveClocks(board.game)[p.color],
+      });
+    }
+  }
+}
+
+/** Foto del estado en memoria para el resumen periódico. */
+function getStats() {
+  let playing = 0;
+  let waiting = 0;
+  for (const room of rooms.values()) {
+    for (const b of room.boards.values()) {
+      if (b.status === 'playing') playing++;
+      else if (b.status === 'waiting') waiting++;
+    }
+  }
+  return { rooms: rooms.size, playing, waiting };
 }
 
 module.exports = {
@@ -816,6 +892,7 @@ module.exports = {
   handleMove,
   handleResign,
   handleDisconnect,
+  getStats,
   CLOCK_PRESETS,
   getClockPreset,
 };

@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const entities = require('../config/entities');
 const matchManager = require('../../services/matchManager');
+const log = require('../../services/logger');
 
 const router = express.Router();
 
@@ -155,6 +156,7 @@ router.post('/:entity/import', asyncHandler(async (req, res) => {
       return res.status(400).json({ error: err.message });
     }
     if (result.created || result.updated) afterWrite(req);
+    log.info('admin.import', { entity: req.params.entity, created: result.created, updated: result.updated });
     return res.json(result);
   }
   const items = Array.isArray(req.body) ? req.body : req.body && req.body.items;
@@ -188,6 +190,9 @@ router.post('/:entity/import', asyncHandler(async (req, res) => {
     }
   }
   if (result.created || result.updated) afterWrite(req);
+  log.info('admin.import', {
+    entity: req.params.entity, created: result.created, updated: result.updated, errors: result.errors.length || undefined,
+  });
   res.json(result);
 }));
 
@@ -217,6 +222,7 @@ router.post('/:entity', asyncHandler(async (req, res) => {
   try {
     const doc = await entity.model.create(pickBody(req.body, entity));
     afterWrite(req);
+    log.info('admin.create', { entity: req.params.entity, id: doc._id, name: doc.name || doc.nickname });
     res.status(201).json(hidePasswords(doc, entity));
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -234,6 +240,7 @@ router.put('/:entity/:id', asyncHandler(async (req, res) => {
     });
     if (!doc) return res.status(404).json({ error: 'No encontrado' });
     afterWrite(req);
+    log.info('admin.update', { entity: req.params.entity, id: doc._id, name: doc.name || doc.nickname });
     res.json(hidePasswords(doc, entity));
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -246,6 +253,7 @@ router.delete('/:entity/:id', asyncHandler(async (req, res) => {
   const doc = await entity.model.findByIdAndDelete(req.params.id);
   if (!doc) return res.status(404).json({ error: 'No encontrado' });
   afterWrite(req);
+  log.info('admin.delete', { entity: req.params.entity, id: doc._id, name: doc.name || doc.nickname });
   res.status(204).end();
 }));
 

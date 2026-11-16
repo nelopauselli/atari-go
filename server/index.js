@@ -18,7 +18,16 @@ const roomsRouter = require('./routes/rooms');
 const historyRouter = require('./routes/history');
 const institutionsRouter = require('./routes/institutions');
 
+const log = require('./services/logger');
+const { version } = require('../package.json');
+
 const ROOM_SYNC_INTERVAL_MS = Number(process.env.ROOM_SYNC_INTERVAL_MS) || 30 * 1000;
+
+// Deja registro de cualquier error no capturado (también las promesas rechazadas sin catch)
+// antes de que el proceso termine. Es un monitor: no cambia el comportamiento por defecto.
+process.on('uncaughtExceptionMonitor', (err, origin) => {
+  log.error('server.crash', { origin, err });
+});
 
 async function bootstrap() {
   await connectDB();
@@ -68,6 +77,10 @@ async function bootstrap() {
   const PORT = process.env.PORT || 3000;
   server.listen(PORT, () => {
     console.log(`[server] Atari-Go escuchando en http://localhost:${PORT}`);
+    log.info('server.start', {
+      version, node: process.version, port: PORT, admin: isAdminConfigured(),
+      rooms: matchManager.getStats().rooms, logLevel: process.env.LOG_LEVEL || 'info',
+    });
   });
 }
 

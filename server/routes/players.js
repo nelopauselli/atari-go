@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Player = require('../models/Player');
 const Institution = require('../models/Institution');
 const presence = require('../services/presence');
+const log = require('../services/logger');
 
 const router = express.Router();
 
@@ -27,6 +28,11 @@ router.post('/login', async (req, res) => {
     const username = institution && institution.findUser(nickname);
     // Mismo mensaje para usuario inexistente y contraseña incorrecta.
     if (!username || !institution.checkPassword(password)) {
+      // El motivo real queda solo en el log; al cliente se le responde lo mismo en ambos casos.
+      let reason = 'contraseña incorrecta';
+      if (!institution) reason = 'institución inexistente';
+      else if (!username) reason = 'usuario no habilitado';
+      log.warn('player.login_failed', { institutionId, institution: institution && institution.name, nickname: nickname.trim(), reason });
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
@@ -34,13 +40,15 @@ router.post('/login', async (req, res) => {
     // figura en la lista, y se le actualiza el nickname a la forma de la lista.
     const nicknameRegex = new RegExp(`^${escapeRegExp(username)}$`, 'i');
     let player = await Player.findOne({ nickname: nicknameRegex, institution: institution._id }).sort({ lastSeenAt: -1 });
-    if (!player) {
+    const isNew = !player;
+    if (isNew) {
       player = await Player.create({ nickname: username, institution: institution._id });
     } else {
       player.nickname = username;
       player.lastSeenAt = new Date();
       await player.save();
     }
+    log.info('player.login', { playerId: player._id, nickname: player.nickname, institution: institution.name, new: isNew });
 
     res.json({
       id: player._id,

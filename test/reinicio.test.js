@@ -91,8 +91,8 @@ describe('restauración de partidas al arrancar', () => {
     await matchManager.restoreActiveMatches();
 
     t.mock.timers.tick(5000);
-    const clockEvents = env.events.filter((e) => e.event === 'board:clock');
-    assert.deepEqual(clockEvents.at(-1).payload.clocks, { black: 170000, white: 170000 });
+    const board = matchManager.getRoomBoardsSummary(roomId).boards.find((b) => b.number === 2);
+    assert.deepEqual(board.clocks, { black: 170000, white: 170000 });
   });
 
   it('los jugadores vuelven a sentarse como jugadores y pueden seguir jugando', async (t) => {

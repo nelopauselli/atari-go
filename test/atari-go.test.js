@@ -507,15 +507,31 @@ describe('partida de Atari-Go', () => {
       });
     }
 
-    it('emite el tiempo restante de quien tiene el turno cada segundo', (t) => {
+    it('no difunde el reloj cada segundo; el estado del tablero trae el tiempo restante al instante', (t) => {
       const env = setup(t);
       const roomId = env.registerRoom(makeRoomDoc());
       startMatch(roomId);
+      const eventsBefore = env.events.length;
 
       t.mock.timers.tick(3_000);
-      const clockEvents = env.events.filter((e) => e.event === 'board:clock');
-      assert.equal(clockEvents.length, 3);
-      assert.deepEqual(clockEvents[2].payload, { boardNumber: 1, turn: 'black', clocks: { black: 177_000, white: 180_000 } });
+      assert.equal(env.events.length, eventsBefore);
+      const board = matchManager.getRoomBoardsSummary(roomId).boards.find((b) => b.number === 1);
+      assert.equal(board.turn, 'black');
+      assert.deepEqual(board.clocks, { black: 177_000, white: 180_000 });
+      // El reloj guardado no se toca hasta la próxima jugada
+      assert.deepEqual(getBoard(roomId).game.clocks, { black: 180_000, white: 180_000 });
+    });
+
+    it('cada jugada difunde los relojes ya actualizados', (t) => {
+      const env = setup(t);
+      const roomId = env.registerRoom(makeRoomDoc({ clockType: 'fischer-3-5' }));
+      const players = startMatch(roomId);
+
+      t.mock.timers.tick(10_000);
+      playMoves(roomId, players, [[0, 0]]);
+      const state = env.events.filter((e) => e.event === 'board:state').at(-1);
+      assert.equal(state.payload.turn, 'white');
+      assert.deepEqual(state.payload.clocks, { black: 175_000, white: 180_000 });
     });
 
     it('pierde por tiempo quien agota su reloj', async (t) => {
@@ -544,13 +560,13 @@ describe('partida de Atari-Go', () => {
       matchManager.handleSit({ roomId, boardNumber: 1, player: makePlayer('A'), socketId: 's1' });
       t.mock.timers.tick(120_000);
       assert.equal(getBoard(roomId).status, 'waiting');
-      assert.equal(env.events.filter((e) => e.event === 'board:clock').length, 0);
+      assert.deepEqual(matchManager.getRoomBoardsSummary(roomId).boards[0].clocks, { black: 180_000, white: 180_000 });
 
       matchManager.handleSit({ roomId, boardNumber: 1, player: makePlayer('B'), socketId: 's2' });
       assert.equal(getBoard(roomId).game.lastMoveAt, START_TIME + 120_000);
       t.mock.timers.tick(1_000);
-      const [clock] = env.events.filter((e) => e.event === 'board:clock');
-      assert.deepEqual(clock.payload.clocks, { black: 179_000, white: 180_000 });
+      const board = matchManager.getRoomBoardsSummary(roomId).boards.find((b) => b.number === 1);
+      assert.deepEqual(board.clocks, { black: 179_000, white: 180_000 });
     });
   });
 });

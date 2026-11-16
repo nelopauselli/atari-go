@@ -93,12 +93,30 @@ export default {
       },
     );
 
+    // Reloj: el servidor no lo manda cada segundo. Cada estado del tablero trae el tiempo restante
+    // a ese instante y acá se le descuenta a quien tiene el turno lo que pasó desde que llegó.
+    const clockNow = ref(Date.now());
+    let clockSyncAt = Date.now();
+    watch(() => active.state, () => {
+      clockSyncAt = Date.now();
+      clockNow.value = clockSyncAt;
+    }, { flush: 'sync' });
+    const clockTimer = setInterval(() => {
+      if (active.state && active.state.status === 'playing') clockNow.value = Date.now();
+    }, 250);
+    const liveClocks = computed(() => {
+      const st = active.state;
+      if (!st || !st.clocks) return null;
+      if (st.status !== 'playing') return st.clocks;
+      return { ...st.clocks, [st.turn]: Math.max(0, st.clocks[st.turn] - (clockNow.value - clockSyncAt)) };
+    });
+
     // Tiempo por agotarse: un tic por segundo cuando al jugador le quedan menos de 15 s en su turno.
     const LOW_TIME_MS = 15000;
     const myLowTimeSeconds = computed(() => {
       const st = active.state;
-      if (active.role !== 'player' || !st || st.status !== 'playing' || st.turn !== active.color || !st.clocks) return null;
-      const ms = st.clocks[active.color];
+      if (active.role !== 'player' || !st || st.status !== 'playing' || st.turn !== active.color || !liveClocks.value) return null;
+      const ms = liveClocks.value[active.color];
       return ms > 0 && ms < LOW_TIME_MS ? Math.ceil(ms / 1000) : null;
     });
     watch(myLowTimeSeconds, (secs) => {
@@ -173,11 +191,6 @@ export default {
       unsubs.push(socketService.on('board:state', (payload) => {
         if (payload.boardNumber === active.boardNumber) active.state = payload;
       }));
-      unsubs.push(socketService.on('board:clock', (payload) => {
-        if (payload.boardNumber === active.boardNumber && active.state) {
-          active.state = { ...active.state, turn: payload.turn, clocks: payload.clocks };
-        }
-      }));
       unsubs.push(socketService.on('board:finished', (payload) => {
         if (payload.boardNumber === active.boardNumber) active.state = payload;
         historyStale = true;
@@ -220,6 +233,7 @@ export default {
       setTeams([]);
       unsubs.forEach((u) => u());
       if (historyTimer) clearTimeout(historyTimer);
+      clearInterval(clockTimer);
       if (!isClosed.value) socketService.leaveRoom(props.roomId);
     });
 
@@ -286,7 +300,7 @@ export default {
 
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, showRoomSettings, STATUS_LABELS, STATUS_BADGE_CLASS, CLOCK_LABELS,
-      isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying, myKoTurn, koWarning,
+      isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying, myKoTurn, koWarning, liveClocks,
       freeBoard, openBoard, sitAnyBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       openRankingDetail: () => navigate(`/room/${props.roomId}/ranking`),
@@ -343,7 +357,7 @@ export default {
           <div v-if="active.sitError" class="alert alert-secondary py-2">{{ active.sitError }}</div>
 
           <!-- El aviso de color queda centrado sobre el reloj correspondiente: negras a la izquierda, blancas a la derecha. -->
-          <ClockDisplay v-if="active.state.clocks" :clocks="active.state.clocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" :stones-to-win="active.state.stonesToWin || room.stonesToWin" :board-size="active.state.boardSize || room.boardSize"
+          <ClockDisplay v-if="liveClocks" :clocks="liveClocks" :turn="active.state.turn" :players="active.state.players" :captured-by-black="active.state.capturedByBlack" :captured-by-white="active.state.capturedByWhite" :stones-to-win="active.state.stonesToWin || room.stonesToWin" :board-size="active.state.boardSize || room.boardSize"
             :label-color="active.role==='player' ? active.color : null">
             <template #label>
               <span class="badge" :class="active.role==='spectator' ? 'text-bg-light' : 'text-bg-primary'">

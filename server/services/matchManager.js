@@ -218,7 +218,7 @@ function serializeBoard(board) {
       ? goEngine.findKoPoint(g.board, g.size, g.turn, g.previousBoardKey)
       : null,
     turn: g.turn,
-    clocks: g.clocks,
+    clocks: board.status === 'playing' ? liveClocks(g) : g.clocks,
     capturedByBlack: g.capturedByBlack,
     capturedByWhite: g.capturedByWhite,
     moveCount: g.moves.length,
@@ -554,12 +554,22 @@ function handleResign({ roomId, boardNumber, playerId }) {
 
 // ---------- Reloj ----------
 
+// El reloj no se difunde cada segundo: cada estado del tablero que se manda (jugada, entrada,
+// room:update) lleva el tiempo restante a ese instante y el cliente lo descuenta por su cuenta.
+
+/** Relojes al instante actual: a quien tiene el turno se le descuenta lo que lleva pensando. */
+function liveClocks(g) {
+  const elapsed = g.lastMoveAt ? Date.now() - g.lastMoveAt : 0;
+  return { ...g.clocks, [g.turn]: Math.max(0, g.clocks[g.turn] - elapsed) };
+}
+
 function applyClockIncrement(g, colorThatMoved) {
   const elapsed = g.lastMoveAt ? Date.now() - g.lastMoveAt : 0;
   g.clocks[colorThatMoved] = Math.max(0, g.clocks[colorThatMoved] - elapsed);
   g.clocks[colorThatMoved] += g.preset.incrementMs;
 }
 
+/** Controla cada segundo si a quien tiene el turno se le terminó el tiempo (no emite nada). */
 function startClockTimer(roomId, board) {
   const g = board.game;
   g.timer = setInterval(() => {
@@ -574,13 +584,7 @@ function startClockTimer(roomId, board) {
       g.clocks[g.turn] = 0;
       const winnerColor = g.turn === 'black' ? 'white' : 'black';
       finishMatch(roomId, board, winnerColor, 'timeout').catch((err) => console.error('[matchManager]', err));
-      return;
     }
-    emit('board:clock', roomId, {
-      boardNumber: board.number,
-      turn: g.turn,
-      clocks: { ...g.clocks, [g.turn]: remaining },
-    });
   }, 1000);
 }
 

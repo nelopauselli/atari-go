@@ -237,6 +237,19 @@ function getRoomBoardsSummary(roomId) {
   return { config: room.config, boards };
 }
 
+/**
+ * Lo que se difunde a toda la sala cuando cambian los tableros (sentarse, empezar,
+ * terminar, liberar). Va sin los equipos: sus avatares son imágenes en data URL y no
+ * cambian con el juego; el cliente conserva los que recibió al entrar. Cuando el admin
+ * cambia la sala (syncRoomsWithDB) se manda el resumen completo, con los equipos.
+ */
+function getRoomBoardsUpdate(roomId) {
+  const summary = getRoomBoardsSummary(roomId);
+  if (!summary) return null;
+  const { teams, ...config } = summary.config;
+  return { config, boards: summary.boards };
+}
+
 function getActiveRoomsSummary() {
   const list = [];
   for (const room of rooms.values()) {
@@ -411,7 +424,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
       mongoMatchId: null,
     };
     playerLocation.set(player.id, { roomId: String(roomId), boardNumber: board.number });
-    emit('room:update', roomId, getRoomBoardsSummary(roomId));
+    emit('room:update', roomId, getRoomBoardsUpdate(roomId));
     return { ok: true, role: 'player', color: null };
   }
 
@@ -439,7 +452,7 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
     startClockTimer(roomId, board);
     board.game.persistQueue = persistMatchStart(roomId, board)
       .catch((err) => console.error('[matchManager] error persistMatchStart', err));
-    emit('room:update', roomId, getRoomBoardsSummary(roomId));
+    emit('room:update', roomId, getRoomBoardsUpdate(roomId));
     return { ok: true, role: 'player', color: rival.color };
   }
 
@@ -633,7 +646,7 @@ async function finishMatch(roomId, board, winnerColor, reason) {
   for (const p of g.players) playerLocation.delete(p.playerId);
 
   emit('board:finished', roomId, { boardNumber: board.number, ...serializeBoard(board) });
-  emit('room:update', roomId, getRoomBoardsSummary(roomId));
+  emit('room:update', roomId, getRoomBoardsUpdate(roomId));
 
   // El tablero queda visible como "finished" hasta que alguien vuelva a la sala
   // y el frontend pida liberarlo, o se libera automáticamente tras un lapso corto.
@@ -654,7 +667,7 @@ function freeBoard(roomId, boardNumber) {
   board.game = null;
   board.matchId = null;
   board.spectators.clear();
-  emit('room:update', roomId, getRoomBoardsSummary(roomId));
+  emit('room:update', roomId, getRoomBoardsUpdate(roomId));
 }
 
 // ---------- Restauración tras un reinicio ----------
@@ -789,6 +802,7 @@ module.exports = {
   restoreActiveMatches,
   getRoom,
   getRoomBoardsSummary,
+  getRoomBoardsUpdate,
   getActiveRoomsSummary,
   assignTeamOnJoin,
   getAssignedTeamId,

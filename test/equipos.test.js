@@ -277,3 +277,23 @@ describe('asignación de equipos', () => {
     });
   });
 });
+
+describe('difusión de la sala', () => {
+  it('room:update al cambiar los tableros no lleva los equipos (avatares); el resumen al entrar sí', async (t) => {
+    const env = setup(t);
+    const teams = makeTeams('Rojo', 'Azul').map((tm) => ({ ...tm, avatar: 'data:image/png;base64,AAAA' }));
+    const roomId = env.registerRoom(tournamentDoc(teams));
+    const ana = makePlayer('Ana');
+    await matchManager.assignTeamOnJoin(roomId, ana.id);
+
+    assert.equal(matchManager.getRoomBoardsSummary(roomId).config.teams.length, 2);
+
+    const result = matchManager.handleSit({ roomId, boardNumber: 1, player: ana, socketId: 's-ana' });
+    assert.equal(result.ok, true);
+    const update = env.events.find((e) => e.event === 'room:update' && e.roomId === roomId);
+    assert.ok(update);
+    assert.equal('teams' in update.payload.config, false);
+    assert.equal(update.payload.config.type, 'torneo');
+    assert.equal(update.payload.boards.find((b) => b.number === 1).status, 'waiting');
+  });
+});

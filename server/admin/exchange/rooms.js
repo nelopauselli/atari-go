@@ -9,7 +9,7 @@ const Institution = require('../../models/Institution');
 // equipos por _id. Los jugadores viajan aparte (apodo + nombre de institución) porque en la base
 // destino pueden existir con otro _id; al importar se los busca y se remapean las referencias.
 
-const ROOM_FIELDS = ['name', 'type', 'boardCount', 'boardSize', 'stonesToWin', 'clockType', 'koRuleEnabled', 'closed', 'createdAt'];
+const ROOM_FIELDS = ['name', 'type', 'boardCount', 'boardSize', 'stonesToWin', 'clockType', 'koRuleEnabled', 'chooseOpponent', 'closed', 'createdAt'];
 const MATCH_FIELDS = [
   'boardNumber', 'boardSize', 'stonesToWin', 'clockType', 'koRuleEnabled', 'moves', 'status', 'result',
   'capturedByBlack', 'capturedByWhite', 'startedAt', 'endedAt', 'createdAt',

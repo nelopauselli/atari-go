@@ -350,7 +350,7 @@ describe('resúmenes de salas', () => {
     assert.equal(summary.teams, undefined);
   });
 
-  it('los tableros se ordenan: esperando rival, vacíos, en juego y finalizados', async (t) => {
+  it('los tableros quedan siempre ordenados por número, sin importar su estado', async (t) => {
     const env = setup(t);
     const roomId = env.registerRoom(makeRoomDoc({ boardCount: 5 }));
     const p1 = startMatch(roomId, 1);
@@ -360,7 +360,7 @@ describe('resúmenes de salas', () => {
 
     const { boards } = matchManager.getRoomBoardsSummary(roomId);
     assert.deepEqual(boards.map((b) => [b.number, b.status]),
-      [[4, 'waiting'], [3, 'empty'], [5, 'empty'], [2, 'playing'], [1, 'finished']]);
+      [[1, 'finished'], [2, 'playing'], [3, 'empty'], [4, 'waiting'], [5, 'empty']]);
   });
 
   it('sala inexistente no tiene resumen', () => {

@@ -9,11 +9,11 @@ body {
 
 .app-bar__title { cursor: pointer; }
 
-.room-card, .board-card {
+.room-card {
   cursor: pointer;
   transition: box-shadow .15s ease, transform .1s ease;
 }
-.room-card:hover, .board-card:hover {
+.room-card:hover {
   box-shadow: 0 6px 10px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.08);
   transform: translateY(-2px);
 }

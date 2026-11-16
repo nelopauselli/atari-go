@@ -75,6 +75,8 @@ function buildRoomConfig(roomDoc) {
     stonesToWin: roomDoc.stonesToWin,
     clockType: roomDoc.clockType,
     koRuleEnabled: roomDoc.koRuleEnabled,
+    // Si es false, al sentarse a jugar el servidor elige el tablero (y con él, el rival).
+    chooseOpponent: roomDoc.chooseOpponent === true,
     // Solo las salas torneo tienen equipos (nombre + avatar, definidos en la sala).
     teams: roomDoc.type === 'torneo'
       ? (roomDoc.teams || []).map((t) => ({ _id: String(t._id), name: t.name, avatar: t.avatar || '' }))
@@ -208,7 +210,7 @@ function serializeBoard(board) {
   const g = board.game;
   return {
     ...base,
-    players: g.players.map((p) => ({ nickname: p.nickname, team: p.team, teamName: p.teamName, color: p.color })),
+    players: g.players.map((p) => ({ playerId: p.playerId, nickname: p.nickname, team: p.team, teamName: p.teamName, color: p.color })),
     boardSize: g.size,
     stonesToWin: g.stonesToWin,
     clockType: g.clockType,
@@ -226,14 +228,12 @@ function serializeBoard(board) {
   };
 }
 
-const STATUS_ORDER = { waiting: 0, empty: 1, playing: 2, finished: 3 };
-
+// Los tableros van siempre por número (1, 2, 3...): no se reordenan según su estado.
 function getRoomBoardsSummary(roomId) {
   const room = getRoom(roomId);
   if (!room) return null;
   const boards = [...room.boards.values()]
-    .slice()
-    .sort((a, b) => (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) || (a.number - b.number))
+    .sort((a, b) => a.number - b.number)
     .map(serializeBoard);
   return { config: room.config, boards };
 }
@@ -378,15 +378,58 @@ function isGuest(player) {
   return !player || !player.id || player.guest === true;
 }
 
+const NOTHING_TO_WATCH_ERROR = 'No hay partida para observar en este tablero';
+const BOARD_TAKEN_ERROR = 'Ese tablero ya no está libre';
+const NO_FREE_BOARD_ERROR = 'No hay tableros libres en este momento';
+
 /**
- * El frontend SIEMPRE llama a esto sin importar board.status; el backend decide
- * si el jugador entra como jugador (negro/blanco) o como espectador.
+ * Tablero donde se sienta a jugar quien no puede elegir rival: el suyo si ya está esperando;
+ * si no, el primero con un rival esperando (en torneo, de otro equipo), así la partida arranca
+ * enseguida; si no hay, el primer tablero vacío.
  */
-function handleSit({ roomId, boardNumber, player, socketId }) {
+function pickPlayBoard(room, playerId) {
+  const all = [...room.boards.values()].sort((a, b) => a.number - b.number);
+  const waiting = all.filter((b) => b.status === 'waiting' && b.game);
+  const own = waiting.find((b) => b.game.players[0].playerId === playerId);
+  if (own) return own;
+  const myTeam = getAssignedTeamId(room.config.id, playerId);
+  const canFace = (b) => room.config.type !== 'torneo' || !myTeam || String(b.game.players[0].team) !== String(myTeam);
+  return waiting.find(canFace) || all.find((b) => b.status === 'empty') || null;
+}
+
+/**
+ * Entrada a un tablero. mode indica la intención explícita del usuario:
+ *  - 'play': sentarse a jugar. Si la sala no permite elegir rival (chooseOpponent), el servidor
+ *    elige el tablero, ignora boardNumber y devuelve el elegido en boardNumber. Si lo permite, solo
+ *    en un tablero vacío o esperando rival; si no se puede jugar ahí se rechaza (no entra como espectador).
+ *  - 'watch': observar ("Observar"). Nunca sienta al usuario ni arranca una partida; si es uno
+ *    de los jugadores de la partida, retoma su asiento.
+ *  - sin mode: el backend decide (reconexión, pedido del color al empezar la partida).
+ */
+function handleSit({
+  roomId, boardNumber, player, socketId, mode,
+}) {
   const room = getRoom(roomId);
   if (!room) return { ok: false, error: 'Sala inexistente' };
+  if (mode === 'play' && isGuest(player)) return { ok: false, error: GUEST_CANNOT_PLAY_ERROR };
+  if (mode === 'play' && !room.config.chooseOpponent) {
+    const picked = pickPlayBoard(room, player.id);
+    if (!picked) return { ok: false, error: NO_FREE_BOARD_ERROR };
+    const result = handleSit({
+      roomId, boardNumber: picked.number, player, socketId, mode: 'chosen',
+    });
+    return result.ok ? { ...result, boardNumber: picked.number } : result;
+  }
   const board = room.boards.get(Number(boardNumber));
   if (!board) return { ok: false, error: 'Tablero inexistente' };
+
+  if (mode === 'watch') return watchBoard(board, player, socketId, roomId);
+  // 'chosen': tablero ya elegido por el servidor (pickPlayBoard); se aplican las mismas reglas que 'play'.
+  if (mode === 'chosen') mode = 'play';
+  if (mode === 'play' && board.status !== 'empty' && board.status !== 'waiting'
+    && !(board.game && !isGuest(player) && board.game.players.some((p) => p.playerId === player.id))) {
+    return { ok: false, error: BOARD_TAKEN_ERROR };
+  }
 
   // Invitado -> solo puede observar partidas ya iniciadas (o esperando rival)
   if (isGuest(player)) {
@@ -445,8 +488,10 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
       log.info('board.same_team', {
         roomId, board: board.number, playerId: player.id, nickname: player.nickname, rival: seated.nickname, team: seat.teamName,
       });
+      const sameTeamError = 'No pueden enfrentarse jugadores del mismo equipo';
+      if (mode === 'play') return { ok: false, error: sameTeamError };
       board.spectators.add(socketId);
-      return { ok: true, role: 'spectator', error: 'No pueden enfrentarse jugadores del mismo equipo' };
+      return { ok: true, role: 'spectator', error: sameTeamError };
     }
     // Colores al azar; negro queda primero en la lista de jugadores.
     const rival = { playerId: player.id, socketId, nickname: player.nickname, ...seat };
@@ -481,6 +526,15 @@ function handleSit({ roomId, boardNumber, player, socketId }) {
       return { ok: true, role: 'player', color: asPlayer.color };
     }
   }
+  board.spectators.add(socketId);
+  return { ok: true, role: 'spectator' };
+}
+
+/** "Observar": entra como espectador, salvo que sea uno de los jugadores (retoma su asiento). */
+function watchBoard(board, player, socketId, roomId) {
+  if (board.status === 'empty' || !board.game) return { ok: false, error: NOTHING_TO_WATCH_ERROR };
+  const asPlayer = !isGuest(player) && board.game.players.find((p) => p.playerId === player.id);
+  if (asPlayer) return handleSit({ roomId, boardNumber: board.number, player, socketId });
   board.spectators.add(socketId);
   return { ok: true, role: 'spectator' };
 }
@@ -672,7 +726,7 @@ async function finishMatch(roomId, board, winnerColor, reason) {
   board.status = 'finished';
   board.lastResult = {
     winnerColor, reason,
-    players: g.players.map((p) => ({ nickname: p.nickname, color: p.color, team: p.team, teamName: p.teamName })),
+    players: g.players.map((p) => ({ playerId: p.playerId, nickname: p.nickname, color: p.color, team: p.team, teamName: p.teamName })),
   };
 
   const final = {

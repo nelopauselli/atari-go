@@ -237,19 +237,21 @@ export default {
       if (!isClosed.value) socketService.leaveRoom(props.roomId);
     });
 
-    async function openBoard(boardNumber) {
+    // mode: 'play' ("Sentarse a jugar" o "Sentarse" en un tablero) u 'watch' ("Observar").
+    // Si la sala no permite elegir rival, el servidor elige el tablero y lo devuelve en boardNumber.
+    async function openBoard(requestedBoard, mode) {
       active.sitError = '';
-      const before = boards.value.find((b) => b.number === boardNumber);
-      const statusBefore = before ? before.status : null;
-      const result = await socketService.sitBoard(props.roomId, boardNumber, player);
+      const statusesBefore = new Map(boards.value.map((b) => [b.number, b.status]));
+      const result = await socketService.sitBoard(props.roomId, requestedBoard, player, mode);
       if (!result.ok) {
         active.sitError = result.error || 'No se pudo entrar al tablero';
         return;
       }
+      const boardNumber = result.boardNumber || requestedBoard;
+      const statusBefore = statusesBefore.get(boardNumber) || null;
       active.boardNumber = boardNumber;
       active.role = result.role;
       active.color = result.color || null;
-      if (result.error) active.sitError = result.error; // espectador por conflicto de equipo
       const found = boards.value.find((b) => b.number === boardNumber);
       active.state = found || null;
       // Quien se sienta como rival arranca la partida: el room:update con el tablero "playing"
@@ -258,17 +260,37 @@ export default {
     }
 
     // Tablero libre para sentarse: primero uno con rival esperando (en torneo, de otro equipo),
-    // así arranca la partida enseguida; si no hay, el primer tablero vacío.
+    // así arranca la partida enseguida; si no hay, el primer tablero vacío. Si la sala no permite
+    // elegir rival, el servidor vuelve a elegir con el mismo criterio.
+    const canFace = (b) => !isTournament.value || !myTeam.value
+      || !(b.players || []).some((p) => String(p.team) === String(myTeam.value._id));
     const freeBoard = computed(() => {
-      const canFace = (b) => !isTournament.value || !myTeam.value
-        || !b.players.some((p) => String(p.team) === String(myTeam.value._id));
       return boards.value.find((b) => b.status === 'waiting' && b.players && canFace(b))
         || boards.value.find((b) => b.status === 'empty')
         || null;
     });
 
     function sitAnyBoard() {
-      if (freeBoard.value) openBoard(freeBoard.value.number);
+      if (freeBoard.value) openBoard(freeBoard.value.number, 'play');
+    }
+
+    // Botón "Sentarse" en cada tablero: solo si la sala permite elegir rival.
+    const canChooseOpponent = computed(() => !guest && !!room.value && room.value.chooseOpponent === true);
+    function canPlayOn(b) {
+      if (!canChooseOpponent.value || isMyBoard(b)) return false;
+      return b.status === 'empty' || (b.status === 'waiting' && canFace(b));
+    }
+    function playBoard(boardNumber) {
+      openBoard(boardNumber, 'play');
+    }
+
+    function watchBoard(boardNumber) {
+      openBoard(boardNumber, 'watch');
+    }
+
+    // Tablero donde el jugador tiene una partida (p. ej. tras recargar): "Observar" lo devuelve a su asiento.
+    function isMyBoard(b) {
+      return !guest && !!player && (b.players || []).some((p) => p.playerId === player.id);
     }
 
     function closeActiveBoard() {
@@ -301,7 +323,7 @@ export default {
     return {
       room, boards, tab, roomHistory, ranking, active, joinError, showRules, showRoomSettings, STATUS_LABELS, STATUS_BADGE_CLASS, CLOCK_LABELS,
       isTournament, isClosed, roomTeams, myTeam, showTeamAssigned, guest, isPlaying, myKoTurn, koWarning, liveClocks,
-      freeBoard, openBoard, sitAnyBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
+      freeBoard, openBoard, sitAnyBoard, watchBoard, isMyBoard, canPlayOn, playBoard, closeActiveBoard, playAt, doResign, resultLabel, playerLabel,
       sgfUrl: api.sgfDownloadUrl, player,
       openRankingDetail: () => navigate(`/room/${props.roomId}/ranking`),
       goBack: () => (active.boardNumber ? closeActiveBoard() : navigate('/home')),
@@ -441,8 +463,8 @@ export default {
 
       <div v-else-if="tab==='boards'" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
         <div class="col" v-for="b in boards" :key="b.number">
-          <div class="card h-100 shadow-sm board-card" @click="openBoard(b.number)">
-            <div class="card-body">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <strong>Tablero #{{ b.number }}</strong>
                 <span class="badge" :class="STATUS_BADGE_CLASS[b.status]">{{ STATUS_LABELS[b.status] }}</span>
@@ -458,6 +480,12 @@ export default {
               </div>
               <p v-else class="text-muted small mb-1">Sin jugadores</p>
               <p v-if="b.spectatorCount" class="text-muted small mb-0">👁 {{ b.spectatorCount }} observando</p>
+              <div v-if="b.status !== 'empty' || canPlayOn(b)" class="mt-auto pt-2 d-flex justify-content-end gap-2">
+                <button v-if="canPlayOn(b)" type="button" class="btn btn-primary btn-sm" @click="playBoard(b.number)">Sentarse</button>
+                <button v-if="b.status !== 'empty'" type="button" class="btn btn-outline-secondary btn-sm" @click="watchBoard(b.number)">
+                  {{ isMyBoard(b) ? 'Volver a mi partida' : 'Observar' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>

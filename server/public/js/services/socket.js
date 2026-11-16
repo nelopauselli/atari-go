@@ -22,9 +22,10 @@ function leaveRoom(roomId) {
   socket.emit('room:leave', { roomId });
 }
 
-function sitBoard(roomId, boardNumber, player) {
+// mode: 'play' | 'watch' | undefined (el servidor decide: reconexión, pedido del color).
+function sitBoard(roomId, boardNumber, player, mode) {
   return new Promise((resolve) => {
-    socket.emit('board:sit', { roomId, boardNumber, player }, (result) => resolve(result));
+    socket.emit('board:sit', { roomId, boardNumber, player, mode }, (result) => resolve(result));
   });
 }
 

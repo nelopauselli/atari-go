@@ -20,6 +20,9 @@ const RoomSchema = new mongoose.Schema({
     required: true,
   },
   koRuleEnabled: { type: Boolean, default: true },
+  // Si los jugadores pueden elegir tablero (y rival) para jugar. Si no, "Sentarse a jugar" los
+  // ubica el servidor en el primer tablero con rival esperando o vacío.
+  chooseOpponent: { type: Boolean, default: false },
   // Equipos que participan (solo aplica a salas de tipo torneo; las amistosas no tienen equipos).
   teams: {
     type: [TeamSchema],

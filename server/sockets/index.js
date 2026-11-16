@@ -94,12 +94,13 @@ function initSockets(io) {
       if (socket.data.roomId === roomId) socket.data.roomId = null;
     });
 
-    // El frontend SIEMPRE emite esto al hacer click en un tablero,
-    // sin importar su estado; el backend decide el rol (jugador/espectador).
-    // El equipo (salas torneo) es el asignado al entrar a la sala; el cliente no lo elige.
-    socket.on('board:sit', ({ roomId, boardNumber, player }, ack) => {
+    // mode: 'play' ("Sentarse a jugar") u 'watch' ("Observar"); sin mode el backend decide el rol
+    // (reconexión). El equipo (salas torneo) es el asignado al entrar a la sala; el cliente no lo elige.
+    socket.on('board:sit', ({ roomId, boardNumber, player, mode }, ack) => {
       socket.data.playerId = matchManager.isGuest(player) ? null : player.id;
-      const result = matchManager.handleSit({ roomId, boardNumber, player, socketId: socket.id });
+      const result = matchManager.handleSit({
+        roomId, boardNumber, player, socketId: socket.id, mode,
+      });
       if (typeof ack === 'function') ack(result);
     });
 

@@ -61,6 +61,7 @@ module.exports = {
         required: true,
       },
       { name: 'koRuleEnabled', label: 'Regla de Ko', type: 'boolean', default: true },
+      { name: 'chooseOpponent', label: 'Puede elegir rival', type: 'boolean', default: false },
       {
         name: 'teams',
         label: 'Equipos',

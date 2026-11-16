@@ -57,13 +57,14 @@ h1, h2, h3, h4 { font-weight: 500; margin: 0 0 8px; }
 .sidebar__item:hover { background: rgba(255,255,255,.1); }
 .sidebar__item--active { opacity: 1; font-weight: 500; background: rgba(255,255,255,.16); }
 
-main { flex: 1; padding: 28px; max-width: 1100px; }
+main { flex: 1; padding: 28px; min-width: 0; }
 
 .card {
   background: var(--md-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--elevation-1);
   padding: 20px;
+  overflow-x: auto;
 }
 
 .btn {
@@ -105,7 +106,8 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--md-outline); }
 th { color: var(--md-on-surface-variant); font-weight: 500; font-size: 12px; text-transform: uppercase; }
 tbody tr:hover { background: rgba(187,134,252,.06); }
-td.actions { display: flex; gap: 8px; white-space: nowrap; }
+td.actions { white-space: nowrap; width: 1%; }
+td.actions > * + * { margin-left: 8px; }
 
 .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
 

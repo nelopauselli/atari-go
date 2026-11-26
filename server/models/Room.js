@@ -11,7 +11,7 @@ const TeamSchema = new mongoose.Schema({
 const RoomSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   type: { type: String, enum: ['torneo', 'amistosas'], required: true },
-  boardCount: { type: Number, required: true, min: 1, max: 50 },
+  boardCount: { type: Number, required: true, min: 1, max: 200 },
   boardSize: { type: Number, enum: [7, 9, 13], required: true },
   stonesToWin: { type: Number, required: true, min: 1 },
   clockType: {

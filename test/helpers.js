@@ -95,7 +95,10 @@ function setup(t, { playerInstitutions = {}, openRooms = [], activeMatches = [] 
   });
 
   const events = [];
-  matchManager.setBroadcastHandler((event, roomId, payload) => events.push({ event, roomId, payload }));
+  // socketIds: solo en los eventos dirigidos (sin él, el evento va a toda la sala).
+  matchManager.setBroadcastHandler((event, roomId, payload, socketIds) => events.push({
+    event, roomId, payload, socketIds,
+  }));
 
   const registered = [];
   t.after(() => {

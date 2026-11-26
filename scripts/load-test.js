@@ -114,7 +114,8 @@ function emitAck(socket, name, event, payload) {
     const args = payload === undefined ? [event] : [event, payload];
     socket.timeout(ACK_TIMEOUT_MS).emit(...args, (err, res) => {
       if (err) {
-        count(`ack ${name} timeout`);
+        // Al cerrar la prueba, los acks en vuelo fallan porque se cierra el socket: no son timeouts reales.
+        if (!stopping) count(`ack ${name} timeout`);
         return resolve(null);
       }
       record(`ack ${name}`, performance.now() - start);
@@ -156,6 +157,7 @@ class Bot {
     this.boardNumber = null;
     this.color = null;
     this.movePending = null; // moveCount sobre el que se programó la jugada
+    this.gameSeq = 0; // sube con cada partida terminada: invalida jugadas programadas de la anterior
     this.moveSentAt = null;
     this.sitting = false;
   }
@@ -289,8 +291,11 @@ class Bot {
     if (state.moveCount === 0) count('matches started');
     this.movePending = state.moveCount;
     const boardNumber = this.boardNumber;
+    const gameSeq = this.gameSeq;
     setTimeout(async () => {
-      if (stopping || this.boardNumber !== boardNumber || !this.socket.connected) return;
+      // Se compara la partida, no solo el tablero: con la revancha en el mismo tablero, una jugada
+      // programada en la partida anterior se mandaría en la nueva ("No es tu turno").
+      if (stopping || this.gameSeq !== gameSeq || this.boardNumber !== boardNumber || !this.socket.connected) return;
       const move = pickMove(state);
       if (!move) {
         await emitAck(this.socket, 'board:resign', 'board:resign', { roomId, boardNumber, playerId: this.player.id });
@@ -307,6 +312,7 @@ class Bot {
 
   async onFinished() {
     const finishedBoard = this.boardNumber;
+    this.gameSeq += 1;
     this.boardNumber = null;
     this.color = null;
     this.movePending = null;

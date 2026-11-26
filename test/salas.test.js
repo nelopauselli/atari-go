@@ -188,6 +188,19 @@ describe('fin de partida y liberación del tablero', () => {
     assert.deepEqual(sit(roomId, makePlayer('Fede')), { ok: true, role: 'player', color: null });
   });
 
+  it('cada jugada le llega solo a los jugadores y espectadores de ese tablero, no a toda la sala', (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc());
+    const { black, white } = startMatch(roomId);
+    startMatch(roomId, 2, makePlayer('Otro'), makePlayer('Otra')); // otra partida en la misma sala
+    assert.equal(sit(roomId, makePlayer('Mira'), 1, 's-Mira').role, 'spectator');
+    env.events.length = 0;
+
+    assert.equal(matchManager.handleMove({ roomId, boardNumber: 1, playerId: black.id, x: 0, y: 0 }).ok, true);
+    const state = env.events.find((e) => e.event === 'board:state');
+    assert.deepEqual([...state.socketIds].sort(), [`s-${black.id}`, `s-${white.id}`, 's-Mira'].sort());
+  });
+
   it('el tablero finalizado se libera en cuanto los dos jugadores lo dejan', async (t) => {
     const env = setup(t);
     const roomId = env.registerRoom(makeRoomDoc());

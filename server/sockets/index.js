@@ -55,7 +55,12 @@ function startStatsReport(io) {
 
 function initSockets(io) {
   // Registro explícito del handler de broadcast usado por matchManager
-  matchManager.setBroadcastHandler((event, roomId, payload) => {
+  matchManager.setBroadcastHandler((event, roomId, payload, socketIds) => {
+    if (socketIds) {
+      // Cada socket está en una sala con su propio id: io.to(ids) le llega solo a esos.
+      if (socketIds.length) io.to(socketIds).emit(event, payload);
+      return;
+    }
     io.to(roomChannel(roomId)).emit(event, payload);
   });
   startStatsReport(io);

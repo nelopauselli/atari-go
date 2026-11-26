@@ -42,16 +42,26 @@ let broadcastHandler = null;
 
 /**
  * Registra la función usada para emitir eventos a los clientes.
- * fn(event: string, roomId: string, payload: any)
+ * fn(event: string, roomId: string, payload: any, socketIds?: string[])
+ * Sin socketIds va a toda la sala; con socketIds, solo a esos sockets.
  */
 function setBroadcastHandler(fn) {
   broadcastHandler = fn;
 }
 
-function emit(event, roomId, payload) {
+function emit(event, roomId, payload, socketIds) {
   if (typeof broadcastHandler === 'function') {
-    broadcastHandler(event, roomId, payload);
+    broadcastHandler(event, roomId, payload, socketIds);
   }
+}
+
+/** Sockets que tienen abierto el tablero: sus jugadores y sus espectadores. */
+function boardSocketIds(board) {
+  const ids = new Set(board.spectators);
+  for (const p of (board.game && board.game.players) || []) {
+    if (p.socketId) ids.add(p.socketId);
+  }
+  return [...ids];
 }
 
 function makeEmptyBoardState(number) {
@@ -629,7 +639,10 @@ function handleMove({ roomId, boardNumber, playerId, x, y }) {
   };
   queuePersist(g, () => Match.updateOne({ _id: g.mongoMatchId }, update));
 
-  emit('board:state', roomId, { boardNumber: board.number, ...serializeBoard(board) });
+  // Solo a quienes tienen abierto el tablero: el resto de la sala no muestra la grilla y
+  // descartaba el mensaje. Mandarlo a toda la sala costaba jugadas × personas en la sala
+  // (con 80 partidas y 200 conectados, ~6400 mensajes por segundo).
+  emit('board:state', roomId, { boardNumber: board.number, ...serializeBoard(board) }, boardSocketIds(board));
 
   const capturesForWin = mover.color === 'black' ? g.capturedByBlack : g.capturedByWhite;
   if (capturesForWin >= g.stonesToWin) {

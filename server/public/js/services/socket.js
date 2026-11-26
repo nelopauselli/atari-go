@@ -1,5 +1,7 @@
 // `io` es global, inyectado por el script CDN de socket.io en index.html
-const socket = io({ autoConnect: true });
+// Websocket primero: evita los ~100 ms en que los mensajes quedan retenidos durante el
+// upgrade desde polling. Si la red bloquea websocket, tryAllTransports cae a polling.
+const socket = io({ autoConnect: true, transports: ['websocket', 'polling'], tryAllTransports: true });
 
 // Se re-identifica en cada (re)conexión para figurar como usuario conectado.
 let identified = null;

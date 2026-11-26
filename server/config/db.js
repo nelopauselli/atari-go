@@ -6,14 +6,19 @@ const mongoose = require('mongoose');
 const MAX_POOL_SIZE = Number(process.env.MONGO_MAX_POOL_SIZE) || 20;
 // Las conexiones ociosas se cierran pasado este tiempo, así el pool vuelve a achicarse tras un pico.
 const MAX_IDLE_TIME_MS = 60_000;
+// Piso de conexiones siempre abiertas: abrir una nueva cuesta ~100 ms (handshake + auth) y eso
+// se notaba en los picos (room:join p95 ~120 ms en pruebas de carga) tras achicarse el pool.
+const MIN_POOL_SIZE = Number(process.env.MONGO_MIN_POOL_SIZE) || 4;
 // Cada cuánto se informa el uso del pool (solo si hubo espera o cambió la cantidad de conexiones).
 const POOL_REPORT_MS = 30_000;
 
 async function connectDB() {
   const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/atari-go';
   mongoose.set('strictQuery', true);
-  await mongoose.connect(uri, { maxPoolSize: MAX_POOL_SIZE, maxIdleTimeMS: MAX_IDLE_TIME_MS });
-  console.log(`[db] Conectado a MongoDB (pool máx. ${MAX_POOL_SIZE})`);
+  await mongoose.connect(uri, {
+    maxPoolSize: MAX_POOL_SIZE, minPoolSize: MIN_POOL_SIZE, maxIdleTimeMS: MAX_IDLE_TIME_MS,
+  });
+  console.log(`[db] Conectado a MongoDB (pool mín. ${MIN_POOL_SIZE}, máx. ${MAX_POOL_SIZE})`);
 
   mongoose.connection.on('error', (err) => {
     console.error('[db] Error de conexión:', err);

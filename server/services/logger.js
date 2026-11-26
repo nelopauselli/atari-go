@@ -13,6 +13,9 @@ const minLevel = LEVELS[String(process.env.LOG_LEVEL || '').toLowerCase()] || LE
 
 function formatValue(value) {
   if (value instanceof Date) return value.toISOString();
+  // ObjectId de Mongo: su hex, no JSON.stringify (que le agregaba comillas y después se
+  // volvían a escapar: matchId="\"6b08…\"", y un grep por id no encontraba el evento).
+  if (value && typeof value.toHexString === 'function') return value.toHexString();
   if (typeof value === 'object') value = JSON.stringify(value);
   const text = String(value);
   return text === '' || /[\s"=]/.test(text) ? JSON.stringify(text) : text;

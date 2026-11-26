@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { hashPassword, checkPassword } = require('../services/password');
+const { hashPassword, checkPasswordAsync } = require('../services/password');
 
 const InstitutionSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true, trim: true },
@@ -15,8 +15,9 @@ InstitutionSchema.statics.hashPassword = function (plain) {
   return hashPassword(plain);
 };
 
+// Async: scrypt tarda ~100 ms y la versión sync bloquearía el event loop en cada login.
 InstitutionSchema.methods.checkPassword = function (plain) {
-  return checkPassword(plain, this.password);
+  return checkPasswordAsync(plain, this.password);
 };
 
 // Devuelve el nickname tal como figura en la lista (comparación sin distinguir mayúsculas), o null.

@@ -16,14 +16,8 @@ function parse(stored) {
   return { salt, expected: Buffer.from(hash, 'hex') };
 }
 
-function checkPassword(plain, stored) {
-  const parsed = parse(stored);
-  if (!parsed || !plain) return false;
-  const actual = crypto.scryptSync(String(plain), parsed.salt, parsed.expected.length);
-  return crypto.timingSafeEqual(parsed.expected, actual);
-}
-
-// Versión async: no bloquea el event loop (scrypt tarda decenas de ms).
+// Async a propósito: scrypt tarda ~100 ms y la versión sync bloquearía el event loop
+// (con muchos logins juntos, el servidor deja de atender pings y jugadas).
 async function checkPasswordAsync(plain, stored) {
   const parsed = parse(stored);
   if (!parsed || !plain) return false;
@@ -31,4 +25,4 @@ async function checkPasswordAsync(plain, stored) {
   return crypto.timingSafeEqual(parsed.expected, actual);
 }
 
-module.exports = { hashPassword, checkPassword, checkPasswordAsync };
+module.exports = { hashPassword, checkPasswordAsync };

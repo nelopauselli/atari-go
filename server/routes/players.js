@@ -27,7 +27,7 @@ router.post('/login', async (req, res) => {
     const institution = await Institution.findById(institutionId).select('+password');
     const username = institution && institution.findUser(nickname);
     // Mismo mensaje para usuario inexistente y contraseña incorrecta.
-    if (!username || !institution.checkPassword(password)) {
+    if (!username || !(await institution.checkPassword(password))) {
       // El motivo real queda solo en el log; al cliente se le responde lo mismo en ambos casos.
       let reason = 'contraseña incorrecta';
       if (!institution) reason = 'institución inexistente';

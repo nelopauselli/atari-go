@@ -481,11 +481,11 @@ describe('validación del modelo de sala', () => {
     for (const boardSize of [5, 8, 19]) assert.deepEqual(errorsOf({ boardSize }), ['boardSize']);
   });
 
-  it('admite entre 1 y 50 tableros', () => {
+  it('admite entre 1 y 200 tableros', () => {
     assert.deepEqual(errorsOf({ boardCount: 1 }), []);
-    assert.deepEqual(errorsOf({ boardCount: 50 }), []);
+    assert.deepEqual(errorsOf({ boardCount: 200 }), []);
     assert.deepEqual(errorsOf({ boardCount: 0 }), ['boardCount']);
-    assert.deepEqual(errorsOf({ boardCount: 51 }), ['boardCount']);
+    assert.deepEqual(errorsOf({ boardCount: 201 }), ['boardCount']);
   });
 
   it('exige al menos una piedra para ganar', () => {

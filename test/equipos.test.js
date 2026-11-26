@@ -279,7 +279,7 @@ describe('asignación de equipos', () => {
 });
 
 describe('difusión de la sala', () => {
-  it('room:update al cambiar los tableros no lleva los equipos (avatares); el resumen al entrar sí', async (t) => {
+  it('al cambiar un tablero se difunde solo ese tablero (sin config ni equipos); el resumen al entrar lleva todo', async (t) => {
     const env = setup(t);
     const teams = makeTeams('Rojo', 'Azul').map((tm) => ({ ...tm, avatar: 'data:image/png;base64,AAAA' }));
     const roomId = env.registerRoom(tournamentDoc(teams));
@@ -290,10 +290,13 @@ describe('difusión de la sala', () => {
 
     const result = matchManager.handleSit({ roomId, boardNumber: 1, player: ana, socketId: 's-ana' });
     assert.equal(result.ok, true);
-    const update = env.events.find((e) => e.event === 'room:update' && e.roomId === roomId);
+    assert.equal(env.events.some((e) => e.event === 'room:update'), false);
+    const update = env.events.find((e) => e.event === 'room:board' && e.roomId === roomId);
     assert.ok(update);
-    assert.equal('teams' in update.payload.config, false);
-    assert.equal(update.payload.config.type, 'torneo');
-    assert.equal(update.payload.boards.find((b) => b.number === 1).status, 'waiting');
+    assert.equal(update.payload.number, 1);
+    assert.equal(update.payload.status, 'waiting');
+    assert.equal(update.payload.players[0].nickname, 'Ana');
+    assert.equal('config' in update.payload, false);
+    assert.equal('boards' in update.payload, false);
   });
 });

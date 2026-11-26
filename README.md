@@ -54,7 +54,8 @@ Cada institución tiene una lista de usuarios (nicknames) y una contraseña comp
 
 | Evento (servidor → sala) | Payload |
 |---|---|
-| `room:update` | resumen de tableros de la sala (orden: esperando rival, vacíos, en curso, finalizados) |
+| `room:update` | config y lista completa de tableros, por número (solo cuando el admin cambia la sala) |
+| `room:board` | un solo tablero que cambió (sentarse, empezar, terminar, liberar); el cliente lo reemplaza por número |
 | `board:state` | snapshot completo del tablero tras una jugada |
 | `board:clock` | tick de reloj cada 1s |
 | `board:finished` | resultado final de una partida |

@@ -1,3 +1,4 @@
+const { monitorEventLoopDelay } = require('perf_hooks');
 const mongoose = require('mongoose');
 const matchManager = require('../services/matchManager');
 const presence = require('../services/presence');
@@ -14,14 +15,28 @@ function roomChannel(roomId) {
 /**
  * Resumen periódico del estado. Con el servidor ocioso (sin conexiones ni partidas) se
  * escribe una sola vez y se calla hasta que vuelva a haber actividad.
+ *
+ * loopP99Ms / loopMaxMs: cuánto se demoró el event loop en el intervalo. Si son altos, el
+ * propio servidor está bloqueado (CPU, serialización); si son bajos y aun así hay latencia,
+ * el cuello está afuera (red, Mongo, o el cliente de la prueba compartiendo la máquina).
+ * El histograma incluye el intervalo de muestreo; se resta para mostrar solo la demora extra.
+ * En Windows queda igual una base de ~10-15 ms por la granularidad de los timers.
  */
+const LOOP_RESOLUTION_MS = 20;
+const loopExtraMs = (ns) => Math.max(0, Math.round(ns / 1e6 - LOOP_RESOLUTION_MS));
+
 function startStatsReport(io) {
   let wasIdle = false;
+  const loopDelay = monitorEventLoopDelay({ resolution: LOOP_RESOLUTION_MS });
+  loopDelay.enable();
   const timer = setInterval(() => {
     const stats = matchManager.getStats();
     const sockets = io.engine.clientsCount;
     const idle = !sockets && !stats.playing && !stats.waiting;
-    if (idle && wasIdle) return;
+    if (idle && wasIdle) {
+      loopDelay.reset();
+      return;
+    }
     wasIdle = idle;
     const mem = process.memoryUsage();
     log.info('server.stats', {
@@ -30,7 +45,10 @@ function startStatsReport(io) {
       ...stats,
       rssMB: Math.round(mem.rss / 1048576),
       heapMB: Math.round(mem.heapUsed / 1048576),
+      loopP99Ms: loopExtraMs(loopDelay.percentile(99)),
+      loopMaxMs: loopExtraMs(loopDelay.max),
     });
+    loopDelay.reset();
   }, STATS_INTERVAL_MS);
   timer.unref();
 }

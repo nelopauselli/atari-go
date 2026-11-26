@@ -173,6 +173,7 @@ export default {
 
       if (!(await joinLive())) joinError.value = 'No se pudo unir a la sala en vivo';
 
+      // Lista completa: solo cuando el admin cambia la sala (config, equipos, cantidad de tableros).
       unsubs.push(socketService.on('room:update', (summary2) => {
         room.value = { ...room.value, ...summary2.config };
         boards.value = summary2.boards;
@@ -180,13 +181,15 @@ export default {
         if (!guest && isTournament.value && roomTeams.value.length && !myTeam.value) joinLive();
         if (active.boardNumber != null) {
           const fresh = summary2.boards.find((b) => b.number === active.boardNumber);
-          // Al liberarse el tablero (partida terminada o se fue quien esperaba rival), se vuelve a la sala.
-          if (fresh && fresh.status === 'empty' && active.state && active.state.status !== 'empty') closeActiveBoard();
-          else if (fresh) {
-            active.state = fresh;
-            if (fresh.status === 'playing' && active.role === 'player' && !active.color) fetchMyColor(active.boardNumber);
-          }
+          if (fresh) applyActiveBoard(fresh);
         }
+      }));
+      // Un solo tablero que cambió (sentarse, empezar, terminar, liberar): se reemplaza por número.
+      unsubs.push(socketService.on('room:board', (fresh) => {
+        const i = boards.value.findIndex((b) => b.number === fresh.number);
+        if (i === -1) return; // tablero que este cliente no conoce (la sala cambió): llega con el próximo room:update
+        boards.value.splice(i, 1, fresh);
+        if (fresh.number === active.boardNumber) applyActiveBoard(fresh);
       }));
       unsubs.push(socketService.on('board:state', (payload) => {
         if (payload.boardNumber === active.boardNumber) active.state = payload;
@@ -198,6 +201,17 @@ export default {
       }));
       unsubs.push(socketService.onReconnect(rejoinAfterReconnect));
     });
+
+    // Estado nuevo del tablero abierto. Al liberarse (partida terminada o se fue quien
+    // esperaba rival), se vuelve a la sala.
+    function applyActiveBoard(fresh) {
+      if (fresh.status === 'empty' && active.state && active.state.status !== 'empty') {
+        closeActiveBoard();
+        return;
+      }
+      active.state = fresh;
+      if (fresh.status === 'playing' && active.role === 'player' && !active.color) fetchMyColor(active.boardNumber);
+    }
 
     // Al reconectar se vuelve a entrar a la sala y, si había un tablero abierto, a ese tablero
     // (el servidor retoma las partidas en curso tras un reinicio). Si el tablero quedó libre
@@ -254,7 +268,7 @@ export default {
       active.color = result.color || null;
       const found = boards.value.find((b) => b.number === boardNumber);
       active.state = found || null;
-      // Quien se sienta como rival arranca la partida: el room:update con el tablero "playing"
+      // Quien se sienta como rival arranca la partida: el room:board con el tablero "playing"
       // suele llegar antes que la respuesta, así que el watch no ve la transición.
       if (result.role === 'player' && statusBefore === 'waiting' && found && found.status === 'playing') playGameStart();
     }

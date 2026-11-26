@@ -8,6 +8,9 @@
     "start": "node --env-file=.env server/index.js",
     "test": "node --test \"test/*.test.js\"",
     "hash-password": "node scripts/hash-password.js",
+    "load-test:setup": "node scripts/load-test-setup.js",
+    "load-test:cleanup": "node scripts/load-test-setup.js --cleanup",
+    "load-test": "node scripts/load-test.js",
     "test:atari-go": "node --test test/atari-go.test.js",
     "test:salas": "node --test test/salas.test.js",
     "test:equipos": "node --test test/equipos.test.js"

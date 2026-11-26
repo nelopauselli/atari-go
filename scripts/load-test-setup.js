@@ -3,8 +3,10 @@
  * carga001…cargaNNN y una sala amistosa. Escribe directo en la base de MONGO_URI, así que
  * hay que apuntarlo a una base de prueba, nunca a la de producción.
  *
- *   node scripts/load-test-setup.js --users 200 --boards 50 --password carga --yes
+ *   node scripts/load-test-setup.js --users 200 --boards 100 --password carga --yes
  *   node scripts/load-test-setup.js --cleanup --yes
+ *
+ * O con npm: npm run load-test:setup -- --users 200 --yes · npm run load-test:cleanup -- --yes
  *
  * El servidor toma la sala nueva en la próxima sincronización (ROOM_SYNC_INTERVAL_MS, 30 s)
  * o al reiniciarlo.
@@ -34,7 +36,9 @@ async function setup(args) {
   const users = Number(args.users) || 200;
   const prefix = args.prefix || 'carga';
   const password = args.password || 'carga';
-  const boards = Math.min(50, Number(args.boards) || Math.ceil(users / 2) + 5);
+  // Tope: el máximo que admite el modelo de sala (así no queda desfasado si cambia).
+  const maxBoards = Room.schema.path('boardCount').options.max;
+  const boards = Math.min(maxBoards, Number(args.boards) || Math.ceil(users / 2) + 5);
   const nicknames = Array.from({ length: users }, (_, i) => `${prefix}${String(i + 1).padStart(3, '0')}`);
 
   let institution = await Institution.findOne({ name: NAME });

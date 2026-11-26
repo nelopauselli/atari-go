@@ -48,7 +48,7 @@ describe('asiento en tableros', () => {
     assert.equal(board.game.board.length, 81);
     assert.equal(board.game.stonesToWin, 3);
     assert.equal(board.game.clockType, 'fischer-5-10');
-    assert.ok(env.events.some((e) => e.event === 'room:update' && e.roomId === roomId));
+    assert.ok(env.events.some((e) => e.event === 'room:board' && e.roomId === roomId && e.payload.number === 1));
   });
 
   it('si quien espera vuelve a hacer click, conserva su lugar', (t) => {
@@ -186,6 +186,50 @@ describe('fin de partida y liberación del tablero', () => {
     assert.equal(board.spectators.size, 0);
 
     assert.deepEqual(sit(roomId, makePlayer('Fede')), { ok: true, role: 'player', color: null });
+  });
+
+  it('el tablero finalizado se libera en cuanto los dos jugadores lo dejan', async (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc());
+    const { black, white } = startMatch(roomId);
+    matchManager.handleResign({ roomId, boardNumber: 1, playerId: black.id });
+    await flush();
+    const board = getBoard(roomId);
+
+    // Un espectador o uno solo de los jugadores no alcanza
+    matchManager.handleLeaveBoard({ roomId, boardNumber: 1, socketId: 's-mira', playerId: 'alguien-que-miraba' });
+    matchManager.handleLeaveBoard({ roomId, boardNumber: 1, socketId: `s-${black.id}`, playerId: black.id });
+    assert.equal(board.status, 'finished');
+
+    env.events.length = 0;
+    matchManager.handleLeaveBoard({ roomId, boardNumber: 1, socketId: `s-${white.id}`, playerId: white.id });
+    assert.equal(board.status, 'empty');
+    assert.equal(board.game, null);
+    const update = env.events.find((e) => e.event === 'room:board' && e.payload.number === 1);
+    assert.equal(update.payload.status, 'empty');
+  });
+
+  it('el temporizador de 15 s no libera una partida nueva en el mismo tablero', async (t) => {
+    const env = setup(t);
+    const roomId = env.registerRoom(makeRoomDoc());
+    const first = startMatch(roomId);
+    matchManager.handleResign({ roomId, boardNumber: 1, playerId: first.black.id });
+    await flush();
+    for (const p of [first.black, first.white]) {
+      matchManager.handleLeaveBoard({ roomId, boardNumber: 1, socketId: `s-${p.id}`, playerId: p.id });
+    }
+
+    // Se juega y termina otra partida en el tablero 1 antes de que venza el primer temporizador
+    t.mock.timers.tick(5_000);
+    const second = startMatch(roomId);
+    assert.equal(getBoard(roomId).game.players.some((p) => p.playerId === second.black.id), true);
+    matchManager.handleResign({ roomId, boardNumber: 1, playerId: second.black.id });
+    await flush();
+
+    t.mock.timers.tick(10_000); // vence el temporizador de la primera partida
+    assert.equal(getBoard(roomId).status, 'finished');
+    t.mock.timers.tick(5_000); // vence el de la segunda
+    assert.equal(getBoard(roomId).status, 'empty');
   });
 
   it('una partida finalizada no se puede volver a terminar ni seguir jugando', async (t) => {

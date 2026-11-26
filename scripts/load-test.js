@@ -211,6 +211,13 @@ class Bot {
       const mine = this.boardNumber != null && update.boards.find((b) => b.number === this.boardNumber);
       if (mine) this.onBoard(mine);
     });
+    // Un tablero que cambió: se reemplaza en la lista, como RoomView.
+    socket.on('room:board', (fresh) => {
+      if (!fresh || !this.lastBoards) return;
+      const i = this.lastBoards.findIndex((b) => b.number === fresh.number);
+      if (i !== -1) this.lastBoards[i] = fresh;
+      if (fresh.number === this.boardNumber) this.onBoard(fresh);
+    });
     socket.on('board:state', (state) => {
       if (state.boardNumber !== this.boardNumber) return;
       if (this.moveSentAt && state.moveCount === this.movePending + 1) {

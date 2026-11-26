@@ -239,16 +239,15 @@ function getRoomBoardsSummary(roomId) {
 }
 
 /**
- * Lo que se difunde a toda la sala cuando cambian los tableros (sentarse, empezar,
- * terminar, liberar). Va sin los equipos: sus avatares son imágenes en data URL y no
- * cambian con el juego; el cliente conserva los que recibió al entrar. Cuando el admin
- * cambia la sala (syncRoomsWithDB) se manda el resumen completo, con los equipos.
+ * Cuando cambia un tablero (sentarse, empezar, terminar, liberar) se difunde solo ese
+ * tablero (`room:board`) y el cliente lo reemplaza por número. Antes se mandaba la lista
+ * completa: con 100 tableros eran ~90 KB a cada cliente de la sala por cada cambio, y en
+ * los fines de ronda (muchas partidas terminando juntas) saturaba red y CPU. La lista
+ * completa, con config y equipos, va al entrar a la sala y cuando el admin la cambia
+ * (`room:update` desde syncRoomsWithDB).
  */
-function getRoomBoardsUpdate(roomId) {
-  const summary = getRoomBoardsSummary(roomId);
-  if (!summary) return null;
-  const { teams, ...config } = summary.config;
-  return { config, boards: summary.boards };
+function emitBoardUpdate(roomId, board) {
+  emit('room:board', roomId, serializeBoard(board));
 }
 
 function getActiveRoomsSummary() {
@@ -472,7 +471,7 @@ function handleSit({
     log.info('board.wait', {
       roomId, room: room.config.name, board: board.number, playerId: player.id, nickname: player.nickname, team: seat.teamName || undefined,
     });
-    emit('room:update', roomId, getRoomBoardsUpdate(roomId));
+    emitBoardUpdate(roomId, board);
     return { ok: true, role: 'player', color: null };
   }
 
@@ -506,7 +505,7 @@ function handleSit({
     startClockTimer(roomId, board);
     board.game.persistQueue = persistMatchStart(roomId, board)
       .catch((err) => console.error('[matchManager] error persistMatchStart', err));
-    emit('room:update', roomId, getRoomBoardsUpdate(roomId));
+    emitBoardUpdate(roomId, board);
     return { ok: true, role: 'player', color: rival.color };
   }
 
@@ -546,7 +545,24 @@ function handleLeaveBoard({ roomId, boardNumber, socketId, playerId }) {
   const board = room.boards.get(Number(boardNumber));
   if (!board) return;
   board.spectators.delete(socketId);
-  if (playerId) releaseWaitingBoard(roomId, board, playerId, 'leave');
+  if (playerId) {
+    releaseWaitingBoard(roomId, board, playerId, 'leave');
+    releaseFinishedBoard(roomId, board, playerId);
+  }
+}
+
+/**
+ * Partida terminada: cuando los dos jugadores dejaron el tablero, se libera enseguida en vez
+ * de esperar los 15 s del temporizador (que queda como respaldo para quien no avisa, p. ej.
+ * si cierra la pestaña). Si no, al terminar muchas partidas juntas (fin de ronda) los tableros
+ * quedan retenidos y no hay dónde sentarse. Los espectadores que siguieran mirando vuelven a la sala.
+ */
+function releaseFinishedBoard(roomId, board, playerId) {
+  if (board.status !== 'finished' || !board.game) return;
+  const p = board.game.players.find((pl) => pl.playerId === playerId);
+  if (!p) return;
+  p.leftBoard = true;
+  if (board.game.players.every((pl) => pl.leftBoard)) freeBoard(roomId, board.number);
 }
 
 function releaseWaitingBoard(roomId, board, playerId, reason) {
@@ -642,7 +658,7 @@ function handleResign({ roomId, boardNumber, playerId }) {
 // ---------- Reloj ----------
 
 // El reloj no se difunde cada segundo: cada estado del tablero que se manda (jugada, entrada,
-// room:update) lleva el tiempo restante a ese instante y el cliente lo descuenta por su cuenta.
+// room:board) lleva el tiempo restante a ese instante y el cliente lo descuenta por su cuenta.
 
 /** Relojes al instante actual: a quien tiene el turno se le descuenta lo que lleva pensando. */
 function liveClocks(g) {
@@ -754,12 +770,14 @@ async function finishMatch(roomId, board, winnerColor, reason) {
   for (const p of g.players) playerLocation.delete(p.playerId);
 
   emit('board:finished', roomId, { boardNumber: board.number, ...serializeBoard(board) });
-  emit('room:update', roomId, getRoomBoardsUpdate(roomId));
+  emitBoardUpdate(roomId, board);
 
-  // El tablero queda visible como "finished" hasta que alguien vuelva a la sala
-  // y el frontend pida liberarlo, o se libera automáticamente tras un lapso corto.
+  // El tablero queda visible como "finished" hasta que los dos jugadores lo dejan
+  // (releaseFinishedBoard) o, como respaldo, se libera automáticamente tras un lapso corto.
+  // Se compara la partida: si el tablero ya se liberó y tiene otra, este temporizador no la toca.
+  const finishedGame = board.game;
   setTimeout(() => {
-    if (board.status === 'finished') {
+    if (board.status === 'finished' && board.game === finishedGame) {
       freeBoard(roomId, board.number);
     }
   }, 15000);
@@ -775,7 +793,7 @@ function freeBoard(roomId, boardNumber) {
   board.game = null;
   board.matchId = null;
   board.spectators.clear();
-  emit('room:update', roomId, getRoomBoardsUpdate(roomId));
+  emitBoardUpdate(roomId, board);
 }
 
 // ---------- Restauración tras un reinicio ----------
@@ -936,7 +954,6 @@ module.exports = {
   restoreActiveMatches,
   getRoom,
   getRoomBoardsSummary,
-  getRoomBoardsUpdate,
   getActiveRoomsSummary,
   assignTeamOnJoin,
   getAssignedTeamId,

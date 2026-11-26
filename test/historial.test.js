@@ -41,19 +41,45 @@ test('historial: pedidos simultáneos comparten una sola consulta y no traen las
   assert.strictEqual(JSON.parse(results[0]).matches.length, 1);
 });
 
+const match = (id) => ({ _id: id, boardNumber: 1, players: [], result: { winnerColor: null } });
+
 test('historial: al invalidar la sala (partida terminada) se vuelve a consultar', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
   const roomId = String(new mongoose.Types.ObjectId());
-  roomHistory.invalidateRoomHistory(roomId);
   let matches = [];
   const calls = stubModels(t, () => matches);
 
   assert.strictEqual(JSON.parse(await roomHistory.getRoomHistoryJson(roomId)).matches.length, 0);
-  matches = [{ _id: 'm1', boardNumber: 1, players: [], result: { winnerColor: null } }];
+  matches = [match('m1')];
   // Dentro del TTL y sin invalidar, se sirve lo cacheado
   assert.strictEqual(JSON.parse(await roomHistory.getRoomHistoryJson(roomId)).matches.length, 0);
   roomHistory.invalidateRoomHistory(roomId);
-  assert.strictEqual(JSON.parse(await roomHistory.getRoomHistoryJson(roomId)).matches.length, 1);
+  // Después de invalidar nunca se sirven datos viejos: se espera la próxima reconstrucción.
+  const pending = roomHistory.getRoomHistoryJson(roomId);
+  t.mock.timers.tick(roomHistory.MIN_REBUILD_MS);
+  assert.strictEqual(JSON.parse(await pending).matches.length, 1);
   assert.strictEqual(calls.find, 2);
+});
+
+test('historial: muchas partidas terminadas seguidas comparten una sola reconstrucción', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
+  const roomId = String(new mongoose.Types.ObjectId());
+  let matches = [];
+  const calls = stubModels(t, () => matches);
+
+  await roomHistory.getRoomHistoryJson(roomId);
+  const pedidos = [];
+  for (let i = 1; i <= 5; i++) {
+    matches = [...matches, match(`m${i}`)];
+    roomHistory.invalidateRoomHistory(roomId);
+    pedidos.push(roomHistory.getRoomHistoryJson(roomId));
+    t.mock.timers.tick(100);
+  }
+  t.mock.timers.tick(roomHistory.MIN_REBUILD_MS);
+  const results = await Promise.all(pedidos);
+
+  assert.strictEqual(calls.find, 2);
+  assert.ok(results.every((r) => JSON.parse(r).matches.length === 5));
 });
 
 test('historial: un error no queda cacheado', async (t) => {

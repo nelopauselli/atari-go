@@ -11,6 +11,8 @@
  *   --ramp       segundos en los que se conectan todos; 0 = todos juntos (10)
  *   --duration   segundos de prueba una vez conectados todos (180)
  *   --watchers   fracción de usuarios que solo observan (0.2)
+ *   --history    fracción de usuarios, tomada de los observadores, que en vez de mirar un tablero
+ *                tienen abierta la pestaña Historial y la recargan al terminar cada partida (0.05)
  *   --think      demora para jugar en ms, "min-max" (1000-4000)
  *   --prefix     prefijo de los usuarios (carga) · --password contraseña (carga)
  *   --institution / --room   nombre o id (por defecto "Prueba de carga")
@@ -42,6 +44,7 @@ const USERS = Number(args.users) || 70;
 const RAMP_S = args.ramp === undefined ? 10 : Number(args.ramp);
 const DURATION_S = Number(args.duration) || 180;
 const WATCHERS = args.watchers === undefined ? 0.2 : Number(args.watchers);
+const HISTORY = Math.min(WATCHERS, args.history === undefined ? 0.05 : Number(args.history));
 const [THINK_MIN, THINK_MAX] = String(args.think || '1000-4000').split('-').map(Number);
 const PREFIX = args.prefix || 'carga';
 const PASSWORD = args.password || 'carga';
@@ -143,9 +146,11 @@ let institutionId = null;
 let roomId = null;
 
 class Bot {
-  constructor(index, watcher) {
+  constructor(index, watcher, historyTab) {
     this.nickname = `${PREFIX}${String(index).padStart(3, '0')}`;
     this.watcher = watcher;
+    this.historyTab = historyTab; // observador con la pestaña Historial abierta (no mira tableros)
+    this.historyTimer = null;
     this.player = null;
     this.socket = null;
     this.boardNumber = null;
@@ -215,6 +220,7 @@ class Bot {
       this.onBoard(state);
     });
     socket.on('board:finished', (state) => {
+      if (this.historyTab) this.scheduleHistoryReload();
       if (state.boardNumber !== this.boardNumber) return;
       this.onFinished();
     });
@@ -229,6 +235,11 @@ class Bot {
     if (stopping || this.sitting || !this.socket.connected) return;
     this.sitting = true;
     try {
+      if (this.historyTab) {
+        // Abre la pestaña Historial: la pide una vez y después solo al terminar partidas.
+        await http('history', `/api/history/room/${roomId}`);
+        return;
+      }
       if (this.watcher) {
         const playing = (boards || this.lastBoards || []).filter((b) => b.status === 'playing');
         if (!playing.length) {
@@ -295,14 +306,22 @@ class Bot {
     if (stopping) return; // fin causado por el cierre de la prueba: no cuenta ni vuelve a sentarse
     if (!this.watcher) count('matches finished (por jugador)');
     this.socket.emit('board:leave', { roomId, boardNumber: finishedBoard });
-    // El navegador vuelve a pedir el historial al terminar cada partida que tiene a la vista.
-    await http('history', `/api/history/room/${roomId}`);
     setTimeout(() => this.next(), rand(2000, 6000));
+  }
+
+  /** Igual que RoomView: con la pestaña abierta, recarga tras una demora al azar de 1 a 5 s. */
+  scheduleHistoryReload() {
+    if (this.historyTimer || stopping) return;
+    this.historyTimer = setTimeout(async () => {
+      this.historyTimer = null;
+      if (!stopping) await http('history', `/api/history/room/${roomId}`);
+    }, rand(1000, 5000));
   }
 
   /** Abandona la partida (o deja el tablero) antes de desconectar, para no dejar partidas huérfanas en el servidor. */
   async stop() {
     clearInterval(this.pingTimer);
+    clearTimeout(this.historyTimer);
     if (!this.socket) return;
     const boardNumber = this.boardNumber;
     if (boardNumber != null && this.socket.connected) {
@@ -363,7 +382,9 @@ function report() {
 async function main() {
   await resolveTargets();
   const watcherCount = Math.round(USERS * WATCHERS);
-  console.log(`${USERS} usuarios (${USERS - watcherCount} juegan, ${watcherCount} observan), `
+  const historyCount = Math.round(USERS * HISTORY);
+  console.log(`${USERS} usuarios (${USERS - watcherCount} juegan, ${watcherCount - historyCount} observan tableros, `
+    + `${historyCount} con el historial abierto), `
     + `conexión en ${RAMP_S} s, duración ${DURATION_S} s, demora por jugada ${THINK_MIN}-${THINK_MAX} ms`);
 
   const bots = [];
@@ -372,7 +393,7 @@ async function main() {
   const progressTimer = setInterval(() => progress(bots, startedAt), 5000);
   const starts = [];
   for (let i = 1; i <= USERS; i++) {
-    const bot = new Bot(i, i > USERS - watcherCount);
+    const bot = new Bot(i, i > USERS - watcherCount, i > USERS - historyCount);
     bots.push(bot);
     starts.push(bot.start().catch((err) => count(`bot error ${err.message}`)));
     if (RAMP_S > 0 && i < USERS) await sleep((RAMP_S * 1000) / USERS);

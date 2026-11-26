@@ -11,17 +11,33 @@ const Player = require('../models/Player');
  * y los siguientes reciben el mismo JSON hasta que vence el TTL o se invalida la sala
  * (al terminar una partida). El TTL cubre lo que cambia sin terminar partidas
  * (asignación de equipos, apodos).
+ *
+ * Las reconstrucciones se espacian al menos MIN_REBUILD_MS: cuando terminan muchas partidas
+ * seguidas (fin de ronda), invalidar con cada una obligaba a rearmar el historial completo
+ * una vez por partida. Ahora un pedido posterior a la invalidación espera a la próxima
+ * reconstrucción (nunca recibe datos viejos), y las partidas que terminan antes de que
+ * arranque quedan incluidas en esa misma reconstrucción.
  */
 const TTL_MS = 5000;
-const cache = new Map(); // roomId -> { at, promise }
+const MIN_REBUILD_MS = 2000;
+// roomId -> { at (inicio de la reconstrucción), started, valid, promise }
+const cache = new Map();
 
 function getRoomHistoryJson(roomId) {
   const key = String(roomId);
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.promise;
+  // Vigente: dentro del TTL y sin invalidar, o programada y todavía sin arrancar.
+  if (hit && hit.valid && Date.now() - hit.at < TTL_MS) return hit.promise;
 
-  const entry = { at: Date.now(), promise: null };
-  entry.promise = buildRoomHistory(key)
+  const waitMs = hit ? Math.max(0, hit.at + MIN_REBUILD_MS - Date.now()) : 0;
+  const entry = { at: Date.now() + waitMs, started: false, valid: true, promise: null };
+  const build = () => {
+    entry.at = Date.now();
+    entry.started = true;
+    return buildRoomHistory(key);
+  };
+  const start = waitMs > 0 ? new Promise((resolve) => setTimeout(resolve, waitMs)).then(build) : build();
+  entry.promise = start
     .then((data) => JSON.stringify(data))
     .catch((err) => {
       if (cache.get(key) === entry) cache.delete(key);
@@ -32,7 +48,9 @@ function getRoomHistoryJson(roomId) {
 }
 
 function invalidateRoomHistory(roomId) {
-  cache.delete(String(roomId));
+  const entry = cache.get(String(roomId));
+  // Si la reconstrucción todavía no arrancó, va a leer la partida recién guardada: sigue sirviendo.
+  if (entry && entry.started) entry.valid = false;
 }
 
 async function buildRoomHistory(roomId) {
@@ -117,4 +135,4 @@ async function buildRanking(room, matches) {
     .sort((a, b) => byRecord(a, b) || a.teamName.localeCompare(b.teamName));
 }
 
-module.exports = { getRoomHistoryJson, invalidateRoomHistory, buildRanking, TTL_MS };
+module.exports = { getRoomHistoryJson, invalidateRoomHistory, buildRanking, TTL_MS, MIN_REBUILD_MS };
